@@ -40,12 +40,17 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
     }),
   replayEvents: (events, seedStatus) =>
     set(() => {
-      // Seed with checkpoint-derived statuses first (covers nodes that were already
-      // completed/skipped in a previous run and therefore won't re-emit events here).
-      const nodeStatus: Record<string, NodeStatus> = { ...(seedStatus ?? {}) };
+      // Apply events first, then seed (checkpoint) on top.
+      // Checkpoint-confirmed statuses always win over a potentially stale event
+      // snapshot — this prevents a mid-run HTTP fetch of events from overwriting
+      // a node that the checkpoint already marks as completed.
+      const nodeStatus: Record<string, NodeStatus> = {};
       for (const ev of events) {
         const mapped = eventToStatus[ev.type];
         if (mapped && ev.node_id) nodeStatus[ev.node_id] = mapped;
+      }
+      for (const [id, status] of Object.entries(seedStatus ?? {})) {
+        nodeStatus[id] = status;
       }
       return { events, nodeStatus };
     }),

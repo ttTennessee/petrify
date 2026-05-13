@@ -70,6 +70,19 @@ export function useImportWorkflow(projectId: string) {
   });
 }
 
+export interface WorkflowSummary {
+  id: string;
+  created_at: number;
+}
+
+export function useProjectWorkflows(projectId: string | undefined) {
+  return useQuery({
+    enabled: !!projectId,
+    queryKey: ["project-workflows", projectId],
+    queryFn: () => http<WorkflowSummary[]>(`/api/projects/${projectId}/workflows`),
+  });
+}
+
 export function useWorkflow(id: string | undefined) {
   return useQuery({
     enabled: !!id,
@@ -136,12 +149,12 @@ export interface CheckpointSummary {
   };
 }
 
-export function useCheckpoints(runId: string | undefined) {
+export function useCheckpoints(runId: string | undefined, isLive = true) {
   return useQuery({
     enabled: !!runId,
     queryKey: ["checkpoints", runId],
     queryFn: () => http<CheckpointSummary[]>(`/api/runs/${runId}/checkpoints`),
-    refetchInterval: 2000,
+    refetchInterval: isLive ? 2000 : false,
   });
 }
 

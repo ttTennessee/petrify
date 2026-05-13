@@ -23,7 +23,8 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
   const cancelRun = useCancelRun();
   const { currentRunId, setCurrentRunId, ingestEvent } = useWorkflowStore();
   const { data: run } = useRun(currentRunId ?? undefined);
-  const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined);
+  const isLiveRun = !run || run.status === "running";
+  const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined, isLiveRun);
 
   useRunEventStream(
     currentRunId ?? undefined,

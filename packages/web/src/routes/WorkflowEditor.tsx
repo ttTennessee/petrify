@@ -5,6 +5,7 @@ import {
   useWorkflow,
   useWorkflowRuns,
   useRunEvents,
+  useRun,
   useCheckpoints,
   useVerifyWorkflow,
 } from "../api/client";
@@ -33,8 +34,10 @@ export default function WorkflowEditor() {
     setCurrentRunId(runs[0]!.id);
   }, [runs, currentRunId, setCurrentRunId]);
 
+  const { data: runMeta } = useRun(currentRunId ?? undefined);
+  const isLiveRun = !runMeta || runMeta.status === "running";
   const { data: history } = useRunEvents(currentRunId ?? undefined);
-  const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined);
+  const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined, isLiveRun);
 
   // Resumed runs don't re-emit events for nodes the prior run already finished,
   // so the latest checkpoint is the authoritative source of their visual state.
