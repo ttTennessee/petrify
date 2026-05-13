@@ -40,8 +40,14 @@ export function createMapper(ctx: MapContext) {
         case "agent_message_chunk": {
           const content = (update.update as { content?: { text?: string } })
             .content;
-          if (content?.text) state.textChunks.push(content.text);
-          return []; // accumulate; emit once final response arrives
+          if (!content?.text) return [];
+          state.textChunks.push(content.text);
+          return [
+            event("ToolCalled", {
+              kind: "text_delta",
+              delta: content.text,
+            }),
+          ];
         }
         case "tool_call":
         case "tool_call_update": {

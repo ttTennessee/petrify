@@ -10,10 +10,15 @@ function update(sessionUpdate: string, extra: Record<string, unknown> = {}): Ses
 }
 
 describe("acp event-mapper", () => {
-  it("accumulates agent_message_chunk text and emits OutputGenerated on finalize", () => {
+  it("streams agent_message_chunk as text_delta events and finalizes with full text", () => {
     const m = createMapper({ runId: "r1", nodeId: "n1" });
-    expect(m.map(update("agent_message_chunk", { content: { type: "text", text: "foo " } }))).toHaveLength(0);
-    expect(m.map(update("agent_message_chunk", { content: { type: "text", text: "bar" } }))).toHaveLength(0);
+    const d1 = m.map(update("agent_message_chunk", { content: { type: "text", text: "foo " } }));
+    const d2 = m.map(update("agent_message_chunk", { content: { type: "text", text: "bar" } }));
+    expect(d1).toHaveLength(1);
+    expect(d1[0]!.type).toBe("ToolCalled");
+    expect(d1[0]!.payload.kind).toBe("text_delta");
+    expect(d1[0]!.payload.delta).toBe("foo ");
+    expect(d2[0]!.payload.delta).toBe("bar");
     const finals = m.finalize("end_turn");
     expect(finals.map((e) => e.type)).toEqual(["OutputGenerated", "NodeCompleted"]);
     expect((finals[0]!.payload.output as { text: string }).text).toBe("foo bar");

@@ -21,10 +21,15 @@ export default function WorkflowEditor() {
   const { workflowId } = useParams();
   const { data, isLoading } = useWorkflow(workflowId);
   const { data: runs } = useWorkflowRuns(workflowId);
-  const { setGraph, nodeStatus, currentRunId, setCurrentRunId, replayEvents } =
+  const { setGraph, nodeStatus, currentRunId, setCurrentRunId, replayEvents, resetRun } =
     useWorkflowStore();
   const [selected, setSelected] = useState<WorkflowNode | null>(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+
+  useEffect(() => {
+    resetRun();
+    setSelected(null);
+  }, [workflowId]);
 
   useEffect(() => {
     if (data?.graph) setGraph(data.graph);
