@@ -1,0 +1,118 @@
+{
+  "nodes": [
+    {
+      "id": "n_intake",
+      "ref": "intake",
+      "title": "采集用户需求",
+      "adapter": { "name": "mock", "version": "^0.1" },
+      "dependencies": [],
+      "inputs": { "user_goal": "写一篇赛博朋克短篇" },
+      "outputs": { "brief": "artifact://brief.md" },
+      "condition": null,
+      "loop": null,
+      "resources": [{ "name": "llm_quota", "amount": 1 }],
+      "runtime": { "timeout": 60, "retries": 0, "checkpoint": true },
+      "prompt": { "task_prompt": "梳理用户目标,产出结构化 brief" },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_world",
+      "ref": "world_building",
+      "title": "构建世界观",
+      "adapter": { "name": "mock" },
+      "dependencies": ["intake"],
+      "inputs": { "brief_ref": "$.outputs.brief" },
+      "outputs": { "world": "artifact://world.md" },
+      "condition": null,
+      "loop": null,
+      "resources": [{ "name": "llm_quota", "amount": 1 }],
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": { "task_prompt": "基于 brief 产出世界观设定" },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_char",
+      "ref": "characters",
+      "title": "设计主要角色",
+      "adapter": { "name": "mock" },
+      "dependencies": ["intake"],
+      "inputs": { "brief_ref": "$.outputs.brief" },
+      "outputs": { "cast": "artifact://cast.json" },
+      "condition": null,
+      "loop": null,
+      "resources": [{ "name": "llm_quota", "amount": 1 }],
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": { "task_prompt": "产出 3-5 名主要角色卡" },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_outline",
+      "ref": "outline",
+      "title": "故事大纲",
+      "adapter": { "name": "mock" },
+      "dependencies": ["world_building", "characters"],
+      "inputs": {
+        "world_ref": "$.outputs.world",
+        "cast_ref": "$.outputs.cast"
+      },
+      "outputs": { "outline": "artifact://outline.md" },
+      "condition": null,
+      "loop": null,
+      "resources": [{ "name": "llm_quota", "amount": 1 }],
+      "runtime": { "timeout": 180, "retries": 0, "checkpoint": true },
+      "prompt": { "task_prompt": "合成世界观与角色,产出三幕大纲" },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_draft",
+      "ref": "draft",
+      "title": "撰写正文",
+      "adapter": { "name": "mock" },
+      "dependencies": ["outline"],
+      "inputs": { "outline_ref": "$.outputs.outline" },
+      "outputs": { "story": "artifact://story.md" },
+      "condition": null,
+      "loop": {
+        "max_iterations": 3,
+        "exit_condition": "$.variables.review_passed == true"
+      },
+      "resources": [
+        { "name": "llm_quota", "amount": 2 },
+        { "name": "file_lock", "amount": 1 }
+      ],
+      "runtime": { "timeout": 600, "retries": 1, "checkpoint": true },
+      "prompt": { "task_prompt": "按大纲撰写完整故事正文" },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1000 }
+    },
+    {
+      "id": "n_review",
+      "ref": "review",
+      "title": "审校",
+      "adapter": { "name": "mock" },
+      "dependencies": ["draft"],
+      "inputs": { "story_ref": "$.outputs.story" },
+      "outputs": { "report": "artifact://review.md" },
+      "condition": "$.variables.skip_review != true",
+      "loop": null,
+      "resources": [{ "name": "llm_quota", "amount": 1 }],
+      "runtime": { "timeout": 180, "retries": 0, "checkpoint": true },
+      "prompt": { "task_prompt": "对正文做语病与设定一致性审校" },
+      "on_failure": { "strategy": "skip" }
+    }
+  ],
+  "edges": [
+    { "from": "n_intake", "to": "n_world", "kind": "control" },
+    { "from": "n_intake", "to": "n_char", "kind": "control" },
+    { "from": "n_world", "to": "n_outline", "kind": "control" },
+    { "from": "n_char", "to": "n_outline", "kind": "control" },
+    { "from": "n_outline", "to": "n_draft", "kind": "control" },
+    { "from": "n_draft", "to": "n_review", "kind": "control" },
+
+    { "from": "n_world", "to": "n_outline", "kind": "data", "binding": "$.outputs.world" },
+    { "from": "n_char", "to": "n_outline", "kind": "data", "binding": "$.outputs.cast" },
+    { "from": "n_outline", "to": "n_draft", "kind": "data", "binding": "$.outputs.outline" },
+
+    { "from": "n_draft", "to": "pool:llm_quota", "kind": "resource", "amount": 2 },
+    { "from": "n_draft", "to": "pool:file_lock", "kind": "resource", "amount": 1 }
+  ]
+}
