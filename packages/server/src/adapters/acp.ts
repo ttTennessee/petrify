@@ -9,12 +9,14 @@ export interface AcpAdapterConfig {
   command: string;
   args?: string[];
   env?: Record<string, string>;
-  protocolVersion?: string;
+  protocolVersion?: number;
+  /** Absolute path passed as session/new.cwd. Defaults to process.cwd(). */
+  defaultCwd?: string;
 }
 
 interface AcpCheckpointBlob {
   sessionId: string;
-  protocolVersion: string;
+  protocolVersion: number;
   promptHistory: Array<{ role: string; text: string }>;
   inputsSnapshot: Record<string, unknown>;
   command: string;
@@ -27,7 +29,7 @@ interface ActiveInvocation {
   cancelled: boolean;
 }
 
-const PROTOCOL_VERSION_DEFAULT = "0.1";
+const PROTOCOL_VERSION_DEFAULT = 1;
 
 export class AcpAdapter implements AgentAdapter {
   private active = new Map<string, ActiveInvocation>();
@@ -173,7 +175,10 @@ export class AcpAdapter implements AgentAdapter {
       command: b.command ?? this.cfg.command,
       args: b.args ?? this.cfg.args,
     });
-    const session = await transport.request<{ sessionId: string }>("session/new", {});
+    const session = await transport.request<{ sessionId: string }>(
+      "session/new",
+      this.newSessionParams(),
+    );
     const invocationId = nanoid();
     this.active.set(invocationId, {
       transport,
@@ -185,7 +190,10 @@ export class AcpAdapter implements AgentAdapter {
 
   private async openSession(): Promise<ActiveInvocation> {
     const transport = await this.spawnAndInit(this.cfg);
-    const session = await transport.request<{ sessionId: string }>("session/new", {});
+    const session = await transport.request<{ sessionId: string }>(
+      "session/new",
+      this.newSessionParams(),
+    );
     return { transport, sessionId: session.sessionId, cancelled: false };
   }
 
@@ -199,11 +207,32 @@ export class AcpAdapter implements AgentAdapter {
       args: opts.args,
       env: opts.env,
     });
+    // Surface ACP-server stderr to our server log — without this we're blind
+    // when the agent rejects our handshake.
+    transport.on("stderr", (chunk: string) => {
+      process.stderr.write(`[acp:${opts.command}] ${chunk}`);
+    });
+    transport.on("exit", ({ code, signal }: { code: number | null; signal: string | null }) => {
+      if (code !== 0 && code !== null) {
+        process.stderr.write(
+          `[acp:${opts.command}] exited code=${code} signal=${signal ?? "none"}\n`,
+        );
+      }
+    });
     await transport.request("initialize", {
       protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
-      clientCapabilities: {},
+      clientCapabilities: {
+        fs: { readTextFile: false, writeTextFile: false },
+      },
     });
     return transport;
+  }
+
+  private newSessionParams(): Record<string, unknown> {
+    return {
+      cwd: this.cfg.defaultCwd ?? process.cwd(),
+      mcpServers: [],
+    };
   }
 }
 

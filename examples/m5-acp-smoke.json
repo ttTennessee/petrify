@@ -11,10 +11,10 @@
       "condition": null,
       "loop": null,
       "resources": [],
-      "runtime": { "timeout": 1200, "retries": 0, "checkpoint": true },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
       "prompt": {
         "system_prompt": "You are a helpful smoke-test agent.",
-        "task_prompt": "回复一段简短文字证明 ACP 通路打通"
+        "task_prompt": "什么也不要做，直接回复：哈哈哈，成功了"
       },
       "on_failure": { "strategy": "abort" }
     }
