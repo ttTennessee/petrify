@@ -83,3 +83,22 @@ try {
 } catch {
   /* ignore */
 }
+
+// M5: workflow templates — local SQLite market, JSON import/export.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS templates (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    tags_json TEXT,
+    graph_json TEXT NOT NULL,
+    runtime_policy_json TEXT,
+    adapter_bindings_json TEXT,
+    source_workflow_id TEXT,
+    origin TEXT NOT NULL DEFAULT 'local',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_templates_name ON templates(name);
+`);

@@ -15,6 +15,7 @@ import { RunPanel } from "../components/RunPanel";
 import { EventStream } from "../components/EventStream";
 import { NodeDetailPanel } from "../components/NodeDetailPanel";
 import { VerifyPanel, deriveIssueByNodeRef } from "../components/VerifyPanel";
+import { SaveAsTemplateDialog } from "../components/SaveAsTemplateDialog";
 
 export default function WorkflowEditor() {
   const { workflowId } = useParams();
@@ -23,6 +24,7 @@ export default function WorkflowEditor() {
   const { setGraph, nodeStatus, currentRunId, setCurrentRunId, replayEvents } =
     useWorkflowStore();
   const [selected, setSelected] = useState<WorkflowNode | null>(null);
+  const [showSaveTemplate, setShowSaveTemplate] = useState(false);
 
   useEffect(() => {
     if (data?.graph) setGraph(data.graph);
@@ -64,9 +66,26 @@ export default function WorkflowEditor() {
 
   return (
     <div
-      className="grid h-full grid-rows-[auto_auto_minmax(0,1fr)]"
+      className="grid h-full grid-rows-[auto_auto_auto_minmax(0,1fr)]"
       style={{ gridTemplateColumns: `1fr ${rightCol}` }}
     >
+      <div className="col-span-2 flex items-center justify-between border-b bg-white px-4 py-1.5">
+        <span className="text-xs text-slate-500">
+          workflow <span className="font-mono">{workflowId}</span>
+        </span>
+        <button
+          onClick={() => setShowSaveTemplate(true)}
+          className="rounded border px-2.5 py-1 text-xs hover:bg-slate-50"
+        >
+          Save as Template
+        </button>
+      </div>
+      {showSaveTemplate && (
+        <SaveAsTemplateDialog
+          workflowId={workflowId}
+          onClose={() => setShowSaveTemplate(false)}
+        />
+      )}
       <div className="col-span-2">
         <VerifyPanel workflowId={workflowId} />
       </div>

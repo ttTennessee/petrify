@@ -1,0 +1,23 @@
+{
+  "nodes": [
+    {
+      "id": "n_acp",
+      "ref": "acp_call",
+      "title": "调一次 ACP",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": { "topic": "Petrify M5 ACP smoke" },
+      "outputs": { "text": "$.outputs.text" },
+      "condition": null,
+      "loop": null,
+      "resources": [],
+      "runtime": { "timeout": 1200, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "You are a helpful smoke-test agent.",
+        "task_prompt": "回复一段简短文字证明 ACP 通路打通"
+      },
+      "on_failure": { "strategy": "abort" }
+    }
+  ],
+  "edges": []
+}

@@ -3,13 +3,21 @@ import { Link, Outlet } from "react-router-dom";
 export default function App() {
   return (
     <div className="flex h-screen flex-col">
-      <header className="border-b bg-white px-6 py-3 shadow-sm">
+      <header className="border-b bg-white px-6 py-3 shadow-sm flex items-baseline gap-4">
         <Link to="/" className="text-lg font-semibold tracking-tight">
           Petrify
         </Link>
-        <span className="ml-3 text-xs text-slate-500">
-          Verifiable Agent Workflow Runtime · M1
+        <span className="text-xs text-slate-500">
+          Verifiable Agent Workflow Runtime
         </span>
+        <nav className="ml-auto flex gap-4 text-sm">
+          <Link to="/" className="text-slate-700 hover:text-slate-900">
+            Projects
+          </Link>
+          <Link to="/templates" className="text-slate-700 hover:text-slate-900">
+            Templates
+          </Link>
+        </nav>
       </header>
       <main className="min-h-0 flex-1 overflow-hidden">
         <Outlet />

@@ -5,6 +5,9 @@ import type {
   RuntimeEvent,
   VerificationReport,
   DryRunReport,
+  Template,
+  TemplateSummary,
+  TemplateExport,
 } from "@petrify/shared";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
@@ -195,4 +198,71 @@ export function useRunDryRun(workflowId: string) {
     mutationFn: () =>
       http<DryRunReport>(`/api/workflows/${workflowId}/dry-run`, { method: "POST" }),
   });
+}
+
+// ---- M5: templates ---------------------------------------------------------
+
+export function useTemplates(filters?: { q?: string; tag?: string }) {
+  const qs = new URLSearchParams();
+  if (filters?.q) qs.set("q", filters.q);
+  if (filters?.tag) qs.set("tag", filters.tag);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return useQuery({
+    queryKey: ["templates", filters?.q ?? "", filters?.tag ?? ""],
+    queryFn: () => http<TemplateSummary[]>(`/api/templates${suffix}`),
+  });
+}
+
+export function useTemplate(id: string | undefined) {
+  return useQuery({
+    enabled: !!id,
+    queryKey: ["template", id],
+    queryFn: () => http<Template>(`/api/templates/${id}`),
+  });
+}
+
+export function useSaveAsTemplate() {
+  return useMutation({
+    mutationFn: (input: {
+      workflowId: string;
+      name: string;
+      description?: string;
+      tags?: string[];
+    }) =>
+      http<{ id: string }>(`/api/templates`, {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  });
+}
+
+export function useImportTemplate() {
+  return useMutation({
+    mutationFn: (data: TemplateExport) =>
+      http<{ id: string }>(`/api/templates/import`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  });
+}
+
+export function useInstantiateTemplate() {
+  return useMutation({
+    mutationFn: ({ templateId, projectId }: { templateId: string; projectId: string }) =>
+      http<{ workflowId: string; order: string[] }>(
+        `/api/templates/${templateId}/instantiate`,
+        { method: "POST", body: JSON.stringify({ projectId }) },
+      ),
+  });
+}
+
+export function useDeleteTemplate() {
+  return useMutation({
+    mutationFn: (id: string) =>
+      http<{ deleted: boolean }>(`/api/templates/${id}`, { method: "DELETE" }),
+  });
+}
+
+export function templateExportUrl(id: string): string {
+  return `/api/templates/${id}/export`;
 }
