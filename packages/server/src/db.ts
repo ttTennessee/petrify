@@ -4,7 +4,9 @@ import { dirname } from "node:path";
 
 const DB_PATH = process.env.PETRIFY_DB ?? "./data/petrify.sqlite";
 
-mkdirSync(dirname(DB_PATH), { recursive: true });
+if (DB_PATH !== ":memory:") {
+  mkdirSync(dirname(DB_PATH), { recursive: true });
+}
 
 export const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
@@ -35,7 +37,8 @@ db.exec(`
     status TEXT NOT NULL,
     started_at INTEGER NOT NULL,
     finished_at INTEGER,
-    error TEXT
+    error TEXT,
+    resumed_from TEXT
   );
 
   CREATE TABLE IF NOT EXISTS run_events (
@@ -49,4 +52,24 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_run_events_run ON run_events(run_id, id);
+
+  CREATE TABLE IF NOT EXISTS checkpoints (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+    label TEXT,
+    blob_json TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_checkpoints_run ON checkpoints(run_id, created_at DESC);
 `);
+
+// Lightweight idempotent column add for runs.resumed_from when upgrading from M1.
+try {
+  const cols = db.prepare(`PRAGMA table_info(runs)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "resumed_from")) {
+    db.exec(`ALTER TABLE runs ADD COLUMN resumed_from TEXT`);
+  }
+} catch {
+  /* ignore */
+}

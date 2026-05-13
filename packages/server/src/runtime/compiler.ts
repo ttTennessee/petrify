@@ -5,6 +5,8 @@ export interface ExecutablePlan {
   graph: WorkflowGraph;
   order: string[]; // node ids in topological order
   nodesById: Record<string, WorkflowNode>;
+  predecessors: Record<string, string[]>; // node id -> upstream node ids
+  successors: Record<string, string[]>; // node id -> downstream node ids
 }
 
 export class CompileError extends Error {
@@ -42,12 +44,14 @@ export function compile(raw: unknown): ExecutablePlan {
     }
   }
 
-  // 3. build dependency graph (M1 uses node.dependencies + control edges)
+  // 3. build dependency graph (M1+M2 uses node.dependencies + control edges)
   const indeg: Record<string, number> = {};
   const succ: Record<string, string[]> = {};
+  const pred: Record<string, string[]> = {};
   for (const n of graph.nodes) {
     indeg[n.id] = 0;
     succ[n.id] = [];
+    pred[n.id] = [];
   }
   const refToId = new Map(graph.nodes.map((n) => [n.ref, n.id]));
 
@@ -56,6 +60,7 @@ export function compile(raw: unknown): ExecutablePlan {
       throw new CompileError(`edge references unknown node: ${fromId} -> ${toId}`);
     }
     succ[fromId]!.push(toId);
+    pred[toId]!.push(fromId);
     indeg[toId]! += 1;
   };
 
@@ -89,5 +94,5 @@ export function compile(raw: unknown): ExecutablePlan {
   }
 
   const nodesById = Object.fromEntries(graph.nodes.map((n) => [n.id, n]));
-  return { graph, order, nodesById };
+  return { graph, order, nodesById, predecessors: pred, successors: succ };
 }

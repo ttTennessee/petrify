@@ -33,5 +33,21 @@ export const RunStatusSchema = z.enum([
   "completed",
   "failed",
   "cancelled",
+  "paused",
 ]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
+
+// Petrify-native checkpoint blob (adapter-side blobs are opaque to us).
+// Captures *what was already done* so resume can skip completed nodes and
+// rehydrate downstream inputs without rerunning them.
+export const CheckpointBlobSchema = z.object({
+  run_id: z.string(),
+  saved_at: z.number().int(),
+  completed_node_ids: z.array(z.string()),
+  skipped_node_ids: z.array(z.string()),
+  node_outputs: z.record(z.unknown()), // nodeId -> last OutputGenerated payload
+  variables: z.record(z.unknown()),
+  // Adapter-declared blobs by node id, opaque payload.
+  adapter_blobs: z.record(z.unknown()).optional(),
+});
+export type CheckpointBlob = z.infer<typeof CheckpointBlobSchema>;
