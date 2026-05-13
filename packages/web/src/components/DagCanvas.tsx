@@ -79,12 +79,42 @@ export function DagCanvas({
       };
     });
 
-    const layoutEdges: Edge[] = graph.edges
+    const layoutEdges: Edge[] = [];
+
+    // Synthesize edges from node.dependencies (refs) so the canvas shows the
+    // implicit control flow even when the graph.edges array is empty.
+    const refToId = new Map(graph.nodes.map((n) => [n.ref, n.id]));
+    const seen = new Set<string>();
+    for (const n of graph.nodes) {
+      for (const depRef of n.dependencies ?? []) {
+        const fromId = refToId.get(depRef);
+        if (!fromId) continue;
+        const key = `dep:${fromId}->${n.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const style = KIND_STYLE.control!;
+        layoutEdges.push({
+          id: key,
+          source: fromId,
+          target: n.id,
+          style: { stroke: style.stroke, strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: style.stroke },
+          animated: true,
+        });
+      }
+    }
+
+    // Explicit edges from graph.edges (skip resource — those render as node badges).
+    graph.edges
       .filter((e) => e.kind !== "resource")
-      .map((e, i) => {
+      .forEach((e, i) => {
+        const key = `e${i}:${e.from}->${e.to}`;
+        // Avoid duplicating a control edge that's already covered by dependencies.
+        if (e.kind === "control" && seen.has(`dep:${e.from}->${e.to}`)) return;
+        seen.add(key);
         const style = KIND_STYLE[e.kind] ?? KIND_STYLE.control!;
-        return {
-          id: `e${i}`,
+        layoutEdges.push({
+          id: key,
           source: e.from,
           target: e.to,
           label: e.kind === "control" ? undefined : e.kind,
@@ -92,7 +122,7 @@ export function DagCanvas({
           labelStyle: { fontSize: 10, fill: style.stroke },
           markerEnd: { type: MarkerType.ArrowClosed, color: style.stroke },
           animated: e.kind === "control",
-        };
+        });
       });
 
     return { nodes: layoutNodes, edges: layoutEdges };
