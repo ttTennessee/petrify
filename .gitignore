@@ -5,6 +5,9 @@ build/
 *.log
 *.sqlite
 *.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+packages/server/data/
 .env
 .env.local
 .DS_Store
