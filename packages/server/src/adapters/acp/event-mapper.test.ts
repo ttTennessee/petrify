@@ -25,6 +25,19 @@ describe("acp event-mapper", () => {
     expect((finals[0]!.payload.output as { stop_reason: string }).stop_reason).toBe("end_turn");
   });
 
+  it("streams agent_thought_chunk as thought_delta events", () => {
+    const m = createMapper({ runId: "r", nodeId: "n" });
+    const d = m.map(
+      update("agent_thought_chunk", { content: { type: "text", text: "let me think" } }),
+    );
+    expect(d).toHaveLength(1);
+    expect(d[0]!.payload.kind).toBe("thought_delta");
+    expect(d[0]!.payload.delta).toBe("let me think");
+    // thought text must not contaminate the final assistant output
+    const finals = m.finalize("end_turn");
+    expect((finals[0]!.payload.output as { text: string }).text).toBe("");
+  });
+
   it("maps tool_call to ToolCalled with preserved metadata", () => {
     const m = createMapper({ runId: "r", nodeId: "n" });
     const evs = m.map(

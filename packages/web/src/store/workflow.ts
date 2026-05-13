@@ -20,39 +20,74 @@ const eventToStatus: Partial<Record<RuntimeEvent["type"], NodeStatus>> = {
   NodeSkipped: "skipped",
 };
 
-export const useWorkflowStore = create<WorkflowState>((set) => ({
-  graph: null,
-  setGraph: (graph) => set({ graph }),
-  nodeStatus: {},
-  events: [],
-  currentRunId: null,
-  setCurrentRunId: (id) => set({ currentRunId: id, events: [], nodeStatus: {} }),
-  ingestEvent: (ev) =>
+// Streaming text_delta events fire much faster than React can usefully render —
+// buffer arrivals and flush once per animation frame so the user sees smooth
+// growth instead of per-character relayouts.
+let pending: RuntimeEvent[] = [];
+let scheduled = false;
+
+function scheduleFlush(flush: () => void) {
+  if (scheduled) return;
+  scheduled = true;
+  const raf =
+    typeof requestAnimationFrame === "function"
+      ? requestAnimationFrame
+      : (cb: FrameRequestCallback) => setTimeout(() => cb(Date.now()), 16);
+  raf(() => {
+    scheduled = false;
+    flush();
+  });
+}
+
+export const useWorkflowStore = create<WorkflowState>((set) => {
+  const flush = () =>
     set((s) => {
-      if (s.events.some((e) => e.event_id === ev.event_id)) return s; // dedupe ws/replay overlap
+      if (pending.length === 0) return s;
+      const seen = new Set(s.events.map((e) => e.event_id));
+      const fresh: RuntimeEvent[] = [];
       const nextStatus = { ...s.nodeStatus };
-      const mapped = eventToStatus[ev.type];
-      if (mapped && ev.node_id) nextStatus[ev.node_id] = mapped;
-      return {
-        events: [...s.events, ev],
-        nodeStatus: nextStatus,
-      };
-    }),
-  replayEvents: (events, seedStatus) =>
-    set(() => {
-      // Apply events first, then seed (checkpoint) on top.
-      // Checkpoint-confirmed statuses always win over a potentially stale event
-      // snapshot — this prevents a mid-run HTTP fetch of events from overwriting
-      // a node that the checkpoint already marks as completed.
-      const nodeStatus: Record<string, NodeStatus> = {};
-      for (const ev of events) {
+      for (const ev of pending) {
+        if (seen.has(ev.event_id)) continue;
+        seen.add(ev.event_id);
+        fresh.push(ev);
         const mapped = eventToStatus[ev.type];
-        if (mapped && ev.node_id) nodeStatus[ev.node_id] = mapped;
+        if (mapped && ev.node_id) nextStatus[ev.node_id] = mapped;
       }
-      for (const [id, status] of Object.entries(seedStatus ?? {})) {
-        nodeStatus[id] = status;
-      }
-      return { events, nodeStatus };
-    }),
-  resetRun: () => set({ events: [], nodeStatus: {}, currentRunId: null }),
-}));
+      pending = [];
+      if (fresh.length === 0) return s;
+      return { events: [...s.events, ...fresh], nodeStatus: nextStatus };
+    });
+
+  return {
+    graph: null,
+    setGraph: (graph) => set({ graph }),
+    nodeStatus: {},
+    events: [],
+    currentRunId: null,
+    setCurrentRunId: (id) => {
+      pending = [];
+      set({ currentRunId: id, events: [], nodeStatus: {} });
+    },
+    ingestEvent: (ev) => {
+      pending.push(ev);
+      scheduleFlush(flush);
+    },
+    replayEvents: (events, seedStatus) =>
+      set(() => {
+        pending = [];
+        const nodeStatus: Record<string, NodeStatus> = {};
+        for (const ev of events) {
+          const mapped = eventToStatus[ev.type];
+          if (mapped && ev.node_id) nodeStatus[ev.node_id] = mapped;
+        }
+        for (const [id, status] of Object.entries(seedStatus ?? {})) {
+          nodeStatus[id] = status;
+        }
+        return { events, nodeStatus };
+      }),
+    resetRun: () => {
+      pending = [];
+      set({ events: [], nodeStatus: {}, currentRunId: null });
+    },
+  };
+});

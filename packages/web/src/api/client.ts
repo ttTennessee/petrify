@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ProjectInput,
   WorkflowGraph,
@@ -10,14 +10,23 @@ import type {
   TemplateExport,
 } from "@petrify/shared";
 
+export class ApiError extends Error {
+  constructor(message: string, public readonly issues: string[] = []) {
+    super(message);
+  }
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `HTTP ${res.status}`);
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      issues?: string[];
+    };
+    throw new ApiError(body.error ?? `HTTP ${res.status}`, body.issues ?? []);
   }
   return res.json() as Promise<T>;
 }
@@ -92,6 +101,34 @@ export function useWorkflow(id: string | undefined) {
     queryKey: ["workflow", id],
     queryFn: () =>
       http<{ id: string; project_id: string; graph: WorkflowGraph }>(`/api/workflows/${id}`),
+  });
+}
+
+export function usePatchNode(workflowId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      nodeId,
+      patch,
+    }: {
+      nodeId: string;
+      patch: Record<string, unknown>;
+    }) =>
+      http<{ id: string; graph: WorkflowGraph }>(
+        `/api/workflows/${workflowId}/nodes/${nodeId}`,
+        { method: "PATCH", body: JSON.stringify(patch) },
+      ),
+    onSuccess: (data) => {
+      qc.setQueryData(
+        ["workflow", workflowId],
+        (
+          old:
+            | { id: string; project_id: string; graph: WorkflowGraph }
+            | undefined,
+        ) => (old ? { ...old, graph: data.graph } : old),
+      );
+      qc.invalidateQueries({ queryKey: ["verify", workflowId] });
+    },
   });
 }
 

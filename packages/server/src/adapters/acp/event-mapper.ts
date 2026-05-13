@@ -61,13 +61,25 @@ export function createMapper(ctx: MapContext) {
             }),
           ];
         }
-        case "plan":
-        case "agent_thought_chunk":
-          // Internal-thought variants — keep them out of the user-visible trace
-          // but don't drop entirely; surface as ToolCalled with kind="thought".
+        case "agent_thought_chunk": {
+          // Same shape as agent_message_chunk: { content: { type, text } }.
+          // Stream the thought text as its own delta channel so the UI can
+          // render it in a separate "thinking" bubble that grows alongside
+          // the agent reply, instead of one ToolCalled card per character.
+          const content = (update.update as { content?: { text?: string } })
+            .content;
+          if (!content?.text) return [];
           return [
             event("ToolCalled", {
-              kind: "thought",
+              kind: "thought_delta",
+              delta: content.text,
+            }),
+          ];
+        }
+        case "plan":
+          return [
+            event("ToolCalled", {
+              kind: "plan",
               raw: update.update,
             }),
           ];

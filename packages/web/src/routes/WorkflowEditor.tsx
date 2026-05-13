@@ -23,13 +23,20 @@ export default function WorkflowEditor() {
   const { data: runs } = useWorkflowRuns(workflowId);
   const { setGraph, nodeStatus, currentRunId, setCurrentRunId, replayEvents, resetRun } =
     useWorkflowStore();
-  const [selected, setSelected] = useState<WorkflowNode | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
 
   useEffect(() => {
     resetRun();
-    setSelected(null);
+    setSelectedId(null);
   }, [workflowId]);
+
+  // Re-resolve selected node from the live graph so edits saved via PATCH
+  // propagate back into the detail panel without keeping a stale snapshot.
+  const selected = useMemo<WorkflowNode | null>(() => {
+    if (!selectedId || !data?.graph) return null;
+    return data.graph.nodes.find((n) => n.id === selectedId) ?? null;
+  }, [selectedId, data?.graph]);
 
   useEffect(() => {
     if (data?.graph) setGraph(data.graph);
@@ -101,14 +108,18 @@ export default function WorkflowEditor() {
         <DagCanvas
           graph={data.graph}
           nodeStatus={nodeStatus}
-          onSelectNode={setSelected}
+          onSelectNode={(n) => setSelectedId(n?.id ?? null)}
           selectedNodeId={selected?.id ?? null}
           issueByRef={issueByRef}
         />
       </div>
       <div className="min-h-0">
         {selected ? (
-          <NodeDetailPanel node={selected} onClose={() => setSelected(null)} />
+          <NodeDetailPanel
+            node={selected}
+            workflowId={workflowId}
+            onClose={() => setSelectedId(null)}
+          />
         ) : (
           <EventStream />
         )}
