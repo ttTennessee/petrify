@@ -46,3 +46,13 @@ runsRouter.get("/runs/:id/events", (req, res) => {
   const since = Number(req.query.since ?? 0);
   res.json(listEvents(req.params.id, Number.isFinite(since) ? since : 0));
 });
+
+runsRouter.get("/workflows/:workflowId/runs", (req, res) => {
+  const rows = db
+    .prepare(
+      `SELECT id, status, started_at, finished_at, error
+       FROM runs WHERE workflow_id = ? ORDER BY started_at DESC LIMIT 50`,
+    )
+    .all(req.params.workflowId);
+  res.json(rows);
+});

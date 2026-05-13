@@ -9,6 +9,7 @@ interface WorkflowState {
   currentRunId: string | null;
   setCurrentRunId: (id: string | null) => void;
   ingestEvent: (ev: RuntimeEvent) => void;
+  replayEvents: (events: RuntimeEvent[]) => void;
   resetRun: () => void;
 }
 
@@ -28,6 +29,7 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
   setCurrentRunId: (id) => set({ currentRunId: id, events: [], nodeStatus: {} }),
   ingestEvent: (ev) =>
     set((s) => {
+      if (s.events.some((e) => e.event_id === ev.event_id)) return s; // dedupe ws/replay overlap
       const nextStatus = { ...s.nodeStatus };
       const mapped = eventToStatus[ev.type];
       if (mapped && ev.node_id) nextStatus[ev.node_id] = mapped;
@@ -35,6 +37,15 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
         events: [...s.events, ev],
         nodeStatus: nextStatus,
       };
+    }),
+  replayEvents: (events) =>
+    set(() => {
+      const nodeStatus: Record<string, NodeStatus> = {};
+      for (const ev of events) {
+        const mapped = eventToStatus[ev.type];
+        if (mapped && ev.node_id) nodeStatus[ev.node_id] = mapped;
+      }
+      return { events, nodeStatus };
     }),
   resetRun: () => set({ events: [], nodeStatus: {}, currentRunId: null }),
 }));

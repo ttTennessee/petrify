@@ -12,37 +12,54 @@ const STATUS_STYLES: Record<NodeStatus, string> = {
   compensating: "border-violet-500 bg-violet-50",
 };
 
+const STATUS_LABEL: Record<NodeStatus, string> = {
+  idle: "·",
+  pending: "等待",
+  running: "运行中",
+  completed: "完成",
+  failed: "失败",
+  blocked: "阻塞",
+  skipped: "跳过",
+  compensating: "补偿",
+};
+
 export interface NodeCardData extends Record<string, unknown> {
   node: WorkflowNode;
   status: NodeStatus;
+  selected?: boolean;
 }
 
 export function NodeCard({ data }: NodeProps) {
-  const { node, status } = data as NodeCardData;
+  const { node, status, selected } = data as NodeCardData;
   const hasResources = node.resources && node.resources.length > 0;
+  const depCount = (node.dependencies ?? []).length;
   return (
     <div
-      className={`min-w-[180px] rounded-md border-2 px-3 py-2 text-sm shadow-sm ${STATUS_STYLES[status]}`}
+      className={`min-w-[200px] max-w-[220px] rounded-md border-2 px-3 py-2 text-sm shadow-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-sky-400 ring-offset-1" : ""}`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="font-medium leading-tight">{node.title}</div>
+      <div className="mt-0.5 text-[10px] text-slate-400">{node.ref}</div>
       <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
         <span>{node.adapter.name}</span>
-        <span>{status}</span>
+        <span>{STATUS_LABEL[status]}</span>
       </div>
-      {hasResources && (
-        <div className="mt-1 flex flex-wrap gap-1">
-          {node.resources.map((r) => (
-            <span
-              key={r.name}
-              className="rounded bg-slate-200 px-1 text-[10px] text-slate-700"
-              title="resource claim (declared, not enforced in M1)"
-            >
-              {r.name}:{r.amount}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
+        <span title="control prerequisites">⇡ {depCount}</span>
+        {hasResources && (
+          <span className="flex flex-wrap gap-1">
+            {node.resources.map((r) => (
+              <span
+                key={r.name}
+                className="rounded bg-slate-200 px-1 text-[10px] text-slate-700"
+                title="resource claim (M1: declared, not enforced)"
+              >
+                {r.name}:{r.amount}
+              </span>
+            ))}
+          </span>
+        )}
+      </div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

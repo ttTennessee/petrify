@@ -87,3 +87,32 @@ export function useRunEvents(runId: string | undefined) {
     queryFn: () => http<RuntimeEvent[]>(`/api/runs/${runId}/events`),
   });
 }
+
+export interface RunSummary {
+  id: string;
+  status: "running" | "completed" | "failed" | "cancelled";
+  started_at: number;
+  finished_at: number | null;
+  error: string | null;
+}
+
+export function useWorkflowRuns(workflowId: string | undefined) {
+  return useQuery({
+    enabled: !!workflowId,
+    queryKey: ["workflow-runs", workflowId],
+    queryFn: () => http<RunSummary[]>(`/api/workflows/${workflowId}/runs`),
+    refetchInterval: 2000,
+  });
+}
+
+export function useRun(runId: string | undefined) {
+  return useQuery({
+    enabled: !!runId,
+    queryKey: ["run", runId],
+    queryFn: () => http<RunSummary & { workflow_id: string }>(`/api/runs/${runId}`),
+    refetchInterval: (q) => {
+      const s = q.state.data?.status;
+      return s === "running" || s === undefined ? 1500 : false;
+    },
+  });
+}
