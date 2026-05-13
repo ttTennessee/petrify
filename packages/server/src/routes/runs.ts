@@ -18,9 +18,32 @@ const insertRun = db.prepare(
 
 runsRouter.post("/workflows/:workflowId/runs", (req, res) => {
   const wf = db
-    .prepare(`SELECT graph_json FROM workflows WHERE id = ?`)
-    .get(req.params.workflowId) as { graph_json: string } | undefined;
+    .prepare(`SELECT graph_json, last_verify_json FROM workflows WHERE id = ?`)
+    .get(req.params.workflowId) as
+    | { graph_json: string; last_verify_json: string | null }
+    | undefined;
   if (!wf) return res.status(404).json({ error: "workflow not found" });
+
+  // M3: require a passing verify (or explicit force) before running.
+  const force = req.query.force === "true";
+  if (!force) {
+    if (!wf.last_verify_json) {
+      return res
+        .status(412)
+        .json({
+          error: "workflow has not been verified; POST /verify first or use ?force=true",
+        });
+    }
+    const report = JSON.parse(wf.last_verify_json) as { status: "pass" | "warn" | "fail" };
+    if (report.status === "fail") {
+      return res
+        .status(412)
+        .json({
+          error: "workflow verification failed; resolve issues or use ?force=true",
+          report,
+        });
+    }
+  }
 
   let plan;
   try {

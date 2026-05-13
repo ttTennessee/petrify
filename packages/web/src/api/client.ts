@@ -1,5 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import type { ProjectInput, WorkflowGraph, RuntimeEvent } from "@petrify/shared";
+import type {
+  ProjectInput,
+  WorkflowGraph,
+  RuntimeEvent,
+  VerificationReport,
+  DryRunReport,
+} from "@petrify/shared";
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -153,5 +159,27 @@ export function useCancelRun() {
   return useMutation({
     mutationFn: (runId: string) =>
       http<{ cancelled: boolean }>(`/api/runs/${runId}/cancel`, { method: "POST" }),
+  });
+}
+
+export function useVerifyWorkflow(workflowId: string | undefined) {
+  return useQuery({
+    enabled: !!workflowId,
+    queryKey: ["verify", workflowId],
+    queryFn: () => http<VerificationReport | null>(`/api/workflows/${workflowId}/verify`),
+  });
+}
+
+export function useRunVerify(workflowId: string) {
+  return useMutation({
+    mutationFn: () =>
+      http<VerificationReport>(`/api/workflows/${workflowId}/verify`, { method: "POST" }),
+  });
+}
+
+export function useRunDryRun(workflowId: string) {
+  return useMutation({
+    mutationFn: () =>
+      http<DryRunReport>(`/api/workflows/${workflowId}/dry-run`, { method: "POST" }),
   });
 }

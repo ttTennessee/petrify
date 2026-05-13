@@ -27,15 +27,22 @@ export interface NodeCardData extends Record<string, unknown> {
   node: WorkflowNode;
   status: NodeStatus;
   selected?: boolean;
+  issue?: "warning" | "error";
 }
 
 export function NodeCard({ data }: NodeProps) {
-  const { node, status, selected } = data as NodeCardData;
+  const { node, status, selected, issue } = data as NodeCardData;
   const hasResources = node.resources && node.resources.length > 0;
   const depCount = (node.dependencies ?? []).length;
+  const issueRing =
+    issue === "error"
+      ? "ring-2 ring-rose-500"
+      : issue === "warning"
+        ? "ring-2 ring-amber-500"
+        : "";
   return (
     <div
-      className={`min-w-[200px] max-w-[220px] rounded-md border-2 px-3 py-2 text-sm shadow-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-sky-400 ring-offset-1" : ""}`}
+      className={`min-w-[200px] max-w-[220px] rounded-md border-2 px-3 py-2 text-sm shadow-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-sky-400 ring-offset-1" : ""} ${issueRing}`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="font-medium leading-tight">{node.title}</div>

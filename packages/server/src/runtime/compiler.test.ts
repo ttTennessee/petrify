@@ -66,4 +66,22 @@ describe("compiler", () => {
       }),
     ).toThrow(/duplicate node ref/);
   });
+
+  it("rejects undeclared resource pools", () => {
+    expect(() =>
+      compile({
+        nodes: [nodeStub({ resources: [{ name: "llm_quota", amount: 1 }] })],
+        edges: [],
+      }),
+    ).toThrow(/not declared in runtime_policy/);
+  });
+
+  it("accepts when pools are declared", () => {
+    const plan = compile({
+      nodes: [nodeStub({ resources: [{ name: "llm_quota", amount: 1 }] })],
+      edges: [],
+      runtime_policy: { pools: { llm_quota: { capacity: 2 } } },
+    });
+    expect(plan.pools.llm_quota).toBe(2);
+  });
 });

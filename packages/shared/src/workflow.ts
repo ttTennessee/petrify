@@ -15,8 +15,22 @@ export type NodeStatus = z.infer<typeof NodeStatusSchema>;
 export const ResourceClaimSchema = z.object({
   name: z.string(),
   amount: z.number().int().positive().default(1),
+  // If false, the node holds the resource for the remainder of the run.
+  release: z.boolean().default(true),
 });
 export type ResourceClaim = z.infer<typeof ResourceClaimSchema>;
+
+export const ResourcePoolSchema = z.object({
+  capacity: z.number().int().positive(),
+});
+export type ResourcePool = z.infer<typeof ResourcePoolSchema>;
+
+export const RuntimePolicyDeclSchema = z
+  .object({
+    pools: z.record(ResourcePoolSchema).default({}),
+  })
+  .partial();
+export type RuntimePolicyDecl = z.infer<typeof RuntimePolicyDeclSchema>;
 
 export const LoopSpecSchema = z.object({
   max_iterations: z.number().int().positive(),
@@ -97,5 +111,6 @@ export type WorkflowEdge = z.infer<typeof WorkflowEdgeSchema>;
 export const WorkflowGraphSchema = z.object({
   nodes: z.array(WorkflowNodeSchema).min(1),
   edges: z.array(WorkflowEdgeSchema).default([]),
+  runtime_policy: RuntimePolicyDeclSchema.optional(),
 });
 export type WorkflowGraph = z.infer<typeof WorkflowGraphSchema>;

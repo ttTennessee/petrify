@@ -51,11 +51,13 @@ export function DagCanvas({
   nodeStatus,
   onSelectNode,
   selectedNodeId,
+  issueByRef,
 }: {
   graph: WorkflowGraph;
   nodeStatus: Record<string, NodeStatus>;
   onSelectNode?: (n: WorkflowNode | null) => void;
   selectedNodeId?: string | null;
+  issueByRef?: Record<string, "warning" | "error">;
 }) {
   const { nodes, edges } = useMemo(() => {
     const g = layout(graph);
@@ -70,6 +72,7 @@ export function DagCanvas({
           node: n,
           status: nodeStatus[n.id] ?? "idle",
           selected: selectedNodeId === n.id,
+          issue: issueByRef?.[n.ref],
         },
         sourcePosition: Position.Bottom,
         targetPosition: Position.Top,
@@ -93,7 +96,7 @@ export function DagCanvas({
       });
 
     return { nodes: layoutNodes, edges: layoutEdges };
-  }, [graph, nodeStatus, selectedNodeId]);
+  }, [graph, nodeStatus, selectedNodeId, issueByRef]);
 
   return (
     <ReactFlow

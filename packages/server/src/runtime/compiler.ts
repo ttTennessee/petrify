@@ -7,6 +7,7 @@ export interface ExecutablePlan {
   nodesById: Record<string, WorkflowNode>;
   predecessors: Record<string, string[]>; // node id -> upstream node ids
   successors: Record<string, string[]>; // node id -> downstream node ids
+  pools: Record<string, number>; // pool name -> capacity (M3+)
 }
 
 export class CompileError extends Error {
@@ -94,5 +95,27 @@ export function compile(raw: unknown): ExecutablePlan {
   }
 
   const nodesById = Object.fromEntries(graph.nodes.map((n) => [n.id, n]));
-  return { graph, order, nodesById, predecessors: pred, successors: succ };
+
+  // 5. Pools: every claimed pool must be declared in runtime_policy.pools.
+  const declared = graph.runtime_policy?.pools ?? {};
+  const pools: Record<string, number> = {};
+  for (const [name, spec] of Object.entries(declared)) {
+    pools[name] = spec.capacity;
+  }
+  const claimedPools = new Set<string>();
+  for (const n of graph.nodes) {
+    for (const claim of n.resources ?? []) claimedPools.add(claim.name);
+  }
+  const missing: string[] = [];
+  for (const name of claimedPools) {
+    if (!(name in pools)) missing.push(name);
+  }
+  if (missing.length > 0) {
+    throw new CompileError(
+      `pool(s) ${missing.map((m) => `"${m}"`).join(", ")} are claimed by nodes but not declared in runtime_policy.pools`,
+      missing.map((m) => `runtime_policy.pools.${m}: missing`),
+    );
+  }
+
+  return { graph, order, nodesById, predecessors: pred, successors: succ, pools };
 }

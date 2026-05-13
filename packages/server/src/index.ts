@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { projectsRouter } from "./routes/projects.js";
 import { workflowsRouter } from "./routes/workflows.js";
 import { runsRouter } from "./routes/runs.js";
+import { verificationRouter } from "./routes/verification.js";
 import { eventBus } from "./runtime/events.js";
 import { registerAdapter, listAdapters } from "./adapters/registry.js";
 import { MockAdapter } from "./adapters/mock.js";
@@ -23,6 +24,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/projects", projectsRouter);
 app.use("/api", workflowsRouter);
 app.use("/api", runsRouter);
+app.use("/api", verificationRouter);
 
 const server = http.createServer(app);
 

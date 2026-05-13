@@ -79,6 +79,10 @@ export class MockAdapter implements AgentAdapter {
       echoed_inputs: req.inputs,
       generated_at: new Date().toISOString(),
       attempt: currentAttempt,
+      // Forward an optional inputs.emit_variables map as a variables_patch so
+      // workflow authors can drive condition/loop expressions in tests.
+      variables_patch:
+        (req.inputs as Record<string, unknown>)?.emit_variables ?? undefined,
     };
 
     yield {

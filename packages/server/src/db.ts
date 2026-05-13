@@ -73,3 +73,13 @@ try {
 } catch {
   /* ignore */
 }
+
+// M3: workflows.last_verify_json holds the most recent VerificationReport.
+try {
+  const cols = db.prepare(`PRAGMA table_info(workflows)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "last_verify_json")) {
+    db.exec(`ALTER TABLE workflows ADD COLUMN last_verify_json TEXT`);
+  }
+} catch {
+  /* ignore */
+}

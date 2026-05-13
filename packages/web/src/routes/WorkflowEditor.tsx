@@ -6,12 +6,14 @@ import {
   useWorkflowRuns,
   useRunEvents,
   useCheckpoints,
+  useVerifyWorkflow,
 } from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
 import { DagCanvas } from "../components/DagCanvas";
 import { RunPanel } from "../components/RunPanel";
 import { EventStream } from "../components/EventStream";
 import { NodeDetailPanel } from "../components/NodeDetailPanel";
+import { VerifyPanel, deriveIssueByNodeRef } from "../components/VerifyPanel";
 
 export default function WorkflowEditor() {
   const { workflowId } = useParams();
@@ -49,6 +51,9 @@ export default function WorkflowEditor() {
     if (history) replayEvents(history, seedStatus);
   }, [history, seedStatus, replayEvents]);
 
+  const { data: verifyReport } = useVerifyWorkflow(workflowId);
+  const issueByRef = useMemo(() => deriveIssueByNodeRef(verifyReport), [verifyReport]);
+
   if (isLoading || !workflowId) return <p className="p-6 text-sm text-slate-500">loading…</p>;
   if (!data) return <p className="p-6 text-sm text-rose-600">workflow not found</p>;
 
@@ -56,9 +61,12 @@ export default function WorkflowEditor() {
 
   return (
     <div
-      className="grid h-full grid-rows-[auto_minmax(0,1fr)]"
+      className="grid h-full grid-rows-[auto_auto_minmax(0,1fr)]"
       style={{ gridTemplateColumns: `1fr ${rightCol}` }}
     >
+      <div className="col-span-2">
+        <VerifyPanel workflowId={workflowId} />
+      </div>
       <div className="col-span-2">
         <RunPanel workflowId={workflowId} />
       </div>
@@ -68,6 +76,7 @@ export default function WorkflowEditor() {
           nodeStatus={nodeStatus}
           onSelectNode={setSelected}
           selectedNodeId={selected?.id ?? null}
+          issueByRef={issueByRef}
         />
       </div>
       <div className="min-h-0">

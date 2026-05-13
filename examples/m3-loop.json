@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    {
+      "id": "n_init",
+      "ref": "init",
+      "title": "Init counter",
+      "adapter": { "name": "mock" },
+      "dependencies": [],
+      "inputs": { "emit_variables": { "ready": false } },
+      "outputs": {}
+    },
+    {
+      "id": "n_loop",
+      "ref": "loop_body",
+      "title": "Loop body (sets ready=true)",
+      "adapter": { "name": "mock" },
+      "dependencies": ["init"],
+      "inputs": { "emit_variables": { "ready": true } },
+      "outputs": {},
+      "loop": {
+        "max_iterations": 5,
+        "exit_condition": "$.variables.ready == true"
+      }
+    },
+    {
+      "id": "n_done",
+      "ref": "done",
+      "title": "Done",
+      "adapter": { "name": "mock" },
+      "dependencies": ["loop_body"],
+      "inputs": {},
+      "outputs": {}
+    }
+  ],
+  "edges": []
+}
