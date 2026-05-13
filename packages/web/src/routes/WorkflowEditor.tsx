@@ -1,7 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import type { WorkflowNode } from "@petrify/shared";
-import { useWorkflow, useWorkflowRuns, useRunEvents } from "../api/client";
+import type { NodeStatus, WorkflowNode } from "@petrify/shared";
+import {
+  useWorkflow,
+  useWorkflowRuns,
+  useRunEvents,
+  useCheckpoints,
+} from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
 import { DagCanvas } from "../components/DagCanvas";
 import { RunPanel } from "../components/RunPanel";
@@ -27,9 +32,22 @@ export default function WorkflowEditor() {
   }, [runs, currentRunId, setCurrentRunId]);
 
   const { data: history } = useRunEvents(currentRunId ?? undefined);
+  const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined);
+
+  // Resumed runs don't re-emit events for nodes the prior run already finished,
+  // so the latest checkpoint is the authoritative source of their visual state.
+  const seedStatus = useMemo<Record<string, NodeStatus>>(() => {
+    const latest = checkpoints?.[0]?.blob;
+    if (!latest) return {};
+    const seed: Record<string, NodeStatus> = {};
+    for (const id of latest.completed_node_ids) seed[id] = "completed";
+    for (const id of latest.skipped_node_ids) seed[id] = "skipped";
+    return seed;
+  }, [checkpoints]);
+
   useEffect(() => {
-    if (history) replayEvents(history);
-  }, [history, replayEvents]);
+    if (history) replayEvents(history, seedStatus);
+  }, [history, seedStatus, replayEvents]);
 
   if (isLoading || !workflowId) return <p className="p-6 text-sm text-slate-500">loading…</p>;
   if (!data) return <p className="p-6 text-sm text-rose-600">workflow not found</p>;

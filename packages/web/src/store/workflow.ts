@@ -9,7 +9,7 @@ interface WorkflowState {
   currentRunId: string | null;
   setCurrentRunId: (id: string | null) => void;
   ingestEvent: (ev: RuntimeEvent) => void;
-  replayEvents: (events: RuntimeEvent[]) => void;
+  replayEvents: (events: RuntimeEvent[], seedStatus?: Record<string, NodeStatus>) => void;
   resetRun: () => void;
 }
 
@@ -38,9 +38,11 @@ export const useWorkflowStore = create<WorkflowState>((set) => ({
         nodeStatus: nextStatus,
       };
     }),
-  replayEvents: (events) =>
+  replayEvents: (events, seedStatus) =>
     set(() => {
-      const nodeStatus: Record<string, NodeStatus> = {};
+      // Seed with checkpoint-derived statuses first (covers nodes that were already
+      // completed/skipped in a previous run and therefore won't re-emit events here).
+      const nodeStatus: Record<string, NodeStatus> = { ...(seedStatus ?? {}) };
       for (const ev of events) {
         const mapped = eventToStatus[ev.type];
         if (mapped && ev.node_id) nodeStatus[ev.node_id] = mapped;
