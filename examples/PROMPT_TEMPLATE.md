@@ -75,9 +75,10 @@
 - 并发上限：单实例最多 4 个并发 session（`concurrency.max: 4`）
 - `prompt.system_prompt` 和 `prompt.task_prompt` 会被拼装后发给 agent；`inputs` 以 `<inputs>` 块附在末尾
 - EventStream 事件映射：
-  - `agent_message_chunk` → `ToolCalled { kind: "text_delta", delta }`
+  - `agent_message_chunk` → `ToolCalled { kind: "text_delta", delta }`（按 chunk 流式增量，UI 实时聚合到该节点的回答气泡）
+  - `agent_thought_chunk` → `ToolCalled { kind: "thought_delta", delta }`（按 chunk 流式增量，UI 实时聚合到该节点独立的"thinking"折叠块；**思考文本不会进入 OutputGenerated.text**，所以下游 `$.outputs.<ref>.text` 始终只拿到正式回答）
   - `tool_call` / `tool_call_update` → `ToolCalled { kind, tool_call_id, label, status }`
-  - `plan` / `agent_thought_chunk` → `ToolCalled { kind: "thought" }`（内部思考，保留但不展示）
+  - `plan` → `ToolCalled { kind: "plan", raw }`
   - 完成后 → `OutputGenerated { text, stop_reason }` + `NodeCompleted`
   - 失败/取消 → `NodeFailed { reason }`
 
@@ -102,6 +103,17 @@
 ```
 
 > **注意：** ACP adapter 需要服务端预先通过 `registerAdapter("acp", new AcpAdapter(cfg))` 注册并配置 `command`（agent 可执行路径）。如果服务端未注册，节点会在 invoke 阶段立即 `NodeFailed`。
+
+#### ACP 节点提示词编写要点
+
+ACP 节点的 `prompt.system_prompt` 与 `prompt.task_prompt` 是节点真正"做事"的地方，**必填**。务必精心写：
+
+- **system_prompt**：设定角色、风格、约束、输出格式（如"只输出 JSON"、"用 markdown 表格"）；与该节点的职责强相关，不要复制整个工作流的目标
+- **task_prompt**：描述这一节点要完成的具体动作，**显式引用 `<inputs>` 里会出现的字段**（例如"读取 inputs.dataset 指向的数据集"），让 agent 知道上游传了什么；不要靠 agent 猜
+- **承接上游输出**：如果本节点依赖上游 ACP 节点的文本输出，把上游 ref 的 `text` 通过 `inputs` 字段透传进来，再在 task_prompt 里说明"参考 inputs.<key> 中的内容"——目前 ACP adapter 不会自动把上游 outputs 注入 prompt，要靠 inputs 显式搬运
+- **明确输出契约**：在 task_prompt 末尾用一句话规定"只输出 X / 不要解释 / 用 JSON"，下游 `$.outputs.<ref>.text` 才好被 condition 表达式或后续节点消费
+- **不要把"思考过程"算作输出**：思考会被流式渲染到独立 thinking 块，不计入 `output.text`；如果希望某段内容进入下游 dataflow，agent 必须把它放进正式回复里，而不是只放在思考中
+- **失败容忍度**：如果 task_prompt 容易产生空回复或格式飘移，给本节点 `on_failure.strategy: "retry"` + `max_attempts: 2~3`，比一次性 abort 更划算
 
 ---
 
@@ -153,7 +165,8 @@ ACP 节点的输出通过 `$.outputs.<ref>.<key>` 访问，不走 `emit_variable
 4. **`release: false`** 会让资源永远占用，后续节点抢同 pool 会死锁——Petri 验证器会报 `resource_deadlock`
 5. **loop 不更新 exit_condition 涉及的变量** → max_iterations 次后必失败
 6. 节点没有 `condition` 时不要写 `"condition": null`，直接省略字段
-7. **ACP 节点的 `prompt` 字段必填**；省略 `task_prompt` 时 agent 只收到 inputs 块，可能产生无意义输出
+7. **ACP 节点的 `prompt` 字段必填**；省略 `task_prompt` 时 agent 只收到 inputs 块，会产生无意义输出甚至空文本
+8. **ACP 节点不会自动获得上游 outputs**：要让本节点看到上游 `$.outputs.<ref>.text`，必须在 `inputs` 里显式透传（例如 `"inputs": { "prev_text": "$.outputs.draft.text" }`），并在 task_prompt 中说明从哪个字段读取
 
 ---
 
@@ -165,6 +178,7 @@ ACP 节点的输出通过 `$.outputs.<ref>.<key>` 访问，不走 `emit_variable
 - **condition 优于布尔分支**：不需要为"可选"分支单独建占位节点
 - **loop 必须有变更点**：循环体内某节点要修改 exit_condition 涉及的变量
 - **mock 先验证，acp 再接入**：用 mock 跑通拓扑和条件逻辑，确认无误后再把目标节点换成 acp，避免因流程设计错误浪费 agent 调用
+- **节点字段可在 IDE 中就地编辑**：导入工作流后，单击节点会弹出右侧编辑面板，title / prompt / inputs / runtime / on_failure 等都可直接修改并 Save（重新走 compile 校验）；`id` / `ref` / `dependencies` 不可改，结构调整请重导整图。生成 JSON 时不必追求一次到位，留好可迭代空间即可
 
 ---
 
