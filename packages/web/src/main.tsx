@@ -8,6 +8,7 @@ import ProjectNew from "./routes/ProjectNew";
 import ProjectDetail from "./routes/ProjectDetail";
 import WorkflowEditor from "./routes/WorkflowEditor";
 import Templates from "./routes/Templates";
+import Adapters from "./routes/Adapters";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const router = createBrowserRouter([
       { path: "projects/:projectId", element: <ProjectDetail /> },
       { path: "workflows/:workflowId", element: <WorkflowEditor /> },
       { path: "templates", element: <Templates /> },
+      { path: "adapters", element: <Adapters /> },
     ],
   },
 ]);

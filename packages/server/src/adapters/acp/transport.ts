@@ -60,6 +60,12 @@ export class AcpTransport extends EventEmitter {
       this.emit("exit", { code, signal });
     });
     this.child.on("error", (err) => this.emit("error", err));
+    // stdin/stdout/stderr can emit their own 'error' events (e.g. EPIPE when the
+    // child exits before we finish writing). Without a listener those crash the
+    // process. Forward to our own "error" event so callers can decide.
+    this.child.stdin.on("error", (err) => this.emit("error", err));
+    this.child.stdout.on("error", (err) => this.emit("error", err));
+    this.child.stderr.on("error", (err) => this.emit("error", err));
   }
 
   request<T = unknown>(method: string, params?: unknown): Promise<T> {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { WorkflowNode } from "@petrify/shared";
 import { usePatchNode, ApiError } from "../api/client";
+import { useAdapters } from "../api/adapters";
 
 // M1 editor: title gets a real <input>, every other editable field is a JSON
 // textarea. Forbidden fields (id/ref/dependencies/status) stay read-only.
@@ -58,6 +59,11 @@ export function NodeDetailPanel({
   }, [node.id, initialTitle, initialJson]);
 
   const patch = usePatchNode(workflowId);
+  const { data: adapters } = useAdapters();
+  const adapterChoices = useMemo(
+    () => (adapters ?? []).filter((a) => a.live).map((a) => a.name),
+    [adapters],
+  );
 
   const dirtyKeys = useMemo(() => {
     const keys: string[] = [];
@@ -157,18 +163,56 @@ export function NodeDetailPanel({
           )}
         </ReadonlyField>
 
-        {JSON_FIELDS.map((f) => (
-          <JsonTextareaField
-            key={f.key as string}
-            label={f.label}
-            note={f.note}
-            value={jsonValues[f.key as string] ?? ""}
-            onChange={(v) =>
-              setJsonValues((prev) => ({ ...prev, [f.key as string]: v }))
-            }
-            error={localErrors[f.key as string]}
-          />
-        ))}
+        {JSON_FIELDS.map((f) => {
+          const k = f.key as string;
+          const value = jsonValues[k] ?? "";
+          const isAdapter = k === "adapter";
+          return (
+            <div key={k}>
+              {isAdapter && adapterChoices.length > 0 && (
+                <div className="mb-1 flex flex-wrap gap-1">
+                  {adapterChoices.map((name) => {
+                    const active = (() => {
+                      try {
+                        return JSON.parse(value || "{}").name === name;
+                      } catch {
+                        return false;
+                      }
+                    })();
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() =>
+                          setJsonValues((prev) => ({
+                            ...prev,
+                            adapter: JSON.stringify({ name }, null, 2),
+                          }))
+                        }
+                        className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${
+                          active
+                            ? "border-slate-900 bg-slate-900 text-white"
+                            : "border-slate-200 text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <JsonTextareaField
+                label={f.label}
+                note={f.note}
+                value={value}
+                onChange={(v) =>
+                  setJsonValues((prev) => ({ ...prev, [k]: v }))
+                }
+                error={localErrors[k]}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {(dirty || serverIssues) && (

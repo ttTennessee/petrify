@@ -84,6 +84,27 @@ try {
   /* ignore */
 }
 
+// M5: adapter instances — runtime-managed ACP / custom adapter registry.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS adapter_instances (
+    name           TEXT PRIMARY KEY,
+    catalog_id     TEXT,
+    kind           TEXT NOT NULL,
+    enabled        INTEGER NOT NULL DEFAULT 0,
+    command        TEXT,
+    args_json      TEXT,
+    env_json       TEXT,
+    default_cwd    TEXT,
+    endpoint       TEXT,
+    status         TEXT NOT NULL DEFAULT 'unknown',
+    status_detail  TEXT,
+    last_probed_at INTEGER,
+    created_at     INTEGER NOT NULL,
+    updated_at     INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_adapter_instances_enabled ON adapter_instances(enabled);
+`);
+
 // M5: workflow templates — local SQLite market, JSON import/export.
 db.exec(`
   CREATE TABLE IF NOT EXISTS templates (

@@ -8,20 +8,28 @@ import { workflowsRouter } from "./routes/workflows.js";
 import { runsRouter } from "./routes/runs.js";
 import { verificationRouter } from "./routes/verification.js";
 import { templatesRouter } from "./routes/templates.js";
+import { adaptersRouter } from "./routes/adapters.js";
 import { eventBus } from "./runtime/events.js";
-import { registerAdapter, listAdapters } from "./adapters/registry.js";
+import { registerAdapter, listAdapterEntries } from "./adapters/registry.js";
 import { MockAdapter } from "./adapters/mock.js";
 import { AcpAdapter } from "./adapters/acp.js";
+import { restoreEnabledAdapters } from "./adapters/persistence.js";
 import { seedExampleTemplates } from "./templates/seed.js";
 
-registerAdapter("mock", new MockAdapter());
+registerAdapter("mock", new MockAdapter(), { source: "builtin", kind: "builtin" });
 
 const acpCmd = process.env.PETRIFY_ACP_CMD;
 if (acpCmd && acpCmd.trim().length > 0) {
   const [command, ...args] = acpCmd.trim().split(/\s+/);
-  registerAdapter("acp", new AcpAdapter({ command: command!, args }));
+  registerAdapter("acp", new AcpAdapter({ command: command!, args }), {
+    source: "env",
+    kind: "spawn",
+  });
   console.log(`[petrify] acp adapter registered (command: ${acpCmd})`);
 }
+
+// Restore enabled adapter instances from SQLite into the in-memory registry.
+restoreEnabledAdapters();
 
 seedExampleTemplates();
 
@@ -30,7 +38,7 @@ app.use(cors());
 app.use(express.json({ limit: "4mb" }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, adapters: listAdapters() });
+  res.json({ ok: true, adapters: listAdapterEntries() });
 });
 
 app.use("/api/projects", projectsRouter);
@@ -38,6 +46,7 @@ app.use("/api", workflowsRouter);
 app.use("/api", runsRouter);
 app.use("/api", verificationRouter);
 app.use("/api/templates", templatesRouter);
+app.use("/api/adapters", adaptersRouter);
 
 const server = http.createServer(app);
 

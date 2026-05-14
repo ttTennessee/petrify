@@ -17,6 +17,9 @@ export default function App() {
           <Link to="/templates" className="text-slate-700 hover:text-slate-900">
             Templates
           </Link>
+          <Link to="/adapters" className="text-slate-700 hover:text-slate-900">
+            Adapters
+          </Link>
         </nav>
       </header>
       <main className="min-h-0 flex-1 overflow-hidden">
