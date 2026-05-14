@@ -1,4 +1,5 @@
 import { Link, Outlet } from "react-router-dom";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Link to="/adapters" className="text-slate-700 hover:text-slate-900">
             Adapters
           </Link>
+          <LanguageSwitcher />
         </nav>
       </header>
       <main className="min-h-0 flex-1 overflow-hidden">
