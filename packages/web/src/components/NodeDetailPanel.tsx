@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { WorkflowNode } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
-import { usePatchNode, ApiError } from "../api/client";
+import {
+  usePatchNode,
+  ApiError,
+  useBreakpoints,
+  useSetBreakpoint,
+  useDeleteBreakpoint,
+} from "../api/client";
 import { useAdapters } from "../api/adapters";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -63,6 +69,11 @@ export function NodeDetailPanel({
   }, [node.id, initialTitle, initialJson]);
 
   const patch = usePatchNode(workflowId);
+  const { data: breakpoints } = useBreakpoints(workflowId);
+  const setBreakpoint = useSetBreakpoint(workflowId);
+  const deleteBreakpoint = useDeleteBreakpoint(workflowId);
+  const hasBreakpoint =
+    (breakpoints ?? []).some((b) => b.node_id === node.id && b.enabled);
   const { data: adapters } = useAdapters();
   const adapterChoices = useMemo(
     () => (adapters ?? []).filter((a) => a.live).map((a) => a.name),
@@ -149,7 +160,30 @@ export function NodeDetailPanel({
         <Button
           variant="ghost"
           size="icon"
-          className="ml-2 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          className={cn(
+            "ml-2 h-7 w-7 shrink-0",
+            hasBreakpoint
+              ? "text-destructive hover:text-destructive"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+          onClick={() => {
+            if (hasBreakpoint) deleteBreakpoint.mutate(node.id);
+            else setBreakpoint.mutate({ nodeId: node.id, enabled: true });
+          }}
+          aria-label={hasBreakpoint ? t("breakpoint.toggle_off") : t("breakpoint.toggle_on")}
+          title={hasBreakpoint ? t("breakpoint.toggle_off") : t("breakpoint.toggle_on")}
+        >
+          <span
+            className={cn(
+              "h-2.5 w-2.5 rounded-full border",
+              hasBreakpoint ? "bg-destructive border-destructive" : "border-current",
+            )}
+          />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-1 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={onClose}
           aria-label={tc("close")}
         >

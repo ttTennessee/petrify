@@ -8,6 +8,7 @@ import type {
   Template,
   TemplateSummary,
   TemplateExport,
+  Breakpoint,
 } from "@petrify/shared";
 
 export class ApiError extends Error {
@@ -212,6 +213,53 @@ export function useCancelRun() {
   return useMutation({
     mutationFn: (runId: string) =>
       http<{ cancelled: boolean }>(`/api/runs/${runId}/cancel`, { method: "POST" }),
+  });
+}
+
+// ---- M4: breakpoints ------------------------------------------------------
+
+export function useBreakpoints(workflowId: string | undefined) {
+  return useQuery({
+    enabled: !!workflowId,
+    queryKey: ["breakpoints", workflowId],
+    queryFn: () =>
+      http<Breakpoint[]>(`/api/workflows/${workflowId}/breakpoints`),
+  });
+}
+
+export function useSetBreakpoint(workflowId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ nodeId, enabled }: { nodeId: string; enabled: boolean }) =>
+      http<Breakpoint>(
+        `/api/workflows/${workflowId}/breakpoints/${nodeId}`,
+        { method: "PUT", body: JSON.stringify({ enabled }) },
+      ),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["breakpoints", workflowId] }),
+  });
+}
+
+export function useDeleteBreakpoint(workflowId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (nodeId: string) =>
+      http<{ deleted: number }>(
+        `/api/workflows/${workflowId}/breakpoints/${nodeId}`,
+        { method: "DELETE" },
+      ),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["breakpoints", workflowId] }),
+  });
+}
+
+export function useContinueBreakpoint() {
+  return useMutation({
+    mutationFn: ({ runId, nodeId }: { runId: string; nodeId: string }) =>
+      http<{ continued: boolean }>(
+        `/api/runs/${runId}/breakpoints/${nodeId}/continue`,
+        { method: "POST" },
+      ),
   });
 }
 

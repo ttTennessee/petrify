@@ -18,11 +18,14 @@ export interface NodeCardData extends Record<string, unknown> {
   status: NodeStatus;
   selected?: boolean;
   issue?: "warning" | "error";
+  hasBreakpoint?: boolean;
+  pausedAtBreakpoint?: boolean;
 }
 
 export function NodeCard({ data }: NodeProps) {
   const { t } = useTranslation("workflow");
-  const { node, status, selected, issue } = data as NodeCardData;
+  const { node, status, selected, issue, hasBreakpoint, pausedAtBreakpoint } =
+    data as NodeCardData;
   const hasResources = node.resources && node.resources.length > 0;
   const depCount = (node.dependencies ?? []).length;
   const issueRing =
@@ -33,9 +36,15 @@ export function NodeCard({ data }: NodeProps) {
         : "";
   return (
     <div
-      className={`min-w-[200px] max-w-[220px] border-2 px-3 py-2 text-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-accent ring-offset-1" : ""} ${issueRing}`}
+      className={`relative min-w-[200px] max-w-[220px] border-2 px-3 py-2 text-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-accent ring-offset-1" : ""} ${issueRing}`}
     >
       <Handle type="target" position={Position.Top} />
+      {hasBreakpoint && (
+        <span
+          className={`absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card ${pausedAtBreakpoint ? "animate-pulse" : ""}`}
+          title={t("breakpoint.badge")}
+        />
+      )}
       <div className="font-medium leading-tight">{node.title}</div>
       <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{node.ref}</div>
       <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground">

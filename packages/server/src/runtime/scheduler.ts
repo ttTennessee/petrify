@@ -13,6 +13,11 @@ const updateRun = db.prepare(
   `UPDATE runs SET status = @status, finished_at = @finished_at, error = @error WHERE id = @id`,
 );
 
+interface PauseHandle {
+  resolve: () => void;
+  cancel: () => void;
+}
+
 interface RunStateInternal {
   completed: Set<string>;
   skipped: Set<string>;
@@ -24,9 +29,50 @@ interface RunStateInternal {
   iterationCounts: Record<string, number>; // node id -> times completed
   cancelRequested: boolean;
   resourcePool: ResourcePool;
+  workflowId: string;
+  pausedNodes: Map<string, PauseHandle>;
 }
 
 const activeRuns = new Map<string, RunStateInternal>();
+
+// ---- M4: breakpoints ----
+const breakpointLookup = db.prepare(
+  `SELECT 1 FROM breakpoints WHERE workflow_id = ? AND node_id = ? AND enabled = 1 LIMIT 1`,
+);
+
+function isBreakpointActive(workflowId: string, nodeId: string): boolean {
+  // Forward-compatibility seam: a future workflow.step_mode flag would also be OR-ed here.
+  return breakpointLookup.get(workflowId, nodeId) !== undefined;
+}
+
+function waitForContinue(state: RunStateInternal, nodeId: string): Promise<void> {
+  if (state.cancelRequested) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    state.pausedNodes.set(nodeId, {
+      resolve: () => {
+        state.pausedNodes.delete(nodeId);
+        resolve();
+      },
+      cancel: () => {
+        state.pausedNodes.delete(nodeId);
+        resolve();
+      },
+    });
+  });
+}
+
+export function signalContinue(runId: string, nodeId: string): boolean {
+  const s = activeRuns.get(runId);
+  const handle = s?.pausedNodes.get(nodeId);
+  if (!handle) return false;
+  handle.resolve();
+  return true;
+}
+
+export function listPausedNodes(runId: string): string[] {
+  const s = activeRuns.get(runId);
+  return s ? [...s.pausedNodes.keys()] : [];
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -56,6 +102,27 @@ async function runNode(
   runId: string,
   node: WorkflowNode,
 ): Promise<"completed" | "skipped" | "failed"> {
+  // ---- M4: breakpoint pause ----
+  if (!state.cancelRequested && isBreakpointActive(state.workflowId, node.id)) {
+    publishEvent({
+      event_id: nanoid(),
+      run_id: runId,
+      node_id: node.id,
+      type: "BreakpointHit",
+      timestamp: Date.now(),
+      payload: {
+        node_id: node.id,
+        workflow_id: state.workflowId,
+        reason: "user_breakpoint",
+      },
+    });
+    await waitForContinue(state, node.id);
+    if (state.cancelRequested) {
+      state.failed.add(node.id);
+      return "failed";
+    }
+  }
+
   const adapter = getAdapter(node.adapter.name);
   if (!adapter) {
     publishEvent({
@@ -222,6 +289,11 @@ export async function executeRun(
   plan: ExecutablePlan,
   options: ExecuteOptions = {},
 ): Promise<void> {
+  const runRow = db
+    .prepare(`SELECT workflow_id FROM runs WHERE id = ?`)
+    .get(runId) as { workflow_id: string } | undefined;
+  const workflowId = runRow?.workflow_id ?? "";
+
   const state: RunStateInternal = {
     completed: new Set(),
     skipped: new Set(),
@@ -233,6 +305,8 @@ export async function executeRun(
     iterationCounts: {},
     cancelRequested: false,
     resourcePool: new ResourcePool(plan.pools ?? {}),
+    workflowId,
+    pausedNodes: new Map(),
   };
 
   // If resuming, hydrate state from the chosen checkpoint (or the latest).
@@ -494,6 +568,8 @@ export function requestCancel(runId: string): boolean {
   const s = activeRuns.get(runId);
   if (!s) return false;
   s.cancelRequested = true;
+  // Wake any paused nodes so they fall through to the cancel/abort path.
+  for (const handle of s.pausedNodes.values()) handle.cancel();
   return true;
 }
 

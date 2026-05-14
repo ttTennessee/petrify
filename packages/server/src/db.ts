@@ -105,6 +105,19 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_adapter_instances_enabled ON adapter_instances(enabled);
 `);
 
+// M4: breakpoints — per-(workflow, node) pause markers, persist across runs.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS breakpoints (
+    id          TEXT PRIMARY KEY,
+    workflow_id TEXT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+    node_id     TEXT NOT NULL,
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    created_at  INTEGER NOT NULL,
+    UNIQUE(workflow_id, node_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_breakpoints_wf ON breakpoints(workflow_id);
+`);
+
 // M5: workflow templates — local SQLite market, JSON import/export.
 db.exec(`
   CREATE TABLE IF NOT EXISTS templates (

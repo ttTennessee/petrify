@@ -118,7 +118,26 @@
       "resume_hint_unknown": "恢复",
       "resumed_from": "从 ",
       "checkpoint_one": "个检查点",
-      "checkpoint_other": "个检查点"
+      "checkpoint_other": "个检查点",
+      "paused_banner": "已在断点处暂停",
+      "continue": "继续",
+      "fork_here": "从此处分叉",
+      "forking": "分叉中…",
+      "picker_placeholder": "选择 run…",
+      "jump_to_parent": "跳转到父 run"
+    },
+    "timeline": {
+      "title": "时间轴",
+      "live": "实时",
+      "scrubbing": "回看中",
+      "back_to_live": "回到实时",
+      "checkpoint": "检查点",
+      "events": "{{count}} 个事件"
+    },
+    "breakpoint": {
+      "toggle_on": "设置断点",
+      "toggle_off": "清除断点",
+      "badge": "断点"
     },
     "events": {
       "title": "事件流",

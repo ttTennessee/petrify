@@ -118,7 +118,26 @@
       "resume_hint_unknown": "resume",
       "resumed_from": "resumed from ",
       "checkpoint_one": "checkpoint",
-      "checkpoint_other": "checkpoints"
+      "checkpoint_other": "checkpoints",
+      "paused_banner": "Paused at breakpoint",
+      "continue": "Continue",
+      "fork_here": "Fork from here",
+      "forking": "Forking…",
+      "picker_placeholder": "Pick a run…",
+      "jump_to_parent": "Jump to parent run"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "live": "live",
+      "scrubbing": "scrubbing",
+      "back_to_live": "Back to live",
+      "checkpoint": "checkpoint",
+      "events": "{{count}} events"
+    },
+    "breakpoint": {
+      "toggle_on": "Set breakpoint",
+      "toggle_off": "Clear breakpoint",
+      "badge": "breakpoint"
     },
     "events": {
       "title": "Event Stream",

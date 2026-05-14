@@ -2,7 +2,13 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { db } from "../db.js";
 import { compile, CompileError } from "../runtime/compiler.js";
-import { executeRun, requestCancel, isRunActive } from "../runtime/scheduler.js";
+import {
+  executeRun,
+  requestCancel,
+  isRunActive,
+  signalContinue,
+  listPausedNodes,
+} from "../runtime/scheduler.js";
 import { listEvents } from "../runtime/events.js";
 import {
   listCheckpoints,
@@ -108,6 +114,19 @@ runsRouter.post("/runs/:id/resume", (req, res) => {
 
   void executeRun(newRunId, plan, { resumeFromCheckpointId: newCpId });
   res.status(201).json({ id: newRunId, resumed_from: original.id });
+});
+
+runsRouter.post("/runs/:id/breakpoints/:nodeId/continue", (req, res) => {
+  if (!isRunActive(req.params.id)) {
+    return res.status(409).json({ error: "run is not active" });
+  }
+  const ok = signalContinue(req.params.id, req.params.nodeId);
+  if (!ok) return res.status(404).json({ error: "node is not paused at a breakpoint" });
+  res.json({ continued: true });
+});
+
+runsRouter.get("/runs/:id/paused-nodes", (req, res) => {
+  res.json({ paused: listPausedNodes(req.params.id) });
 });
 
 runsRouter.post("/runs/:id/cancel", (req, res) => {

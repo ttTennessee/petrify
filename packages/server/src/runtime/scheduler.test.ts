@@ -1,6 +1,13 @@
 import { describe, expect, it, beforeAll, beforeEach } from "vitest";
 import { compile } from "../runtime/compiler.js";
-import { executeRun } from "../runtime/scheduler.js";
+import {
+  executeRun,
+  signalContinue,
+  listPausedNodes,
+  requestCancel,
+} from "../runtime/scheduler.js";
+import { db } from "../db.js";
+import { nanoid } from "nanoid";
 import { registerAdapter, getAdapter } from "../adapters/registry.js";
 import { MockAdapter, _resetMockState } from "../adapters/mock.js";
 import { listCheckpoints } from "../runtime/checkpoints.js";
@@ -250,6 +257,83 @@ describe("scheduler", () => {
           e.node_id === "looper",
       ),
     ).toBeDefined();
+  });
+
+  // ---------- M4: breakpoints ----------
+
+  function setBreakpoint(workflowId: string, nodeId: string) {
+    db.prepare(
+      `INSERT INTO breakpoints (id, workflow_id, node_id, enabled, created_at)
+       VALUES (?, ?, ?, 1, ?)`,
+    ).run(nanoid(), workflowId, nodeId, Date.now());
+  }
+
+  it("pauses at a breakpoint, emits BreakpointHit, and resumes on signalContinue", async () => {
+    const { plan, workflowId } = buildPlan([
+      { id: "a", ref: "a", title: "A", adapter: { name: "mock" }, dependencies: [], inputs: {}, outputs: {} },
+      { id: "b", ref: "b", title: "B", adapter: { name: "mock" }, dependencies: ["a"], inputs: {}, outputs: {} },
+      { id: "c", ref: "c", title: "C", adapter: { name: "mock" }, dependencies: ["b"], inputs: {}, outputs: {} },
+    ]);
+    setBreakpoint(workflowId, "b");
+    const runId = createRun(workflowId);
+
+    const runPromise = executeRun(runId, plan);
+
+    // Wait for the breakpoint to register.
+    const waitForPause = async () => {
+      for (let i = 0; i < 200; i++) {
+        if (listPausedNodes(runId).includes("b")) return;
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      throw new Error("breakpoint did not pause node b within 2s");
+    };
+    await waitForPause();
+
+    const evsAtPause = listRunEvents(runId);
+    expect(evsAtPause.find((e) => e.type === "BreakpointHit" && e.node_id === "b")).toBeDefined();
+    expect(evsAtPause.find((e) => e.type === "NodeCompleted" && e.node_id === "c")).toBeUndefined();
+
+    expect(signalContinue(runId, "b")).toBe(true);
+    await runPromise;
+
+    expect(getRunStatus(runId)).toBe("completed");
+    const evs = listRunEvents(runId);
+    expect(evs.filter((e) => e.type === "NodeCompleted")).toHaveLength(3);
+  });
+
+  it("releases the breakpoint pause when the run is cancelled", async () => {
+    const { plan, workflowId } = buildPlan([
+      { id: "a", ref: "a", title: "A", adapter: { name: "mock" }, dependencies: [], inputs: {}, outputs: {} },
+      { id: "b", ref: "b", title: "B", adapter: { name: "mock" }, dependencies: ["a"], inputs: {}, outputs: {} },
+    ]);
+    setBreakpoint(workflowId, "b");
+    const runId = createRun(workflowId);
+    const runPromise = executeRun(runId, plan);
+
+    for (let i = 0; i < 200; i++) {
+      if (listPausedNodes(runId).includes("b")) break;
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    expect(listPausedNodes(runId)).toContain("b");
+
+    expect(requestCancel(runId)).toBe(true);
+    await runPromise;
+
+    expect(getRunStatus(runId)).toBe("cancelled");
+    const evs = listRunEvents(runId);
+    expect(evs.find((e) => e.type === "NodeCompleted" && e.node_id === "b")).toBeUndefined();
+  });
+
+  it("does not pause when no breakpoint is set (regression)", async () => {
+    const { plan, workflowId } = buildPlan([
+      { id: "a", ref: "a", title: "A", adapter: { name: "mock" }, dependencies: [], inputs: {}, outputs: {} },
+      { id: "b", ref: "b", title: "B", adapter: { name: "mock" }, dependencies: ["a"], inputs: {}, outputs: {} },
+    ]);
+    const runId = createRun(workflowId);
+    await executeRun(runId, plan);
+    expect(getRunStatus(runId)).toBe("completed");
+    const evs = listRunEvents(runId);
+    expect(evs.find((e) => e.type === "BreakpointHit")).toBeUndefined();
   });
 
   it("serializes nodes contending for the same resource pool", async () => {

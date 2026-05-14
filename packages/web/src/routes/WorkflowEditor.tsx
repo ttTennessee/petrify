@@ -9,11 +9,13 @@ import {
   useRun,
   useCheckpoints,
   useVerifyWorkflow,
+  useBreakpoints,
 } from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
 import { DagCanvas } from "../components/DagCanvas";
 import { RunPanel } from "../components/RunPanel";
 import { EventStream } from "../components/EventStream";
+import { TimelineScrubber } from "../components/TimelineScrubber";
 import { NodeDetailPanel } from "../components/NodeDetailPanel";
 import { VerifyPanel, deriveIssueByNodeRef } from "../components/VerifyPanel";
 import { SaveAsTemplateDialog } from "../components/SaveAsTemplateDialog";
@@ -71,6 +73,29 @@ export default function WorkflowEditor() {
   const { data: verifyReport } = useVerifyWorkflow(workflowId);
   const issueByRef = useMemo(() => deriveIssueByNodeRef(verifyReport), [verifyReport]);
 
+  const { data: breakpoints } = useBreakpoints(workflowId);
+  const breakpointNodeIds = useMemo(
+    () => new Set((breakpoints ?? []).filter((b) => b.enabled).map((b) => b.node_id)),
+    [breakpoints],
+  );
+  const allEvents = useWorkflowStore((s) => s.allEvents);
+  const pausedNodeIds = useMemo(() => {
+    const pausedAt = new Set<string>();
+    for (const ev of allEvents) {
+      if (!ev.node_id) continue;
+      if (ev.type === "BreakpointHit") pausedAt.add(ev.node_id);
+      else if (
+        ev.type === "NodeStarted" ||
+        ev.type === "NodeCompleted" ||
+        ev.type === "NodeFailed" ||
+        ev.type === "NodeSkipped"
+      ) {
+        pausedAt.delete(ev.node_id);
+      }
+    }
+    return pausedAt;
+  }, [allEvents]);
+
   if (isLoading || !workflowId)
     return <p className="p-6 font-mono text-xs text-muted-foreground">{tc("loading")}</p>;
   if (!data)
@@ -80,7 +105,7 @@ export default function WorkflowEditor() {
 
   return (
     <div
-      className="grid h-full grid-rows-[auto_auto_auto_minmax(0,1fr)]"
+      className="grid h-full grid-rows-[auto_auto_auto_auto_minmax(0,1fr)]"
       style={{ gridTemplateColumns: `1fr ${rightCol}` }}
     >
       <div className="col-span-2 flex h-11 items-center justify-between border-b border-border bg-card/40 px-6">
@@ -114,6 +139,14 @@ export default function WorkflowEditor() {
       <div className="col-span-2">
         <RunPanel workflowId={workflowId} />
       </div>
+      <div className="col-span-2">
+        {currentRunId && (
+          <TimelineScrubber
+            runId={currentRunId}
+            onNavigateToRun={(id) => setCurrentRunId(id)}
+          />
+        )}
+      </div>
       <div className="min-h-0 min-w-0 border-r border-border">
         <DagCanvas
           graph={data.graph}
@@ -121,6 +154,8 @@ export default function WorkflowEditor() {
           onSelectNode={(n) => setSelectedId(n?.id ?? null)}
           selectedNodeId={selected?.id ?? null}
           issueByRef={issueByRef}
+          breakpointNodeIds={breakpointNodeIds}
+          pausedNodeIds={pausedNodeIds}
         />
       </div>
       <div className="min-h-0">

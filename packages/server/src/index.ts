@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { projectsRouter } from "./routes/projects.js";
 import { workflowsRouter } from "./routes/workflows.js";
 import { runsRouter } from "./routes/runs.js";
+import { breakpointsRouter } from "./routes/breakpoints.js";
 import { verificationRouter } from "./routes/verification.js";
 import { templatesRouter } from "./routes/templates.js";
 import { adaptersRouter } from "./routes/adapters.js";
@@ -44,6 +45,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/projects", projectsRouter);
 app.use("/api", workflowsRouter);
 app.use("/api", runsRouter);
+app.use("/api", breakpointsRouter);
 app.use("/api", verificationRouter);
 app.use("/api/templates", templatesRouter);
 app.use("/api/adapters", adaptersRouter);

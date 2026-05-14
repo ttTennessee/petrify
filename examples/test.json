@@ -1,0 +1,161 @@
+{
+    "nodes": [
+      {
+        "id": "n_preprocess",
+        "ref": "preprocess",
+        "title": "预处理创作参数",
+        "adapter": {
+          "name": "mock"
+        },
+        "dependencies": [],
+        "inputs": {
+          "emit_variables": {
+            "target_words": 1500,
+            "era": "大明洪武朝",
+            "protagonist": "现代人"
+          }
+        },
+        "outputs": {},
+        "resources": [],
+        "runtime": {},
+        "on_failure": {
+          "strategy": "abort"
+        },
+        "status": "idle"
+      },
+      {
+        "id": "n_part1",
+        "ref": "write_part1",
+        "title": "编写第一部分(开篇与穿越)",
+        "adapter": {
+          "name": "acp-opencode"
+        },
+        "dependencies": [
+          "preprocess"
+        ],
+        "inputs": {
+          "output_path": "outputs/temp/01.txt"
+        },
+        "outputs": {
+          "text": "$.outputs.write_part1.text"
+        },
+        "resources": [],
+        "runtime": {
+          "timeout": 180,
+          "retries": 1
+        },
+        "prompt": {
+          "system_prompt": "你是一名专业的小说作家，擅长创作穿越题材的历史小说。你的文笔流畅，情节设计巧妙，人物刻画生动。",
+          "task_prompt": "请根据以下要求创作小说第一部分(开篇与穿越部分)：\n- 总字数目标：1500字左右，本部分约占500字\n- 时代背景：大明洪武朝\n- 主角设定：现代人穿越\n- 本部分内容要求：\n  1. 展示现代主角的日常生活和性格特点\n  2. 设计合理的穿越契机(可以是意外、文物、梦境等方式)\n  3. 主角初到大明洪武朝的视觉冲击和心理变化\n  4. 第一次遇到明朝人物的场景\n  5. 营造历史氛围感\n- 输出格式：纯文本，不需要标题\n- 输出路径：{inputs.output_path}"
+        },
+        "on_failure": {
+          "strategy": "retry",
+          "max_attempts": 2,
+          "backoff_ms": 2000
+        },
+        "status": "idle"
+      },
+      {
+        "id": "n_part2",
+        "ref": "write_part2",
+        "title": "编写第二部分(发展与冲突)",
+        "adapter": {
+          "name": "acp-opencode"
+        },
+        "dependencies": [
+          "preprocess"
+        ],
+        "inputs": {
+          "output_path": "outputs/temp/02.txt"
+        },
+        "outputs": {
+          "text": "$.outputs.write_part2.text"
+        },
+        "resources": [],
+        "runtime": {
+          "timeout": 180,
+          "retries": 1
+        },
+        "prompt": {
+          "system_prompt": "你是一名专业的小说作家，擅长创作穿越题材的历史小说。你的文笔流畅，情节设计巧妙，人物刻画生动。",
+          "task_prompt": "请根据以下要求创作小说第二部分(发展与冲突部分)：\n- 总字数目标：1500字左右，本部分约占500字\n- 时代背景：大明洪武朝\n- 主角设定：现代人穿越\n- 本部分内容要求：\n  1. 主角利用现代知识在大明立足(如技术、军事、管理等方面)\n  2. 与明朝重要人物(如朱元璋、刘基、徐达等)产生交集\n  3. 设计一个核心冲突或危机\n  4. 展现主角价值观与古代社会的碰撞\n  5. 埋下伏笔为高潮做铺垫\n- 输出格式：纯文本，不需要标题\n- 输出路径：{inputs.output_path}"
+        },
+        "on_failure": {
+          "strategy": "retry",
+          "max_attempts": 2,
+          "backoff_ms": 2000
+        },
+        "status": "idle"
+      },
+      {
+        "id": "n_part3",
+        "ref": "write_part3",
+        "title": "编写第三部分(高潮与结局)",
+        "adapter": {
+          "name": "acp-opencode"
+        },
+        "dependencies": [
+          "preprocess"
+        ],
+        "inputs": {
+          "output_path": "outputs/temp/03.txt"
+        },
+        "outputs": {
+          "text": "$.outputs.write_part3.text"
+        },
+        "resources": [],
+        "runtime": {
+          "timeout": 180,
+          "retries": 1
+        },
+        "prompt": {
+          "system_prompt": "你是一名专业的小说作家，擅长创作穿越题材的历史小说。你的文笔流畅，情节设计巧妙，人物刻画生动。",
+          "task_prompt": "请根据以下要求创作小说第三部分(高潮与结局部分)：\n- 总字数目标：1500字左右，本部分约占500字\n- 时代背景：大明洪武朝\n- 主角设定：现代人穿越\n- 本部分内容要求：\n  1. 解决核心冲突，推向高潮(如战争、宫廷斗争、技术革命等)\n  2. 主角的重要抉择与成长\n  3. 与洪武朝历史事件的巧妙结合\n  4. 结局设计(可选择留在大明、寻找回家方法、或改变历史等)\n  5. 点题升华，给读者留下回味\n- 输出格式：纯文本，不需要标题\n- 输出路径：{inputs.output_path}"
+        },
+        "on_failure": {
+          "strategy": "retry",
+          "max_attempts": 2,
+          "backoff_ms": 2000
+        },
+        "status": "idle"
+      },
+      {
+        "id": "n_merge",
+        "ref": "merge_results",
+        "title": "合并三部分为完整小说",
+        "adapter": {
+          "name": "acp-opencode"
+        },
+        "dependencies": [
+          "write_part1",
+          "write_part2",
+          "write_part3"
+        ],
+        "inputs": {
+          "source_paths": [
+            "outputs/temp/01.txt",
+            "outputs/temp/02.txt",
+            "outputs/temp/03.txt"
+          ],
+          "target_path": "outputs/result.txt"
+        },
+        "outputs": {
+          "text": "$.outputs.merge_results.text"
+        },
+        "resources": [],
+        "runtime": {
+          "timeout": 120,
+          "retries": 0
+        },
+        "prompt": {
+          "system_prompt": "你是一名文档整理助手，负责整理和合并三个部分为一个完整的小说。",
+          "task_prompt": "请完成以下任务：\n1. 读取三个源文件：\n   - {inputs.source_paths[0]} (第一部分：开篇与穿越)\n   - {inputs.source_paths[1]} (第二部分：发展与冲突)\n   - {inputs.source_paths[2]} (第三部分：高潮与结局)\n2. 按顺序合并三个部分为一个完整的小说\n3. 合并时注意：你不需要读取文件内容，只需要调用工具合并文件\n4. 输出完整小说文本到 {inputs.target_path}\n5. 格式：纯文本，标题单独一行，然后是正文"
+        },
+        "on_failure": {
+          "strategy": "abort"
+        },
+        "status": "idle"
+      }
+    ],
+    "edges": []
+  }
