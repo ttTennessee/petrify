@@ -1,8 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LANGS, type SupportedLang } from "../i18n";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
-// Plain-text labels live here on purpose — the switcher itself shouldn't
-// depend on translation files being populated.
 const LABELS: Record<SupportedLang, string> = {
   en: "English",
   "zh-CN": "中文",
@@ -17,19 +22,25 @@ export function LanguageSwitcher() {
     : "en";
 
   return (
-    <select
+    <Select
       value={current}
-      onChange={(e) => {
-        void i18n.changeLanguage(e.target.value);
+      onValueChange={(v) => {
+        void i18n.changeLanguage(v);
       }}
-      className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs text-slate-700 hover:border-slate-300"
-      aria-label="Language"
     >
-      {SUPPORTED_LANGS.map((lng) => (
-        <option key={lng} value={lng}>
-          {LABELS[lng]}
-        </option>
-      ))}
-    </select>
+      <SelectTrigger
+        className="h-8 w-auto gap-2 px-2.5 text-xs"
+        aria-label="Language"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align="end">
+        {SUPPORTED_LANGS.map((lng) => (
+          <SelectItem key={lng} value={lng} className="text-xs">
+            {LABELS[lng]}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

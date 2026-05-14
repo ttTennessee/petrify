@@ -1,17 +1,23 @@
 import { useState } from "react";
 import type { AdapterInput, CatalogEntry } from "../../api/adapters";
 import { ApiError } from "../../api/client";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { cn } from "../../lib/utils";
 
 export interface InstanceModalProps {
-  // Pre-fill from a catalog entry (Catalog → "Enable") or undefined for fully custom.
   catalogEntry?: CatalogEntry;
-  // Existing instance values when editing.
   initial?: Partial<AdapterInput>;
-  // Modal title shown at top.
   title: string;
-  // Submit button label.
   submitLabel: string;
-  // Names already taken by existing instances — used to pick a non-colliding default.
   takenNames?: string[];
   onSubmit: (input: AdapterInput) => Promise<unknown>;
   onClose: () => void;
@@ -40,9 +46,7 @@ export function InstanceModal({
   const [argsText, setArgsText] = useState(
     (initial?.args ?? catalogEntry?.defaultArgs ?? []).join(" "),
   );
-  const [envText, setEnvText] = useState(
-    envToText(initial?.env ?? {}),
-  );
+  const [envText, setEnvText] = useState(envToText(initial?.env ?? {}));
   const [cwd, setCwd] = useState(initial?.default_cwd ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,122 +97,110 @@ export function InstanceModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
-          >
-            ✕
-          </button>
-        </div>
-        <div className="space-y-3 px-4 py-4">
+    <Dialog open onOpenChange={(o) => !o && !submitting && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3">
           <div className="flex gap-2 text-xs">
             <button
               type="button"
               onClick={() => setMode("spawn")}
-              className={`rounded border px-2 py-1 ${
+              className={cn(
+                "rounded-md border px-2.5 py-1 transition-colors",
                 mode === "spawn"
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 text-slate-700"
-              }`}
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-input text-foreground hover:bg-accent",
+              )}
             >
               Spawn
             </button>
             <button
               type="button"
-              onClick={() => setMode("connect")}
               disabled
               title="coming in a later release"
-              className="cursor-not-allowed rounded border border-slate-200 px-2 py-1 text-slate-400"
+              className="cursor-not-allowed rounded-md border border-input px-2.5 py-1 text-muted-foreground"
             >
               Connect (soon)
             </button>
           </div>
 
           <Field label="Instance name">
-            <input
+            <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!!initial?.name}
               placeholder="acp-claude"
-              className="w-full rounded border px-2 py-1 font-mono text-xs disabled:bg-slate-50"
+              className="font-mono text-xs"
             />
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[10px] text-muted-foreground">
               [a-zA-Z0-9_.:-]+ — used as the adapter key in node configs
             </p>
           </Field>
 
           <Field label="Command">
-            <input
+            <Input
               value={command}
               onChange={(e) => setCommand(e.target.value)}
               placeholder="claude-code-acp"
-              className="w-full rounded border px-2 py-1 font-mono text-xs"
+              className="font-mono text-xs"
             />
           </Field>
 
           <Field label="Args (space-separated)">
-            <input
+            <Input
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
               placeholder="--flag value"
-              className="w-full rounded border px-2 py-1 font-mono text-xs"
+              className="font-mono text-xs"
             />
           </Field>
 
           <Field label="Environment variables (KEY=value per line)">
-            <textarea
+            <Textarea
               value={envText}
               onChange={(e) => setEnvText(e.target.value)}
               rows={3}
               placeholder="ANTHROPIC_API_KEY=sk-..."
-              className="w-full rounded border px-2 py-1 font-mono text-[11px]"
+              className="font-mono text-[11px]"
             />
           </Field>
 
           <Field label="Working directory (optional)">
-            <input
+            <Input
               value={cwd}
               onChange={(e) => setCwd(e.target.value)}
               placeholder="/abs/path or empty for server cwd"
-              className="w-full rounded border px-2 py-1 font-mono text-xs"
+              className="font-mono text-xs"
             />
           </Field>
 
           {error && (
-            <div className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-700">
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
               {error}
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 border-t bg-slate-50 px-4 py-3">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="rounded border px-3 py-1.5 text-xs hover:bg-white"
-          >
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="rounded bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-          >
+          </Button>
+          <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? "Working…" : submitLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
       {children}
@@ -218,9 +210,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function defaultNameFor(c: CatalogEntry | undefined, taken: string[]): string {
   if (!c) return "";
-  // Prefer the plain "acp" key for the first ACP instance so legacy workflow
-  // JSON (which references adapter.name = "acp") works out of the box. Fall
-  // back to a per-catalog suffix once "acp" is taken.
   const set = new Set(taken);
   if (!set.has("acp")) return "acp";
   const slug = `acp-${c.id}`;

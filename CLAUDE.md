@@ -59,3 +59,11 @@ When proposing work, locate it on this ladder. Don't pull M3+ semantics into M1 
 ## Non-goals (PRD §2.6 — refuse scope creep into these)
 
 No model training/fine-tuning. No built-in RAG/vector store. No Agent SDK (don't compete with LangGraph/AutoGen on "how to write an Agent"). No built-in LLM inference. No multi-user collaboration in MVP. No managed cloud — self-host first.
+
+## Frontend UI conventions (`packages/web`)
+
+- **Use components from `src/components/ui/` for any form control, button, dialog, or popover** (shadcn/ui style — Radix primitives + Tailwind, source lives in-repo). Do not write new `<button>` / `<input>` / `<select>` / `<textarea>` / hand-rolled modal markup with raw Tailwind classes.
+- The shadcn theme is driven by CSS variables in `src/index.css` (`--primary`, `--muted`, `--destructive`, etc.) and the matching `tailwind.config.ts` color tokens. Use semantic classes (`bg-primary`, `text-muted-foreground`, `border-input`, `text-destructive`) instead of raw `slate-*` / `rose-*` / `gray-*` for new code.
+- `cn()` from `src/lib/utils.ts` is the standard `clsx` + `tailwind-merge` helper — use it for any conditional class composition.
+- If a needed primitive isn't in `ui/` yet, add it (copy from shadcn/ui canonical source) rather than building a one-off. Keep `ui/` components minimal and unopinionated; project-specific composition belongs in sibling components.
+- When touching legacy files that still use raw Tailwind controls, opportunistically migrate them — no big-bang rewrite, but don't add new debt.
