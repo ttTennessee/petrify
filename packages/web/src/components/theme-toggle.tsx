@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useTheme } from "./theme-provider";
 import { Button } from "./ui/button";
 
@@ -20,13 +21,14 @@ function MoonIcon() {
 
 export function ThemeToggle() {
   const { theme, toggle } = useTheme();
+  const { t } = useTranslation("common");
   return (
     <Button
       variant="ghost"
       size="icon"
       className="h-7 w-7 text-muted-foreground hover:text-foreground"
       onClick={toggle}
-      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={theme === "dark" ? t("switch_to_light") : t("switch_to_dark")}
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </Button>

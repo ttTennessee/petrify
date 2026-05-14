@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useTemplates,
@@ -16,6 +17,9 @@ import { Section } from "../components/section";
 import { cn } from "../lib/utils";
 
 export default function Templates() {
+  const { t } = useTranslation("templates");
+  const { t: tc } = useTranslation("common");
+  const { t: tn } = useTranslation("nav");
   const [filter, setFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -43,7 +47,7 @@ export default function Templates() {
   };
 
   const onDelete = async (id: string) => {
-    if (!confirm("Delete this template?")) return;
+    if (!confirm(t("delete_confirm"))) return;
     await del.mutateAsync(id);
     if (selectedId === id) setSelectedId(null);
     qc.invalidateQueries({ queryKey: ["templates"] });
@@ -58,11 +62,11 @@ export default function Templates() {
       <div className="border-b border-border px-8 pt-8 pb-0 shrink-0">
         <Section
           number="02"
-          eyebrow="Templates"
+          eyebrow={t("eyebrow")}
           title={
             <>
-              Reusable{" "}
-              <span className="italic text-accent">blueprints.</span>
+              {t("title")}{" "}
+              <span className="italic text-accent">{t("title_accent")}</span>
             </>
           }
           meta={visible.length > 0 ? `${visible.length} template${visible.length !== 1 ? "s" : ""}` : undefined}
@@ -80,7 +84,7 @@ export default function Templates() {
                 }}
               />
               <Button size="sm" onClick={() => fileRef.current?.click()}>
-                Import JSON
+                {t("import_json")}
               </Button>
             </>
           }
@@ -89,7 +93,7 @@ export default function Templates() {
           to="/"
           className="inline-block mt-3 mb-0 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
         >
-          ← Projects
+          {tn("back_to_projects")}
         </Link>
       </div>
 
@@ -97,7 +101,7 @@ export default function Templates() {
         <div className="flex w-80 shrink-0 flex-col border-r border-border">
           <div className="border-b border-border px-4 py-2">
             <Input
-              placeholder="Filter templates…"
+              placeholder={t("filter_placeholder")}
               className="h-7 border-0 bg-transparent font-mono text-xs shadow-none focus-visible:ring-0 px-0"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -110,11 +114,11 @@ export default function Templates() {
           )}
           <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading && (
-              <p className="px-4 py-3 font-mono text-xs text-muted-foreground">loading…</p>
+              <p className="px-4 py-3 font-mono text-xs text-muted-foreground">{tc("loading")}</p>
             )}
             {visible.length === 0 && !isLoading && (
               <p className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                no templates
+                {t("empty")}
               </p>
             )}
             <ul>
@@ -157,7 +161,7 @@ export default function Templates() {
           {!detail && (
             <div className="flex h-full items-center justify-center">
               <p className="font-display text-xl italic text-muted-foreground">
-                select a template to inspect.
+                {t("select_to_inspect")}
               </p>
             </div>
           )}
@@ -176,7 +180,7 @@ export default function Templates() {
                 </div>
                 <div className="flex gap-2">
                   <Button asChild size="sm" variant="outline">
-                    <a href={templateExportUrl(detail.id)}>Export JSON</a>
+                    <a href={templateExportUrl(detail.id)}>{t("export_json")}</a>
                   </Button>
                   <Button
                     size="sm"
@@ -184,7 +188,7 @@ export default function Templates() {
                     className="border-destructive/40 text-destructive hover:bg-destructive/10"
                     onClick={() => onDelete(detail.id)}
                   >
-                    Delete
+                    {tc("delete")}
                   </Button>
                 </div>
               </div>
@@ -195,7 +199,7 @@ export default function Templates() {
 
               <details className="border border-border">
                 <summary className="cursor-pointer px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-muted/40 select-none">
-                  § Nodes ({detail.graph.nodes.length})
+                  {t("nodes_section", { count: detail.graph.nodes.length })}
                 </summary>
                 <ul className="border-t border-border">
                   {detail.graph.nodes.map((n) => (
@@ -213,7 +217,7 @@ export default function Templates() {
 
               <details className="border border-border">
                 <summary className="cursor-pointer px-4 py-2.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:bg-muted/40 select-none">
-                  § Raw graph JSON
+                  {t("raw_json")}
                 </summary>
                 <pre className="max-h-96 overflow-auto border-t border-border px-4 py-3 font-mono text-[10px] leading-relaxed text-foreground/80">
                   {JSON.stringify(detail.graph, null, 2)}

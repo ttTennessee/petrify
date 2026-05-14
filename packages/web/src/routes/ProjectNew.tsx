@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useCreateProject } from "../api/client";
 import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
@@ -7,6 +8,8 @@ import { Textarea } from "../components/ui/textarea";
 import { Section } from "../components/section";
 
 export default function ProjectNew() {
+  const { t } = useTranslation("projects");
+  const { t: tc } = useTranslation("common");
   const nav = useNavigate();
   const create = useCreateProject();
   const [goal, setGoal] = useState("");
@@ -16,9 +19,9 @@ export default function ProjectNew() {
     <div className="mx-auto max-w-3xl overflow-y-auto h-full px-8 py-10 space-y-10">
       <Section
         number="02"
-        eyebrow="New Project"
-        title="Define your goal."
-        subtitle="Describe the workflow you want to build. Petrify will compile it into a verifiable graph."
+        eyebrow={t("new.eyebrow")}
+        title={t("new.title")}
+        subtitle={t("new.subtitle")}
       />
 
       <form
@@ -35,10 +38,10 @@ export default function ProjectNew() {
         <div className="space-y-2">
           <div className="flex items-baseline gap-3">
             <Label htmlFor="goal" className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Goal *
+              {t("new.goal_label")}
             </Label>
             <span className="font-mono text-[10px] text-muted-foreground/60">
-              describe what this workflow should achieve
+              {t("new.goal_hint")}
             </span>
           </div>
           <Textarea
@@ -54,10 +57,10 @@ export default function ProjectNew() {
         <div className="space-y-2">
           <div className="flex items-baseline gap-3">
             <Label htmlFor="description" className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Description
+              {t("new.description_label")}
             </Label>
             <span className="font-mono text-[10px] text-muted-foreground/60">
-              optional context for the blueprint compiler
+              {t("new.description_hint")}
             </span>
           </div>
           <Textarea
@@ -71,7 +74,7 @@ export default function ProjectNew() {
 
         <div className="flex items-center justify-between border-t border-border pt-6">
           <span className="font-mono text-[10px] text-muted-foreground/60">
-            esc to discard
+            {tc("esc_to_discard")}
           </span>
           <div className="flex items-center gap-3">
             {create.error && (
@@ -80,7 +83,7 @@ export default function ProjectNew() {
               </p>
             )}
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "Creating…" : "Create Project"}
+              {create.isPending ? t("new.submitting") : t("new.submit")}
             </Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useTranslation } from "react-i18next";
 import type { NodeStatus, WorkflowNode } from "@petrify/shared";
 
 const STATUS_STYLES: Record<NodeStatus, string> = {
@@ -12,17 +13,6 @@ const STATUS_STYLES: Record<NodeStatus, string> = {
   compensating: "border-warning bg-warning/10",
 };
 
-const STATUS_LABEL: Record<NodeStatus, string> = {
-  idle: "·",
-  pending: "等待",
-  running: "运行中",
-  completed: "完成",
-  failed: "失败",
-  blocked: "阻塞",
-  skipped: "跳过",
-  compensating: "补偿",
-};
-
 export interface NodeCardData extends Record<string, unknown> {
   node: WorkflowNode;
   status: NodeStatus;
@@ -31,6 +21,7 @@ export interface NodeCardData extends Record<string, unknown> {
 }
 
 export function NodeCard({ data }: NodeProps) {
+  const { t } = useTranslation("workflow");
   const { node, status, selected, issue } = data as NodeCardData;
   const hasResources = node.resources && node.resources.length > 0;
   const depCount = (node.dependencies ?? []).length;
@@ -49,17 +40,17 @@ export function NodeCard({ data }: NodeProps) {
       <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{node.ref}</div>
       <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
         <span>{node.adapter.name}</span>
-        <span>{STATUS_LABEL[status]}</span>
+        <span>{t(`status.${status}`)}</span>
       </div>
       <div className="mt-1 flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-        <span title="control prerequisites">⇡ {depCount}</span>
+        <span title={t("canvas.control_prereqs")}>⇡ {depCount}</span>
         {hasResources && (
           <span className="flex flex-wrap gap-1">
             {node.resources.map((r) => (
               <span
                 key={r.name}
                 className="border border-border bg-muted px-1 text-[10px]"
-                title="resource claim (M1: declared, not enforced)"
+                title={t("canvas.resource_claim")}
               >
                 {r.name}:{r.amount}
               </span>

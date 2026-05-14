@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DryRunReport, VerificationReport } from "@petrify/shared";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useRunVerify, useRunDryRun, useVerifyWorkflow } from "../api/client";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -35,6 +36,7 @@ function issueAccent(level: string) {
 }
 
 export function VerifyPanel({ workflowId }: { workflowId: string }) {
+  const { t } = useTranslation("workflow");
   const qc = useQueryClient();
   const verifyMu = useRunVerify(workflowId);
   const dryMu = useRunDryRun(workflowId);
@@ -54,7 +56,7 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
           }}
           disabled={verifyMu.isPending}
         >
-          {verifyMu.isPending ? "Verifying…" : "Verify"}
+          {verifyMu.isPending ? t("verify.verifying") : t("verify.verify")}
         </Button>
         <Button
           size="sm"
@@ -62,7 +64,7 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
           onClick={async () => setDry(await dryMu.mutateAsync())}
           disabled={dryMu.isPending}
         >
-          {dryMu.isPending ? "Dry running…" : "Dry Run"}
+          {dryMu.isPending ? t("verify.dry_running") : t("verify.dry_run")}
         </Button>
         {report && (
           <>
@@ -70,12 +72,12 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
               {report.status}
             </Badge>
             <Badge variant={riskVariant(report.risk)}>
-              risk: {report.risk}
+              {t("verify.risk")}{report.risk}
             </Badge>
             <span className="font-mono text-[10px] text-muted-foreground">
               {report.stats.place_count}P / {report.stats.transition_count}T ·{" "}
-              {report.stats.explored_markings} markings
-              {report.stats.truncated ? " (truncated)" : ""}
+              {report.stats.explored_markings} {t("verify.markings")}
+              {report.stats.truncated ? ` ${t("verify.truncated")}` : ""}
             </span>
           </>
         )}
@@ -94,12 +96,12 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
               </div>
               {i.affected_node_refs && i.affected_node_refs.length > 0 && (
                 <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                  nodes: {i.affected_node_refs.join(", ")}
+                  {t("verify.nodes")}{i.affected_node_refs.join(", ")}
                 </div>
               )}
               {i.affected_pools && i.affected_pools.length > 0 && (
                 <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-                  pools: {i.affected_pools.join(", ")}
+                  {t("verify.pools")}{i.affected_pools.join(", ")}
                 </div>
               )}
             </li>
@@ -110,19 +112,19 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
       {dry && (
         <div className="mt-2 border-t border-border pt-2 font-mono text-[11px] text-foreground/80">
           <span>
-            estimated:{" "}
+            {t("verify.estimated")}{" "}
             <span className="text-foreground">
-              {(dry.estimated_duration_ms / 1000).toFixed(1)}s
+              {(dry.estimated_duration_ms / 1000).toFixed(1)}{t("verify.seconds")}
             </span>
           </span>
           <span className="mx-3 text-muted-foreground/40">·</span>
           <span>
-            critical path:{" "}
+            {t("verify.critical_path")}{" "}
             <span className="text-foreground">{dry.critical_path.join(" → ")}</span>
           </span>
           {Object.keys(dry.resource_peaks).length > 0 && (
             <div className="mt-1 text-muted-foreground">
-              peaks:{" "}
+              {t("verify.peaks")}{" "}
               {Object.entries(dry.resource_peaks)
                 .map(([k, v]) => `${k}=${v}`)
                 .join(", ")}

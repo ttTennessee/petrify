@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { WorkflowNode } from "@petrify/shared";
+import { useTranslation } from "react-i18next";
 import { usePatchNode, ApiError } from "../api/client";
 import { useAdapters } from "../api/adapters";
 import { Button } from "./ui/button";
@@ -9,21 +10,21 @@ import { cn } from "../lib/utils";
 
 interface JsonField {
   key: keyof WorkflowNode;
-  label: string;
-  note?: string;
+  labelKey: string;
+  noteKey?: string;
 }
 
 const JSON_FIELDS: JsonField[] = [
-  { key: "adapter", label: "Adapter" },
-  { key: "inputs", label: "Inputs" },
-  { key: "outputs", label: "Outputs" },
-  { key: "prompt", label: "Prompt" },
-  { key: "runtime", label: "Runtime" },
-  { key: "on_failure", label: "On failure" },
-  { key: "resources", label: "Resources", note: "M1 declared-only" },
-  { key: "condition", label: "Condition", note: "M3" },
-  { key: "loop", label: "Loop", note: "M3" },
-  { key: "schema", label: "Schema" },
+  { key: "adapter", labelKey: "adapter" },
+  { key: "inputs", labelKey: "inputs" },
+  { key: "outputs", labelKey: "outputs" },
+  { key: "prompt", labelKey: "prompt" },
+  { key: "runtime", labelKey: "runtime" },
+  { key: "on_failure", labelKey: "on_failure" },
+  { key: "resources", labelKey: "resources", noteKey: "resources" },
+  { key: "condition", labelKey: "condition", noteKey: "condition" },
+  { key: "loop", labelKey: "loop", noteKey: "loop" },
+  { key: "schema", labelKey: "schema" },
 ];
 
 function pretty(value: unknown): string {
@@ -40,6 +41,8 @@ export function NodeDetailPanel({
   workflowId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation("workflow");
+  const { t: tc } = useTranslation("common");
   const initialTitle = node.title;
   const initialJson = useMemo(() => {
     const m: Record<string, string> = {};
@@ -91,7 +94,7 @@ export function NodeDetailPanel({
     const errs: Record<string, string> = {};
     const body: Record<string, unknown> = {};
     if (dirtyKeys.includes("title")) {
-      if (titleValue.trim().length === 0) errs.title = "title cannot be empty";
+      if (titleValue.trim().length === 0) errs.title = t("node.title_required");
       else body.title = titleValue;
     }
     for (const f of JSON_FIELDS) {
@@ -135,7 +138,7 @@ export function NodeDetailPanel({
           />
           <div className="px-1 font-mono text-[10px] text-muted-foreground">
             <span>{node.ref}</span>
-            <span className="ml-2 opacity-60">id {node.id}</span>
+            <span className="ml-2 opacity-60">{t("node.id_prefix")}{node.id}</span>
           </div>
           {localErrors.title && (
             <div className="px-1 font-mono text-[10px] text-destructive">
@@ -148,7 +151,7 @@ export function NodeDetailPanel({
           size="icon"
           className="ml-2 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={tc("close")}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <path d="M1 1l10 10M11 1L1 11" />
@@ -157,9 +160,9 @@ export function NodeDetailPanel({
       </header>
 
       <div className="flex-1 space-y-4 overflow-auto px-4 py-4">
-        <ReadonlyField label="Dependencies (immutable in M1)">
+        <ReadonlyField label={t("node.dependencies")}>
           {node.dependencies.length === 0 ? (
-            <span className="font-mono text-[11px] text-muted-foreground">(root)</span>
+            <span className="font-mono text-[11px] text-muted-foreground">{t("node.root")}</span>
           ) : (
             <ul className="space-y-0.5">
               {node.dependencies.map((d) => (
@@ -179,7 +182,7 @@ export function NodeDetailPanel({
             <div key={k}>
               {isAdapter && adapterChoices.length > 0 && (
                 <div className="mb-1.5 flex flex-wrap gap-1">
-                  {adapterChoices.map((name) => {
+                  {adapterChoices.map((name: string) => {
                     const active = (() => {
                       try {
                         return JSON.parse(value || "{}").name === name;
@@ -211,8 +214,8 @@ export function NodeDetailPanel({
                 </div>
               )}
               <JsonTextareaField
-                label={f.label}
-                note={f.note}
+                label={t(`node.fields.${f.labelKey}`)}
+                note={f.noteKey ? t(`node.field_notes.${f.noteKey}`) : undefined}
                 value={value}
                 onChange={(v) =>
                   setJsonValues((prev) => ({ ...prev, [k]: v }))
@@ -238,8 +241,8 @@ export function NodeDetailPanel({
           <div className="flex items-center justify-between">
             <span className="font-mono text-[10px] text-muted-foreground">
               {dirty
-                ? `${dirtyKeys.length} field${dirtyKeys.length > 1 ? "s" : ""} changed`
-                : "no changes"}
+                ? t("node.changed", { count: dirtyKeys.length })
+                : t("node.no_changes")}
             </span>
             <div className="flex gap-2">
               <Button
@@ -248,14 +251,14 @@ export function NodeDetailPanel({
                 onClick={discard}
                 disabled={!dirty || patch.isPending}
               >
-                Discard
+                {tc("discard")}
               </Button>
               <Button
                 size="sm"
                 onClick={save}
                 disabled={!dirty || patch.isPending}
               >
-                {patch.isPending ? "Saving…" : "Save"}
+                {patch.isPending ? tc("saving") : tc("save")}
               </Button>
             </div>
           </div>

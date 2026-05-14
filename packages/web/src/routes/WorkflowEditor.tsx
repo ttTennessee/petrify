@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { NodeStatus, WorkflowNode } from "@petrify/shared";
 import {
   useWorkflow,
@@ -20,6 +21,8 @@ import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
 
 export default function WorkflowEditor() {
+  const { t } = useTranslation("workflow");
+  const { t: tc } = useTranslation("common");
   const { workflowId } = useParams();
   const { data, isLoading } = useWorkflow(workflowId);
   const { data: runs } = useWorkflowRuns(workflowId);
@@ -69,9 +72,9 @@ export default function WorkflowEditor() {
   const issueByRef = useMemo(() => deriveIssueByNodeRef(verifyReport), [verifyReport]);
 
   if (isLoading || !workflowId)
-    return <p className="p-6 font-mono text-xs text-muted-foreground">loading…</p>;
+    return <p className="p-6 font-mono text-xs text-muted-foreground">{tc("loading")}</p>;
   if (!data)
-    return <p className="p-6 font-mono text-xs text-destructive">workflow not found</p>;
+    return <p className="p-6 font-mono text-xs text-destructive">{t("not_found")}</p>;
 
   const rightCol = selected ? "380px" : "320px";
 
@@ -82,7 +85,7 @@ export default function WorkflowEditor() {
     >
       <div className="col-span-2 flex h-11 items-center justify-between border-b border-border bg-card/40 px-6">
         <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
-          <span>workflow</span>
+          <span>{t("breadcrumb")}</span>
           <span className="text-muted-foreground/40">›</span>
           <span className="text-foreground">{workflowId}</span>
         </div>
@@ -93,7 +96,7 @@ export default function WorkflowEditor() {
             size="sm"
             onClick={() => setShowSaveTemplate(true)}
           >
-            Save as Template
+            {t("save_as_template")}
           </Button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   useAdapterCatalog,
   useAdapters,
@@ -12,13 +13,17 @@ import {
   type AdapterInstance,
   type CatalogEntry,
 } from "../api/adapters";
-import { ProbeBadge, relTime } from "../components/adapters/ProbeBadge";
+import { ProbeBadge, useRelTime } from "../components/adapters/ProbeBadge";
 import { InstanceModal } from "../components/adapters/InstanceModal";
 import { Button } from "../components/ui/button";
 import { Section } from "../components/section";
 import { cn } from "../lib/utils";
 
 export default function Adapters() {
+  const { t } = useTranslation("adapters");
+  const { t: tc } = useTranslation("common");
+  const { t: tn } = useTranslation("nav");
+  const relTime = useRelTime();
   const { data: catalog, isLoading: catLoading } = useAdapterCatalog();
   const { data: instances, isLoading: instLoading } = useAdapters();
   const create = useCreateAdapter();
@@ -82,30 +87,30 @@ export default function Adapters() {
     <div className="mx-auto max-w-5xl overflow-y-auto h-full px-8 py-10 space-y-10">
       <Section
         number="03"
-        eyebrow="Adapters"
+        eyebrow={t("eyebrow")}
         title={
           <>
-            Agent{" "}
-            <span className="italic text-accent">runners.</span>
+            {t("title")}{" "}
+            <span className="italic text-accent">{t("title_accent")}</span>
           </>
         }
-        subtitle="Configure which agent runners are available to your workflows. ACP adapters speak the Zed Agent Client Protocol over child-process stdio."
+        subtitle={t("subtitle")}
         actions={
           <Link
             to="/"
             className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
           >
-            ← Projects
+            {tn("back_to_projects")}
           </Link>
         }
       />
 
       <section className="space-y-4">
         <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          § Catalog
+          {t("catalog_section")}
         </h2>
         {catLoading && (
-          <p className="font-mono text-xs text-muted-foreground">loading…</p>
+          <p className="font-mono text-xs text-muted-foreground">{tc("loading")}</p>
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {(catalog ?? []).map((entry) => {
@@ -144,7 +149,7 @@ export default function Adapters() {
                     <ProbeBadge status={inst.status} detail={inst.status_detail} />
                     <span>{inst.name}</span>
                     <span className="ml-auto opacity-70">
-                      probed {relTime(inst.last_probed_at)}
+                      {t("table.probed")} {relTime(inst.last_probed_at)}
                     </span>
                   </div>
                 )}
@@ -162,35 +167,35 @@ export default function Adapters() {
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            § Custom & registered instances
+            {t("instances_section")}
           </h2>
           <Button size="sm" onClick={() => setModal({ mode: "create-custom" })}>
-            + Add custom
+            {t("add_custom")}
           </Button>
         </div>
         {instLoading && (
-          <p className="font-mono text-xs text-muted-foreground">loading…</p>
+          <p className="font-mono text-xs text-muted-foreground">{tc("loading")}</p>
         )}
         <table className="w-full border-y border-border text-xs">
           <thead className="border-b border-border bg-muted/30">
             <tr>
               <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Name
+                {tc("name")}
               </th>
               <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Source
+                {t("table.source")}
               </th>
               <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Command
+                {t("table.command")}
               </th>
               <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Status
+                {tc("status")}
               </th>
               <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Probed
+                {t("table.probed")}
               </th>
               <th className="px-4 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                Actions
+                {tc("actions")}
               </th>
             </tr>
           </thead>
@@ -201,7 +206,7 @@ export default function Adapters() {
                   colSpan={6}
                   className="px-4 py-6 text-center font-mono text-xs text-muted-foreground"
                 >
-                  no instances yet
+                  {t("empty_instances")}
                 </td>
               </tr>
             )}
@@ -210,13 +215,13 @@ export default function Adapters() {
                 <td className="px-4 py-3 font-mono text-xs">{inst.name}</td>
                 <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                   {inst.read_only
-                    ? inst.status_detail ?? "builtin"
-                    : inst.catalog_id ?? "custom"}
+                    ? inst.status_detail ?? t("builtin")
+                    : inst.catalog_id ?? t("custom")}
                 </td>
                 <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
                   {inst.command
                     ? `${inst.command} ${(inst.args ?? []).join(" ")}`
-                    : "—"}
+                    : t("no_command")}
                 </td>
                 <td className="px-4 py-3">
                   <ProbeBadge status={inst.status} detail={inst.status_detail} />
@@ -235,7 +240,7 @@ export default function Adapters() {
                           disabled={acting(inst.name)}
                           onClick={() => probe.mutate(inst.name)}
                         >
-                          Probe
+                          {t("probe")}
                         </Button>
                         <Button
                           size="sm"
@@ -244,7 +249,7 @@ export default function Adapters() {
                           disabled={acting(inst.name)}
                           onClick={() => onToggle(inst)}
                         >
-                          {inst.live ? "Disable" : "Enable"}
+                          {inst.live ? t("disable") : t("enable")}
                         </Button>
                         <Button
                           size="sm"
@@ -252,17 +257,17 @@ export default function Adapters() {
                           className="h-6 border-destructive/40 px-2 text-[11px] text-destructive hover:bg-destructive/10"
                           disabled={acting(inst.name)}
                           onClick={() => {
-                            if (confirm(`Delete adapter '${inst.name}'?`))
+                            if (confirm(t("delete_confirm", { name: inst.name })))
                               del.mutate(inst.name);
                           }}
                         >
-                          Delete
+                          {tc("delete")}
                         </Button>
                       </>
                     )}
                     {inst.read_only && (
                       <span className="font-mono text-[10px] text-muted-foreground">
-                        read-only
+                        {t("read_only")}
                       </span>
                     )}
                   </div>
@@ -276,8 +281,8 @@ export default function Adapters() {
       {modal?.mode === "create-from-catalog" && (
         <InstanceModal
           catalogEntry={modal.entry}
-          title={`Enable ${modal.entry.label}`}
-          submitLabel="Probe & Enable"
+          title={`${t("enable")} ${modal.entry.label}`}
+          submitLabel={`${t("probe")} & ${t("enable")}`}
           takenNames={(instances ?? []).map((i) => i.name)}
           onSubmit={onCreateSubmit}
           onClose={() => setModal(null)}
@@ -285,8 +290,8 @@ export default function Adapters() {
       )}
       {modal?.mode === "create-custom" && (
         <InstanceModal
-          title="Add custom adapter"
-          submitLabel="Probe & Enable"
+          title={t("add_custom")}
+          submitLabel={`${t("probe")} & ${t("enable")}`}
           takenNames={(instances ?? []).map((i) => i.name)}
           onSubmit={onCreateSubmit}
           onClose={() => setModal(null)}

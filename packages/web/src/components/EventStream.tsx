@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RuntimeEvent } from "@petrify/shared";
+import { useTranslation } from "react-i18next";
 import { useWorkflowStore } from "../store/workflow";
 import { Badge } from "./ui/badge";
 
@@ -41,6 +42,7 @@ function typeVariant(type: string): BadgeVariant {
 }
 
 export function EventStream() {
+  const { t } = useTranslation("workflow");
   const events = useWorkflowStore((s) => s.events);
   const graph = useWorkflowStore((s) => s.graph);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -131,7 +133,7 @@ export function EventStream() {
       <div className="flex h-full flex-col border-l border-border bg-card">
         <StreamHeader count={0} />
         <p className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
-          no events yet
+          {t("events.no_events")}
         </p>
       </div>
     );
@@ -160,7 +162,7 @@ export function EventStream() {
           {globals.length > 0 && (
             <li className="pt-1">
               <div className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                § global
+                {t("events.global")}
               </div>
               <ul className="space-y-1">
                 {globals.map((ev) => (
@@ -178,10 +180,11 @@ export function EventStream() {
 }
 
 function StreamHeader({ count }: { count: number }) {
+  const { t } = useTranslation("workflow");
   return (
     <header className="flex items-center justify-between border-b border-border px-4 py-2">
       <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        Event Stream
+        {t("events.title")}
       </span>
       {count > 0 && (
         <Badge variant="outline">{count}</Badge>
@@ -199,6 +202,7 @@ function NodeCard({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation("workflow");
   const elapsed =
     bucket.status !== "pending" && bucket.status !== "running"
       ? `${((bucket.lastTs - bucket.firstTs) / 1000).toFixed(1)}s`
@@ -252,7 +256,7 @@ function NodeCard({
           {bucket.thoughtText && (
             <details className="border-l-2 border-l-muted-foreground/40 pl-3 py-1">
               <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-muted-foreground select-none">
-                thinking · {bucket.thoughtText.length} chars
+                {t("events.thinking")}{bucket.thoughtText.length}{t("events.chars")}
               </summary>
               <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[10px] italic text-muted-foreground">
                 {bucket.thoughtText}
@@ -262,7 +266,7 @@ function NodeCard({
           {bucket.streamText && (
             <div className="border-l-2 border-l-accent pl-3 py-1">
               <div className="mb-0.5 flex justify-between font-mono text-[10px] text-accent">
-                <span>agent · text</span>
+                <span>{t("events.agent_text")}</span>
                 <span className="text-muted-foreground">
                   {new Date(bucket.lastTs).toLocaleTimeString()}
                 </span>
@@ -323,6 +327,7 @@ function EventBody({
   ev: RuntimeEvent;
   hideOutputText?: boolean;
 }) {
+  const { t } = useTranslation("workflow");
   const p = ev.payload as Record<string, unknown>;
   switch (ev.type) {
     case "NodeStarted":
@@ -330,7 +335,7 @@ function EventBody({
         <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
           {(p.title as string) ?? (p.ref as string) ?? ""}
           {p.attempt ? (
-            <span className="ml-2 opacity-60">attempt #{String(p.attempt)}</span>
+            <span className="ml-2 opacity-60">{t("events.attempt")}{String(p.attempt)}</span>
           ) : null}
         </p>
       );
@@ -351,7 +356,7 @@ function EventBody({
       if (hideOutputText) {
         return out.stop_reason ? (
           <p className="mt-0.5 font-mono text-[10px] text-success">
-            stop_reason: {out.stop_reason}
+            {t("events.stop_reason")}{out.stop_reason}
           </p>
         ) : null;
       }
@@ -363,7 +368,7 @@ function EventBody({
             </pre>
             {out.stop_reason && (
               <div className="mt-0.5 font-mono text-[10px] text-success">
-                stop_reason: {out.stop_reason}
+                {t("events.stop_reason")}{out.stop_reason}
               </div>
             )}
           </div>
@@ -378,13 +383,13 @@ function EventBody({
     case "NodeFailed":
       return (
         <p className="mt-0.5 font-mono text-[10px] text-destructive">
-          {(p.reason as string) ?? "failed"}
+          {(p.reason as string) ?? t("events.failed")}
         </p>
       );
     case "CheckpointSaved":
       return (
         <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-          ckpt {(p.checkpoint_id as string)?.slice(0, 8) ?? ""}
+          {t("events.checkpoint_prefix")}{(p.checkpoint_id as string)?.slice(0, 8) ?? ""}
         </p>
       );
     default:

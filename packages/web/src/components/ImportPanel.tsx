@@ -1,11 +1,13 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { WorkflowGraphSchema } from "@petrify/shared";
 import { useImportWorkflow } from "../api/client";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 
 export function ImportPanel({ projectId }: { projectId: string }) {
+  const { t } = useTranslation("workflow");
   const nav = useNavigate();
   const importWf = useImportWorkflow(projectId);
   const [text, setText] = useState("");
@@ -18,13 +20,13 @@ export function ImportPanel({ projectId }: { projectId: string }) {
     try {
       raw = JSON.parse(text);
     } catch (e) {
-      setError(`invalid JSON: ${(e as Error).message}`);
+      setError(`${t("import.invalid_json")}${(e as Error).message}`);
       return;
     }
     const parsed = WorkflowGraphSchema.safeParse(raw);
     if (!parsed.success) {
       setError(
-        "schema validation failed:\n" +
+        t("import.validation_failed") +
           parsed.error.issues
             .map((i) => `· ${i.path.join(".")}: ${i.message}`)
             .join("\n"),
@@ -46,13 +48,13 @@ export function ImportPanel({ projectId }: { projectId: string }) {
   return (
     <section className="border-l-2 border-accent pl-5 py-3 space-y-3">
       <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-        § Import Blueprint
+        {t("import.title")}
       </h2>
       <Textarea
         rows={10}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder='{"nodes":[...],"edges":[...]}'
+        placeholder={t("import.placeholder")}
         className="font-mono text-[11px] bg-card border-border focus-visible:ring-ring resize-none"
       />
       <div className="flex items-center gap-3">
@@ -71,10 +73,10 @@ export function ImportPanel({ projectId }: { projectId: string }) {
           variant="outline"
           onClick={() => fileRef.current?.click()}
         >
-          Choose File
+          {t("import.choose_file")}
         </Button>
         <Button size="sm" onClick={onSubmit} disabled={importWf.isPending}>
-          {importWf.isPending ? "Importing…" : "Import & Compile"}
+          {importWf.isPending ? t("import.submitting") : t("import.submit")}
         </Button>
       </div>
       {error && (

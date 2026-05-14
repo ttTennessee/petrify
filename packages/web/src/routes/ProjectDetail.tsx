@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useProject, useProjectWorkflows } from "../api/client";
 import { ImportPanel } from "../components/ImportPanel";
 import { PromptTemplatePanel } from "../components/PromptTemplatePanel";
@@ -17,6 +18,8 @@ function relTime(ts: number) {
 }
 
 export default function ProjectDetail() {
+  const { t } = useTranslation("projects");
+  const { t: tc } = useTranslation("common");
   const { projectId } = useParams();
   const nav = useNavigate();
   const { data, isLoading } = useProject(projectId);
@@ -24,22 +27,22 @@ export default function ProjectDetail() {
   const [showTemplates, setShowTemplates] = useState(false);
 
   if (isLoading || !projectId)
-    return <p className="p-6 font-mono text-xs text-muted-foreground">loading…</p>;
+    return <p className="p-6 font-mono text-xs text-muted-foreground">{tc("loading")}</p>;
   if (!data)
-    return <p className="p-6 font-mono text-xs text-destructive">not found</p>;
+    return <p className="p-6 font-mono text-xs text-destructive">{t("workflow_not_found")}</p>;
 
   return (
     <div className="mx-auto max-w-4xl overflow-y-auto h-full px-8 py-10 space-y-10">
       <Section
         number="01"
-        eyebrow="Project"
+        eyebrow={t("section_eyebrow")}
         title={data.goal}
         subtitle={
           <span className="font-mono text-[11px] text-muted-foreground">{data.id}</span>
         }
         actions={
           <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
-            From Template…
+            {t("from_template")}
           </Button>
         }
       />
@@ -54,7 +57,7 @@ export default function ProjectDetail() {
       {workflows && workflows.length > 0 && (
         <section className="space-y-3">
           <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            § Workflows
+            {t("workflows_section")}
           </h2>
           <ul className="border-t border-border">
             {workflows.map((wf) => (

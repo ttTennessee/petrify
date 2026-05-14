@@ -1,9 +1,235 @@
 {
-  "common": {},
-  "nav": {},
-  "adapters": {},
-  "workflow": {},
-  "projects": {},
-  "templates": {},
-  "errors": {}
+  "common": {
+    "loading": "loading…",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving…",
+    "delete": "Delete",
+    "discard": "Discard",
+    "close": "Close",
+    "name": "Name",
+    "description": "Description",
+    "status": "Status",
+    "actions": "Actions",
+    "esc_to_discard": "esc to discard",
+    "switch_to_light": "Switch to light mode",
+    "switch_to_dark": "Switch to dark mode",
+    "language": "Language"
+  },
+  "nav": {
+    "projects": "Projects",
+    "templates": "Templates",
+    "adapters": "Adapters",
+    "back_to_projects": "← Projects",
+    "subtitle": "Verifiable Agent Workflow Runtime · v0.1"
+  },
+  "adapters": {
+    "title": "Agent",
+    "title_accent": "runners.",
+    "eyebrow": "Adapters",
+    "subtitle": "Configure which agent runners are available to your workflows. ACP adapters speak the Zed Agent Client Protocol over child-process stdio.",
+    "catalog_section": "§ Catalog",
+    "instances_section": "§ Custom & registered instances",
+    "add_custom": "+ Add custom",
+    "table": {
+      "source": "Source",
+      "command": "Command",
+      "probed": "Probed"
+    },
+    "empty_instances": "no instances yet",
+    "builtin": "builtin",
+    "custom": "custom",
+    "no_command": "—",
+    "probe": "Probe",
+    "disable": "Disable",
+    "enable": "Enable",
+    "read_only": "read-only",
+    "delete_confirm": "Delete adapter '{{name}}'?",
+    "modal": {
+      "spawn": "Spawn",
+      "connect_soon": "Connect (soon)",
+      "coming_soon": "coming in a later release",
+      "instance_name_label": "Instance name",
+      "instance_name_placeholder": "acp-claude",
+      "instance_name_hint": "[a-zA-Z0-9_.:-]+ — used as the adapter key in node configs",
+      "command_label": "Command",
+      "command_placeholder": "claude-code-acp",
+      "args_label": "Args (space-separated)",
+      "args_placeholder": "--flag value",
+      "env_label": "Environment variables (KEY=value per line)",
+      "env_placeholder": "ANTHROPIC_API_KEY=sk-...",
+      "cwd_label": "Working directory (optional)",
+      "cwd_placeholder": "/abs/path or empty for server cwd",
+      "working": "Working…",
+      "no_connect_error": "connect mode isn't implemented yet — use spawn for now",
+      "name_required": "name is required",
+      "command_required": "command is required",
+      "env_parse_error": "env: ",
+      "env_not_kv": "'{{line}}' is not KEY=value",
+      "env_empty_key": "empty key in '{{line}}'"
+    },
+    "probe_badge": {
+      "healthy": "healthy",
+      "error": "error",
+      "not_probed": "not probed",
+      "never": "never",
+      "just_now": "just now",
+      "seconds_ago": "{{n}}s ago",
+      "minutes_ago": "{{n}}m ago",
+      "hours_ago": "{{n}}h ago"
+    }
+  },
+  "workflow": {
+    "not_found": "workflow not found",
+    "save_as_template": "Save as Template",
+    "breadcrumb": "workflow",
+    "import": {
+      "title": "§ Import Blueprint",
+      "placeholder": "{\"nodes\":[...],\"edges\":[...]}",
+      "choose_file": "Choose File",
+      "submit": "Import & Compile",
+      "submitting": "Importing…",
+      "invalid_json": "invalid JSON: ",
+      "validation_failed": "schema validation failed:\n"
+    },
+    "verify": {
+      "verify": "Verify",
+      "verifying": "Verifying…",
+      "dry_run": "Dry Run",
+      "dry_running": "Dry running…",
+      "risk": "risk: ",
+      "markings": "markings",
+      "truncated": "(truncated)",
+      "nodes": "nodes: ",
+      "pools": "pools: ",
+      "estimated": "estimated: ",
+      "seconds": "s",
+      "critical_path": "critical path: ",
+      "peaks": "peaks: "
+    },
+    "run": {
+      "run": "Run",
+      "running": "Running…",
+      "starting": "Starting…",
+      "resume": "Resume",
+      "resuming": "Resuming…",
+      "cancel": "Cancel",
+      "resume_hint": "resume from latest checkpoint ({{count}} nodes done)",
+      "resume_hint_unknown": "resume",
+      "resumed_from": "resumed from ",
+      "checkpoint_one": "checkpoint",
+      "checkpoint_other": "checkpoints"
+    },
+    "events": {
+      "title": "Event Stream",
+      "no_events": "no events yet",
+      "global": "§ global",
+      "thinking": "thinking · ",
+      "chars": " chars",
+      "stop_reason": "stop_reason: ",
+      "attempt": "attempt #",
+      "failed": "failed",
+      "checkpoint_prefix": "ckpt ",
+      "agent_text": "agent · text"
+    },
+    "node": {
+      "id_prefix": "id ",
+      "dependencies": "Dependencies (immutable in M1)",
+      "root": "(root)",
+      "title_required": "title cannot be empty",
+      "changed_one": "{{count}} field changed",
+      "changed_other": "{{count}} fields changed",
+      "no_changes": "no changes",
+      "fields": {
+        "adapter": "Adapter",
+        "inputs": "Inputs",
+        "outputs": "Outputs",
+        "prompt": "Prompt",
+        "runtime": "Runtime",
+        "on_failure": "On failure",
+        "resources": "Resources",
+        "condition": "Condition",
+        "loop": "Loop",
+        "schema": "Schema"
+      },
+      "field_notes": {
+        "resources": "M1 declared-only",
+        "condition": "M3",
+        "loop": "M3"
+      }
+    },
+    "status": {
+      "idle": "·",
+      "pending": "pending",
+      "running": "running",
+      "completed": "done",
+      "failed": "failed",
+      "blocked": "blocked",
+      "skipped": "skipped",
+      "compensating": "compensating"
+    },
+    "canvas": {
+      "control_prereqs": "control prerequisites",
+      "resource_claim": "resource claim (M1: declared, not enforced)"
+    }
+  },
+  "projects": {
+    "title": "Workflows,",
+    "title_accent": "verified.",
+    "subtitle": "Import, compile and run verifiable agent workflows.",
+    "empty": "no projects yet.",
+    "create_first": "Create your first project →",
+    "section_eyebrow": "Projects",
+    "from_template": "From Template…",
+    "workflows_section": "§ Workflows",
+    "workflow_not_found": "workflow not found",
+    "new": {
+      "title": "Define your goal.",
+      "subtitle": "Describe the workflow you want to build. Petrify will compile it into a verifiable graph.",
+      "eyebrow": "New Project",
+      "goal_label": "Goal *",
+      "goal_hint": "describe what this workflow should achieve",
+      "description_label": "Description",
+      "description_hint": "optional context for the blueprint compiler",
+      "submit": "Create Project",
+      "submitting": "Creating…"
+    }
+  },
+  "templates": {
+    "title": "Reusable",
+    "title_accent": "blueprints.",
+    "eyebrow": "Templates",
+    "import_json": "Import JSON",
+    "export_json": "Export JSON",
+    "filter_placeholder": "Filter templates…",
+    "empty": "no templates",
+    "select_to_inspect": "select a template to inspect.",
+    "delete_confirm": "Delete this template?",
+    "nodes_section": "§ Nodes ({{count}})",
+    "raw_json": "§ Raw graph JSON",
+    "prompt": {
+      "title": "§ Prompt Template",
+      "copy": "Copy"
+    },
+    "from_template": {
+      "title": "Create workflow from template",
+      "filter": "filter templates…",
+      "empty": "no templates",
+      "creating": "Creating…",
+      "create": "Create workflow"
+    },
+    "save_as": {
+      "title": "Save as Template",
+      "name_label": "Name",
+      "name_placeholder": "e.g. cyberpunk story pipeline",
+      "tags_label": "Tags (comma-separated)",
+      "tags_placeholder": "writing, demo",
+      "saving": "Saving…",
+      "save": "Save"
+    }
+  },
+  "errors": {
+    "not_found": "not found",
+    "loading": "loading…"
+  }
 }

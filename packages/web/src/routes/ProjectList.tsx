@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useProjects } from "../api/client";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
@@ -23,6 +24,8 @@ function statusVariant(status: string): "accent" | "success" | "outline" | "dest
 }
 
 export default function ProjectList() {
+  const { t } = useTranslation("projects");
+  const { t: tc } = useTranslation("common");
   const { data, isLoading } = useProjects();
   const projects = data ?? [];
 
@@ -30,14 +33,14 @@ export default function ProjectList() {
     <div className="mx-auto max-w-5xl overflow-y-auto h-full px-8 py-10 space-y-10">
       <Section
         number="01"
-        eyebrow="Projects"
+        eyebrow={t("section_eyebrow")}
         title={
           <>
-            Workflows,{" "}
-            <span className="italic text-accent">verified.</span>
+            {t("title")}{" "}
+            <span className="italic text-accent">{t("title_accent")}</span>
           </>
         }
-        subtitle="Import, compile and run verifiable agent workflows."
+        subtitle={t("subtitle")}
         meta={projects.length > 0 ? `${projects.length} project${projects.length !== 1 ? "s" : ""}` : undefined}
         actions={
           <Button asChild size="sm">
@@ -47,16 +50,16 @@ export default function ProjectList() {
       />
 
       {isLoading && (
-        <p className="font-mono text-xs text-muted-foreground">loading…</p>
+        <p className="font-mono text-xs text-muted-foreground">{tc("loading")}</p>
       )}
 
       {!isLoading && projects.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
           <p className="font-display text-2xl italic text-muted-foreground">
-            no projects yet.
+            {t("empty")}
           </p>
           <Button asChild variant="ghost">
-            <Link to="/projects/new">Create your first project →</Link>
+            <Link to="/projects/new">{t("create_first")}</Link>
           </Button>
         </div>
       )}

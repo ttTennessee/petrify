@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useTemplates, useInstantiateTemplate } from "../api/client";
 import {
   Dialog,
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export function FromTemplateDialog({ projectId, onClose }: Props) {
+  const { t } = useTranslation("templates");
+  const { t: tc } = useTranslation("common");
   const [filter, setFilter] = useState("");
   const { data: templates, isLoading } = useTemplates();
   const inst = useInstantiateTemplate();
@@ -42,21 +45,21 @@ export function FromTemplateDialog({ projectId, onClose }: Props) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="flex max-h-[80vh] flex-col gap-3 sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Create workflow from template</DialogTitle>
+          <DialogTitle>{t("from_template.title")}</DialogTitle>
         </DialogHeader>
 
         <Input
-          placeholder="filter templates…"
+          placeholder={t("from_template.filter")}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
 
         <div className="-mx-2 flex-1 overflow-y-auto px-2">
           {isLoading && (
-            <p className="p-3 text-sm text-muted-foreground">loading…</p>
+            <p className="p-3 text-sm text-muted-foreground">{tc("loading")}</p>
           )}
           {visible.length === 0 && !isLoading && (
-            <p className="p-3 text-sm text-muted-foreground">no templates</p>
+            <p className="p-3 text-sm text-muted-foreground">{t("from_template.empty")}</p>
           )}
           <ul className="space-y-1">
             {visible.map((t) => (
@@ -115,10 +118,10 @@ export function FromTemplateDialog({ projectId, onClose }: Props) {
 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={submit} disabled={!selected || inst.isPending}>
-            {inst.isPending ? "Creating…" : "Create workflow"}
+            {inst.isPending ? t("from_template.creating") : t("from_template.create")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,4 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
 import { ThemeToggle } from "./components/theme-toggle";
 import { Separator } from "./components/ui/separator";
@@ -35,6 +36,7 @@ function NavItem({
 }
 
 export default function App() {
+  const { t } = useTranslation("nav");
   return (
     <div className="flex h-screen flex-col">
       <header className="flex h-20 shrink-0 items-end justify-between border-b border-border bg-background/85 px-8 pb-3 backdrop-blur-sm">
@@ -43,18 +45,18 @@ export default function App() {
             Petrify<span className="text-accent">.</span>
           </div>
           <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            Verifiable Agent Workflow Runtime · v0.1
+            {t("subtitle")}
           </div>
         </Link>
         <nav className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-wider">
           <NavItem to="/" idx="01" end>
-            Projects
+            {t("projects")}
           </NavItem>
           <NavItem to="/templates" idx="02">
-            Templates
+            {t("templates")}
           </NavItem>
           <NavItem to="/adapters" idx="03">
-            Adapters
+            {t("adapters")}
           </NavItem>
           <Separator orientation="vertical" className="h-4 mx-1" />
           <ThemeToggle />

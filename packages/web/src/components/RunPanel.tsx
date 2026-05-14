@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useStartRun,
   useRun,
@@ -24,6 +25,7 @@ function statusVariant(status: string): BadgeVariant {
 }
 
 export function RunPanel({ workflowId }: { workflowId: string }) {
+  const { t } = useTranslation("workflow");
   const startRun = useStartRun(workflowId);
   const resumeRun = useResumeRun();
   const cancelRun = useCancelRun();
@@ -55,7 +57,7 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
         disabled={isStarting || isRunning}
         className="bg-success text-success-foreground hover:bg-success/90"
       >
-        {isStarting ? "Starting…" : isRunning ? "Running…" : "Run"}
+        {isStarting ? t("run.starting") : isRunning ? t("run.running") : t("run.run")}
       </Button>
 
       {canResume && currentRunId && (
@@ -70,11 +72,11 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
           className="border-warning text-warning hover:bg-warning/10"
           title={
             lastCheckpoint
-              ? `resume from latest checkpoint (${lastCheckpoint.blob.completed_node_ids.length} nodes done)`
-              : "resume"
+              ? t("run.resume_hint", { count: lastCheckpoint.blob.completed_node_ids.length })
+              : t("run.resume_hint_unknown")
           }
         >
-          {resumeRun.isPending ? "Resuming…" : "Resume"}
+          {resumeRun.isPending ? t("run.resuming") : t("run.resume")}
         </Button>
       )}
 
@@ -86,13 +88,13 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
           disabled={cancelRun.isPending}
           className="border-destructive text-destructive hover:bg-destructive/10"
         >
-          Cancel
+          {t("run.cancel")}
         </Button>
       )}
 
       {currentRunId && (
         <Badge variant="outline">
-          run · {currentRunId.slice(0, 8)}
+          {t("run.run").toLowerCase()} · {currentRunId.slice(0, 8)}
         </Badge>
       )}
 
@@ -104,13 +106,13 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
 
       {run?.resumed_from && (
         <span className="font-mono text-[10px] text-muted-foreground">
-          resumed from {run.resumed_from.slice(0, 8)}…
+          {t("run.resumed_from")}{run.resumed_from.slice(0, 8)}…
         </span>
       )}
 
       {checkpoints && checkpoints.length > 0 && (
         <span className="font-mono text-[10px] text-muted-foreground">
-          {checkpoints.length} checkpoint{checkpoints.length !== 1 ? "s" : ""}
+          {t("run.checkpoint", { count: checkpoints.length })}
         </span>
       )}
 

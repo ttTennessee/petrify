@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { AdapterInput, CatalogEntry } from "../../api/adapters";
 import { ApiError } from "../../api/client";
 import {
@@ -50,26 +51,28 @@ export function InstanceModal({
   const [cwd, setCwd] = useState(initial?.default_cwd ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation("adapters");
+  const { t: tc } = useTranslation("common");
 
   async function handleSubmit() {
     setError(null);
     if (mode === "connect") {
-      setError("connect mode isn't implemented yet — use spawn for now");
+      setError(t("modal.no_connect_error"));
       return;
     }
     if (!name.trim()) {
-      setError("name is required");
+      setError(t("modal.name_required"));
       return;
     }
     if (!command.trim()) {
-      setError("command is required");
+      setError(t("modal.command_required"));
       return;
     }
     let env: Record<string, string>;
     try {
-      env = parseEnvText(envText);
+      env = parseEnvText(envText, t);
     } catch (e) {
-      setError(`env: ${(e as Error).message}`);
+      setError(`${t("modal.env_parse_error")}${(e as Error).message}`);
       return;
     }
     const args = argsText.trim().length === 0 ? [] : argsText.trim().split(/\s+/);
@@ -115,64 +118,64 @@ export function InstanceModal({
                   : "border-input text-foreground hover:bg-accent",
               )}
             >
-              Spawn
+              {t("modal.spawn")}
             </button>
             <button
               type="button"
               disabled
-              title="coming in a later release"
+              title={t("modal.coming_soon")}
               className="cursor-not-allowed rounded-md border border-input px-2.5 py-1 text-muted-foreground"
             >
-              Connect (soon)
+              {t("modal.connect_soon")}
             </button>
           </div>
 
-          <Field label="Instance name">
+          <Field label={t("modal.instance_name_label")}>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={!!initial?.name}
-              placeholder="acp-claude"
+              placeholder={t("modal.instance_name_placeholder")}
               className="font-mono text-xs"
             />
             <p className="text-[10px] text-muted-foreground">
-              [a-zA-Z0-9_.:-]+ — used as the adapter key in node configs
+              {t("modal.instance_name_hint")}
             </p>
           </Field>
 
-          <Field label="Command">
+          <Field label={t("modal.command_label")}>
             <Input
               value={command}
               onChange={(e) => setCommand(e.target.value)}
-              placeholder="claude-code-acp"
+              placeholder={t("modal.command_placeholder")}
               className="font-mono text-xs"
             />
           </Field>
 
-          <Field label="Args (space-separated)">
+          <Field label={t("modal.args_label")}>
             <Input
               value={argsText}
               onChange={(e) => setArgsText(e.target.value)}
-              placeholder="--flag value"
+              placeholder={t("modal.args_placeholder")}
               className="font-mono text-xs"
             />
           </Field>
 
-          <Field label="Environment variables (KEY=value per line)">
+          <Field label={t("modal.env_label")}>
             <Textarea
               value={envText}
               onChange={(e) => setEnvText(e.target.value)}
               rows={3}
-              placeholder="ANTHROPIC_API_KEY=sk-..."
+              placeholder={t("modal.env_placeholder")}
               className="font-mono text-[11px]"
             />
           </Field>
 
-          <Field label="Working directory (optional)">
+          <Field label={t("modal.cwd_label")}>
             <Input
               value={cwd}
               onChange={(e) => setCwd(e.target.value)}
-              placeholder="/abs/path or empty for server cwd"
+              placeholder={t("modal.cwd_placeholder")}
               className="font-mono text-xs"
             />
           </Field>
@@ -186,10 +189,10 @@ export function InstanceModal({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={submitting}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? "Working…" : submitLabel}
+            {submitting ? t("modal.working") : submitLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -225,17 +228,17 @@ function envToText(env: Record<string, string>): string {
     .join("\n");
 }
 
-function parseEnvText(text: string): Record<string, string> {
+function parseEnvText(text: string, t: (key: string, opts?: Record<string, unknown>) => string): Record<string, string> {
   const out: Record<string, string> = {};
   const lines = text.split(/\r?\n/);
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
     const eq = line.indexOf("=");
-    if (eq < 0) throw new Error(`'${line}' is not KEY=value`);
+    if (eq < 0) throw new Error(t("modal.env_not_kv", { line }));
     const k = line.slice(0, eq).trim();
     const v = line.slice(eq + 1);
-    if (!k) throw new Error(`empty key in '${line}'`);
+    if (!k) throw new Error(t("modal.env_empty_key", { line }));
     out[k] = v;
   }
   return out;

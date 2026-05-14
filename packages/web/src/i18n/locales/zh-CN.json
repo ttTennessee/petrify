@@ -1,9 +1,235 @@
 {
-  "common": {},
-  "nav": {},
-  "adapters": {},
-  "workflow": {},
-  "projects": {},
-  "templates": {},
-  "errors": {}
+  "common": {
+    "loading": "加载中…",
+    "cancel": "取消",
+    "save": "保存",
+    "saving": "保存中…",
+    "delete": "删除",
+    "discard": "放弃",
+    "close": "关闭",
+    "name": "名称",
+    "description": "描述",
+    "status": "状态",
+    "actions": "操作",
+    "esc_to_discard": "Esc 放弃",
+    "switch_to_light": "切换到亮色模式",
+    "switch_to_dark": "切换到暗色模式",
+    "language": "语言"
+  },
+  "nav": {
+    "projects": "项目",
+    "templates": "模板",
+    "adapters": "适配器",
+    "back_to_projects": "← 项目",
+    "subtitle": "可验证 Agent 工作流运行时 · v0.1"
+  },
+  "adapters": {
+    "title": "Agent",
+    "title_accent": "运行器。",
+    "eyebrow": "适配器",
+    "subtitle": "配置工作流可用的 Agent 运行器。ACP 适配器通过子进程 stdio 使用 Zed Agent Client Protocol。",
+    "catalog_section": "§ 目录",
+    "instances_section": "§ 自定义与已注册实例",
+    "add_custom": "+ 添加自定义",
+    "table": {
+      "source": "来源",
+      "command": "命令",
+      "probed": "探测时间"
+    },
+    "empty_instances": "暂无实例",
+    "builtin": "内置",
+    "custom": "自定义",
+    "no_command": "—",
+    "probe": "探测",
+    "disable": "禁用",
+    "enable": "启用",
+    "read_only": "只读",
+    "delete_confirm": "删除适配器「{{name}}」？",
+    "modal": {
+      "spawn": "启动",
+      "connect_soon": "连接（即将推出）",
+      "coming_soon": "将在后续版本中推出",
+      "instance_name_label": "实例名称",
+      "instance_name_placeholder": "acp-claude",
+      "instance_name_hint": "[a-zA-Z0-9_.:-]+ — 用作节点配置中的适配器 key",
+      "command_label": "命令",
+      "command_placeholder": "claude-code-acp",
+      "args_label": "参数（空格分隔）",
+      "args_placeholder": "--flag value",
+      "env_label": "环境变量（每行 KEY=value）",
+      "env_placeholder": "ANTHROPIC_API_KEY=sk-...",
+      "cwd_label": "工作目录（可选）",
+      "cwd_placeholder": "/绝对路径 或留空使用服务器目录",
+      "working": "处理中…",
+      "no_connect_error": "连接模式尚未实现 — 请使用启动模式",
+      "name_required": "名称不能为空",
+      "command_required": "命令不能为空",
+      "env_parse_error": "env: ",
+      "env_not_kv": "'{{line}}' 不是 KEY=value 格式",
+      "env_empty_key": "'{{line}}' 中的 key 为空"
+    },
+    "probe_badge": {
+      "healthy": "正常",
+      "error": "错误",
+      "not_probed": "未探测",
+      "never": "从未",
+      "just_now": "刚刚",
+      "seconds_ago": "{{n}} 秒前",
+      "minutes_ago": "{{n}} 分钟前",
+      "hours_ago": "{{n}} 小时前"
+    }
+  },
+  "workflow": {
+    "not_found": "未找到工作流",
+    "save_as_template": "保存为模板",
+    "breadcrumb": "工作流",
+    "import": {
+      "title": "§ 导入蓝图",
+      "placeholder": "{\"nodes\":[...],\"edges\":[...]}",
+      "choose_file": "选择文件",
+      "submit": "导入并编译",
+      "submitting": "导入中…",
+      "invalid_json": "JSON 格式错误：",
+      "validation_failed": "schema 验证失败：\n"
+    },
+    "verify": {
+      "verify": "验证",
+      "verifying": "验证中…",
+      "dry_run": "演练",
+      "dry_running": "演练中…",
+      "risk": "风险：",
+      "markings": "标记",
+      "truncated": "（已截断）",
+      "nodes": "节点：",
+      "pools": "资源池：",
+      "estimated": "预计：",
+      "seconds": "秒",
+      "critical_path": "关键路径：",
+      "peaks": "峰值："
+    },
+    "run": {
+      "run": "运行",
+      "running": "运行中…",
+      "starting": "启动中…",
+      "resume": "恢复",
+      "resuming": "恢复中…",
+      "cancel": "取消",
+      "resume_hint": "从最新检查点恢复（已完成 {{count}} 个节点）",
+      "resume_hint_unknown": "恢复",
+      "resumed_from": "从 ",
+      "checkpoint_one": "个检查点",
+      "checkpoint_other": "个检查点"
+    },
+    "events": {
+      "title": "事件流",
+      "no_events": "暂无事件",
+      "global": "§ 全局",
+      "thinking": "思考中 · ",
+      "chars": " 字符",
+      "stop_reason": "停止原因：",
+      "attempt": "第 # 次",
+      "failed": "失败",
+      "checkpoint_prefix": "ckpt ",
+      "agent_text": "agent · 文本"
+    },
+    "node": {
+      "id_prefix": "id ",
+      "dependencies": "依赖（M1 中不可修改）",
+      "root": "（根节点）",
+      "title_required": "标题不能为空",
+      "changed_one": "已修改 {{count}} 个字段",
+      "changed_other": "已修改 {{count}} 个字段",
+      "no_changes": "无变更",
+      "fields": {
+        "adapter": "适配器",
+        "inputs": "输入",
+        "outputs": "输出",
+        "prompt": "提示词",
+        "runtime": "运行时",
+        "on_failure": "失败处理",
+        "resources": "资源",
+        "condition": "条件",
+        "loop": "循环",
+        "schema": "Schema"
+      },
+      "field_notes": {
+        "resources": "M1 仅声明",
+        "condition": "M3",
+        "loop": "M3"
+      }
+    },
+    "status": {
+      "idle": "·",
+      "pending": "等待",
+      "running": "运行中",
+      "completed": "完成",
+      "failed": "失败",
+      "blocked": "阻塞",
+      "skipped": "跳过",
+      "compensating": "补偿"
+    },
+    "canvas": {
+      "control_prereqs": "控制前置条件",
+      "resource_claim": "资源声明（M1：仅声明，不强制）"
+    }
+  },
+  "projects": {
+    "title": "工作流，",
+    "title_accent": "已验证。",
+    "subtitle": "导入、编译并运行可验证的 Agent 工作流。",
+    "empty": "暂无项目。",
+    "create_first": "创建第一个项目 →",
+    "section_eyebrow": "项目",
+    "from_template": "从模板创建…",
+    "workflows_section": "§ 工作流",
+    "workflow_not_found": "未找到工作流",
+    "new": {
+      "title": "定义目标。",
+      "subtitle": "描述您要构建的工作流，Petrify 将把它编译为可验证的图。",
+      "eyebrow": "新建项目",
+      "goal_label": "目标 *",
+      "goal_hint": "描述此工作流应实现的目标",
+      "description_label": "描述",
+      "description_hint": "蓝图编译器的可选上下文",
+      "submit": "创建项目",
+      "submitting": "创建中…"
+    }
+  },
+  "templates": {
+    "title": "可复用",
+    "title_accent": "蓝图。",
+    "eyebrow": "模板",
+    "import_json": "导入 JSON",
+    "export_json": "导出 JSON",
+    "filter_placeholder": "过滤模板…",
+    "empty": "暂无模板",
+    "select_to_inspect": "选择模板以查看详情。",
+    "delete_confirm": "删除此模板？",
+    "nodes_section": "§ 节点（{{count}}）",
+    "raw_json": "§ 原始图 JSON",
+    "prompt": {
+      "title": "§ 提示词模板",
+      "copy": "复制"
+    },
+    "from_template": {
+      "title": "从模板创建工作流",
+      "filter": "过滤模板…",
+      "empty": "暂无模板",
+      "creating": "创建中…",
+      "create": "创建工作流"
+    },
+    "save_as": {
+      "title": "保存为模板",
+      "name_label": "名称",
+      "name_placeholder": "例如：赛博朋克故事流水线",
+      "tags_label": "标签（逗号分隔）",
+      "tags_placeholder": "写作, 演示",
+      "saving": "保存中…",
+      "save": "保存"
+    }
+  },
+  "errors": {
+    "not_found": "未找到",
+    "loading": "加载中…"
+  }
 }
