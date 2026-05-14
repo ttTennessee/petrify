@@ -92,6 +92,19 @@
       "invalid_json": "invalid JSON: ",
       "validation_failed": "schema validation failed:\n"
     },
+    "generate": {
+      "title": "Generate workflow from description",
+      "description": "Petrify will ask the selected adapter to draft a workflow JSON from this project's goal and description, then validate and store it. If validation fails it will retry once.",
+      "adapter_label": "Adapter",
+      "pick_adapter": "Pick an enabled adapter…",
+      "loading_adapters": "Loading adapters…",
+      "no_adapters": "No enabled adapters. Register one first.",
+      "submit": "Generate",
+      "running": "Generating…",
+      "cancel": "Cancel",
+      "retry": "Retry",
+      "show_raw": "Show raw adapter output"
+    },
     "verify": {
       "verify": "Verify",
       "verifying": "Verifying…",
@@ -200,6 +213,9 @@
     "create_first": "Create your first project →",
     "section_eyebrow": "Projects",
     "from_template": "From Template…",
+    "generate": {
+      "button": "Generate from description"
+    },
     "workflows_section": "§ Workflows",
     "workflow_not_found": "workflow not found",
     "new": {

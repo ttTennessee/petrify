@@ -5,6 +5,7 @@ import { useProject, useProjectWorkflows } from "../api/client";
 import { ImportPanel } from "../components/ImportPanel";
 import { PromptTemplatePanel } from "../components/PromptTemplatePanel";
 import { FromTemplateDialog } from "../components/FromTemplateDialog";
+import { GenerateWorkflowDialog } from "../components/GenerateWorkflowDialog";
 import { Button } from "../components/ui/button";
 import { Section } from "../components/section";
 
@@ -25,6 +26,7 @@ export default function ProjectDetail() {
   const { data, isLoading } = useProject(projectId);
   const { data: workflows } = useProjectWorkflows(projectId);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showGenerate, setShowGenerate] = useState(false);
 
   if (isLoading || !projectId)
     return <p className="p-6 font-mono text-xs text-muted-foreground">{tc("loading")}</p>;
@@ -41,9 +43,14 @@ export default function ProjectDetail() {
           <span className="font-mono text-[11px] text-muted-foreground">{data.id}</span>
         }
         actions={
-          <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
-            {t("from_template")}
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setShowGenerate(true)}>
+              {t("generate.button")}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setShowTemplates(true)}>
+              {t("from_template")}
+            </Button>
+          </div>
         }
       />
 
@@ -53,6 +60,12 @@ export default function ProjectDetail() {
           onClose={() => setShowTemplates(false)}
         />
       )}
+
+      <GenerateWorkflowDialog
+        projectId={projectId}
+        open={showGenerate}
+        onClose={() => setShowGenerate(false)}
+      />
 
       {workflows && workflows.length > 0 && (
         <section className="space-y-3">
