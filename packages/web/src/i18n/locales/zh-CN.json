@@ -92,6 +92,19 @@
       "invalid_json": "JSON 格式错误：",
       "validation_failed": "schema 验证失败：\n"
     },
+    "generate": {
+      "title": "根据描述生成工作流",
+      "description": "Petrify 会让选定的 Adapter 基于项目目标和描述起草一份 workflow JSON，然后校验入库。校验失败会自动重试一次。",
+      "adapter_label": "Adapter",
+      "pick_adapter": "选择一个已启用的 Adapter…",
+      "loading_adapters": "加载 Adapter 列表…",
+      "no_adapters": "没有已启用的 Adapter，请先注册。",
+      "submit": "生成",
+      "running": "生成中…",
+      "cancel": "取消",
+      "retry": "重试",
+      "show_raw": "查看原始输出"
+    },
     "verify": {
       "verify": "验证",
       "verifying": "验证中…",
@@ -200,6 +213,9 @@
     "create_first": "创建第一个项目 →",
     "section_eyebrow": "项目",
     "from_template": "从模板创建…",
+    "generate": {
+      "button": "根据描述生成"
+    },
     "workflows_section": "§ 工作流",
     "workflow_not_found": "未找到工作流",
     "new": {
