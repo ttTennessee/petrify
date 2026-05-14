@@ -197,15 +197,26 @@ export class AcpAdapter implements AgentAdapter {
     return { transport, sessionId: session.sessionId, cancelled: false };
   }
 
+  private resolvedCwd(): string {
+    return this.cfg.defaultCwd ?? process.cwd();
+  }
+
   private async spawnAndInit(opts: {
     command: string;
     args?: string[];
     env?: Record<string, string>;
   }): Promise<AcpTransport> {
+    // Anchor the spawned agent process to the SAME cwd we advertise via
+    // session/new. Otherwise the agent sees a process cwd inherited from the
+    // server (often packages/server when started via the workspace dev script)
+    // while session.cwd points elsewhere — its file-write tools then resolve
+    // relative paths inconsistently across concurrent invocations.
+    const cwd = this.resolvedCwd();
     const transport = new AcpTransport({
       command: opts.command,
       args: opts.args,
       env: opts.env,
+      cwd,
     });
     // Surface ACP-server stderr to our server log — without this we're blind
     // when the agent rejects our handshake.
@@ -230,7 +241,7 @@ export class AcpAdapter implements AgentAdapter {
 
   private newSessionParams(): Record<string, unknown> {
     return {
-      cwd: this.cfg.defaultCwd ?? process.cwd(),
+      cwd: this.resolvedCwd(),
       mcpServers: [],
     };
   }
