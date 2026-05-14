@@ -125,20 +125,20 @@ export function NodeDetailPanel({
   }
 
   return (
-    <aside className="flex h-full flex-col border-l bg-card">
-      <header className="flex items-center justify-between border-b px-3 py-2">
+    <aside className="flex h-full flex-col border-l border-border bg-card">
+      <header className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="min-w-0 flex-1">
           <Input
             value={titleValue}
             onChange={(e) => setTitleValue(e.target.value)}
-            className="h-7 border-transparent bg-transparent px-1 text-sm font-semibold shadow-none focus-visible:border-input"
+            className="h-7 border-transparent bg-transparent px-1 text-sm font-semibold shadow-none focus-visible:border-b focus-visible:border-accent focus-visible:ring-0"
           />
-          <div className="px-1 text-[11px] text-muted-foreground">
-            <span className="font-mono">{node.ref}</span>
-            <span className="ml-2 opacity-70">id {node.id}</span>
+          <div className="px-1 font-mono text-[10px] text-muted-foreground">
+            <span>{node.ref}</span>
+            <span className="ml-2 opacity-60">id {node.id}</span>
           </div>
           {localErrors.title && (
-            <div className="px-1 text-[11px] text-destructive">
+            <div className="px-1 font-mono text-[10px] text-destructive">
               {localErrors.title}
             </div>
           )}
@@ -146,22 +146,26 @@ export function NodeDetailPanel({
         <Button
           variant="ghost"
           size="icon"
-          className="ml-2 h-7 w-7 shrink-0"
+          className="ml-2 h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
           onClick={onClose}
           aria-label="Close"
         >
-          ✕
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M1 1l10 10M11 1L1 11" />
+          </svg>
         </Button>
       </header>
 
-      <div className="flex-1 space-y-3 overflow-auto px-3 py-3">
+      <div className="flex-1 space-y-4 overflow-auto px-4 py-4">
         <ReadonlyField label="Dependencies (immutable in M1)">
           {node.dependencies.length === 0 ? (
-            <span className="text-muted-foreground">(root)</span>
+            <span className="font-mono text-[11px] text-muted-foreground">(root)</span>
           ) : (
-            <ul className="list-disc pl-4 text-xs">
+            <ul className="space-y-0.5">
               {node.dependencies.map((d) => (
-                <li key={d}>{d}</li>
+                <li key={d} className="font-mono text-[11px] text-foreground">
+                  {d}
+                </li>
               ))}
             </ul>
           )}
@@ -174,7 +178,7 @@ export function NodeDetailPanel({
           return (
             <div key={k}>
               {isAdapter && adapterChoices.length > 0 && (
-                <div className="mb-1 flex flex-wrap gap-1">
+                <div className="mb-1.5 flex flex-wrap gap-1">
                   {adapterChoices.map((name) => {
                     const active = (() => {
                       try {
@@ -194,10 +198,10 @@ export function NodeDetailPanel({
                           }))
                         }
                         className={cn(
-                          "rounded-md border px-1.5 py-0.5 font-mono text-[10px] transition-colors",
+                          "border px-2 py-0.5 font-mono text-[10px] transition-colors",
                           active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border text-muted-foreground hover:border-foreground/50 hover:text-foreground",
                         )}
                       >
                         {name}
@@ -221,20 +225,22 @@ export function NodeDetailPanel({
       </div>
 
       {(dirty || serverIssues) && (
-        <div className="border-t bg-muted/40 px-3 py-2">
+        <div className="border-t border-border bg-muted/40 px-4 py-2.5">
           {serverIssues && (
-            <ul className="mb-2 space-y-0.5 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+            <ul className="mb-2 space-y-0.5 border-l-2 border-destructive pl-3 py-1">
               {serverIssues.map((s, i) => (
-                <li key={i}>{s}</li>
+                <li key={i} className="font-mono text-[10px] text-destructive">
+                  {s}
+                </li>
               ))}
             </ul>
           )}
           <div className="flex items-center justify-between">
-            <div className="text-[11px] text-muted-foreground">
+            <span className="font-mono text-[10px] text-muted-foreground">
               {dirty
                 ? `${dirtyKeys.length} field${dirtyKeys.length > 1 ? "s" : ""} changed`
                 : "no changes"}
-            </div>
+            </span>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -268,10 +274,10 @@ function ReadonlyField({
 }) {
   return (
     <div>
-      <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </div>
-      <div className="text-xs">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -292,13 +298,11 @@ function JsonTextareaField({
   const lines = Math.min(Math.max(value.split("\n").length, 3), 14);
   return (
     <div>
-      <div className="mb-0.5 flex items-center justify-between">
-        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-          {note && (
-            <span className="ml-1 normal-case opacity-70">({note})</span>
-          )}
-        </div>
+      <div className="mb-1 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+        {note && (
+          <span className="ml-1.5 normal-case italic opacity-60">({note})</span>
+        )}
       </div>
       <Textarea
         value={value}
@@ -306,11 +310,13 @@ function JsonTextareaField({
         rows={lines}
         spellCheck={false}
         className={cn(
-          "bg-muted/40 font-mono text-[11px] focus-visible:bg-card",
+          "bg-muted/40 font-mono text-[11px] focus-visible:bg-card resize-none border-border",
           error && "border-destructive focus-visible:ring-destructive",
         )}
       />
-      {error && <div className="text-[11px] text-destructive">{error}</div>}
+      {error && (
+        <div className="mt-0.5 font-mono text-[10px] text-destructive">{error}</div>
+      )}
     </div>
   );
 }

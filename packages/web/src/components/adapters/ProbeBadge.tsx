@@ -1,23 +1,27 @@
 import type { AdapterInstance } from "../../api/adapters";
+import { Badge } from "../ui/badge";
+
+type BadgeVariant = "success" | "destructive" | "outline";
+
+function statusVariant(status: AdapterInstance["status"]): BadgeVariant {
+  switch (status) {
+    case "ok": return "success";
+    case "error": return "destructive";
+    default: return "outline";
+  }
+}
+
+const statusLabel: Record<AdapterInstance["status"], string> = {
+  ok: "healthy",
+  error: "error",
+  unknown: "not probed",
+};
 
 export function ProbeBadge({ status, detail }: { status: AdapterInstance["status"]; detail?: string | null }) {
-  const map: Record<AdapterInstance["status"], string> = {
-    ok: "bg-emerald-100 text-emerald-800 border-emerald-200",
-    error: "bg-rose-100 text-rose-800 border-rose-200",
-    unknown: "bg-slate-100 text-slate-600 border-slate-200",
-  };
-  const label: Record<AdapterInstance["status"], string> = {
-    ok: "healthy",
-    error: "error",
-    unknown: "not probed",
-  };
   return (
-    <span
-      className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-medium ${map[status]}`}
-      title={detail ?? undefined}
-    >
-      {label[status]}
-    </span>
+    <Badge variant={statusVariant(status)} dot title={detail ?? undefined}>
+      {statusLabel[status]}
+    </Badge>
   );
 }
 

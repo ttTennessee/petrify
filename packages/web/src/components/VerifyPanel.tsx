@@ -3,19 +3,36 @@ import type { DryRunReport, VerificationReport } from "@petrify/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRunVerify, useRunDryRun, useVerifyWorkflow } from "../api/client";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 
-const STATUS_STYLE: Record<string, string> = {
-  pass: "bg-emerald-100 text-emerald-800",
-  warn: "bg-amber-100 text-amber-800",
-  fail: "bg-rose-100 text-rose-800",
-};
+type BadgeVariant = "success" | "warning" | "destructive" | "outline";
 
-const RISK_STYLE: Record<string, string> = {
-  low: "text-emerald-700",
-  medium: "text-amber-700",
-  high: "text-orange-700",
-  blocking: "text-rose-700",
-};
+function statusVariant(status: string): BadgeVariant {
+  switch (status) {
+    case "pass": return "success";
+    case "warn": return "warning";
+    case "fail": return "destructive";
+    default: return "outline";
+  }
+}
+
+function riskVariant(risk: string): BadgeVariant {
+  switch (risk) {
+    case "low": return "success";
+    case "medium": return "warning";
+    case "high": return "destructive";
+    case "blocking": return "destructive";
+    default: return "outline";
+  }
+}
+
+function issueAccent(level: string) {
+  switch (level) {
+    case "error": return "border-l-destructive";
+    case "warning": return "border-l-warning";
+    default: return "border-l-muted-foreground/40";
+  }
+}
 
 export function VerifyPanel({ workflowId }: { workflowId: string }) {
   const qc = useQueryClient();
@@ -27,7 +44,7 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
   const report: VerificationReport | null = verifyMu.data ?? lastReport ?? null;
 
   return (
-    <section className="border-b bg-muted/40 px-4 py-2">
+    <section className="border-b border-border bg-muted/30 px-6 py-3">
       <div className="flex flex-wrap items-center gap-3">
         <Button
           size="sm"
@@ -49,15 +66,13 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
         </Button>
         {report && (
           <>
-            <span
-              className={`rounded px-2 py-0.5 text-[11px] font-semibold uppercase ${STATUS_STYLE[report.status] ?? ""}`}
-            >
+            <Badge variant={statusVariant(report.status)} dot>
               {report.status}
-            </span>
-            <span className={`text-[11px] ${RISK_STYLE[report.risk] ?? ""}`}>
+            </Badge>
+            <Badge variant={riskVariant(report.risk)}>
               risk: {report.risk}
-            </span>
-            <span className="text-[11px] text-muted-foreground">
+            </Badge>
+            <span className="font-mono text-[10px] text-muted-foreground">
               {report.stats.place_count}P / {report.stats.transition_count}T ·{" "}
               {report.stats.explored_markings} markings
               {report.stats.truncated ? " (truncated)" : ""}
@@ -67,26 +82,23 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
       </div>
 
       {report && report.issues.length > 0 && (
-        <ul className="mt-2 space-y-1 text-xs">
+        <ul className="mt-2 space-y-1">
           {report.issues.map((i, idx) => (
             <li
               key={idx}
-              className={`rounded border px-2 py-1 ${
-                i.level === "error"
-                  ? "border-rose-300 bg-rose-50 text-rose-800"
-                  : i.level === "warning"
-                    ? "border-amber-300 bg-amber-50 text-amber-800"
-                    : "border-input bg-card text-foreground"
-              }`}
+              className={`border-l-2 pl-3 py-1 text-xs ${issueAccent(i.level)}`}
             >
-              <div className="font-medium">[{i.code}] {i.message}</div>
+              <div className="font-mono font-medium text-[11px]">
+                [{i.code}]{" "}
+                <span className="font-sans font-normal">{i.message}</span>
+              </div>
               {i.affected_node_refs && i.affected_node_refs.length > 0 && (
-                <div className="mt-0.5 text-[10px] text-muted-foreground">
+                <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
                   nodes: {i.affected_node_refs.join(", ")}
                 </div>
               )}
               {i.affected_pools && i.affected_pools.length > 0 && (
-                <div className="mt-0.5 text-[10px] text-muted-foreground">
+                <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
                   pools: {i.affected_pools.join(", ")}
                 </div>
               )}
@@ -96,28 +108,31 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
       )}
 
       {dry && (
-        <div className="mt-2 rounded-md border border-input bg-card px-2 py-1 text-xs text-foreground">
-          <div>
+        <div className="mt-2 border-t border-border pt-2 font-mono text-[11px] text-foreground/80">
+          <span>
             estimated:{" "}
-            <span className="font-mono">
+            <span className="text-foreground">
               {(dry.estimated_duration_ms / 1000).toFixed(1)}s
-            </span>{" "}
-            · critical path:{" "}
-            <span className="font-mono">{dry.critical_path.join(" → ")}</span>
-          </div>
+            </span>
+          </span>
+          <span className="mx-3 text-muted-foreground/40">·</span>
+          <span>
+            critical path:{" "}
+            <span className="text-foreground">{dry.critical_path.join(" → ")}</span>
+          </span>
           {Object.keys(dry.resource_peaks).length > 0 && (
-            <div>
-              resource peaks:{" "}
+            <div className="mt-1 text-muted-foreground">
+              peaks:{" "}
               {Object.entries(dry.resource_peaks)
                 .map(([k, v]) => `${k}=${v}`)
                 .join(", ")}
             </div>
           )}
           {dry.failure_hotspots.length > 0 && (
-            <ul className="mt-1 list-disc pl-4">
+            <ul className="mt-1 space-y-0.5">
               {dry.failure_hotspots.map((h, i) => (
-                <li key={i}>
-                  <span className="font-mono">{h.node_ref}</span>: {h.rationale}
+                <li key={i} className="text-muted-foreground">
+                  <span className="text-foreground">{h.node_ref}</span>: {h.rationale}
                 </li>
               ))}
             </ul>

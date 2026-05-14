@@ -10,6 +10,7 @@ import ProjectDetail from "./routes/ProjectDetail";
 import WorkflowEditor from "./routes/WorkflowEditor";
 import Templates from "./routes/Templates";
 import Adapters from "./routes/Adapters";
+import { ThemeProvider } from "./components/theme-provider";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -31,8 +32,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 );

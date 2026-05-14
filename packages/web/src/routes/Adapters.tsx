@@ -15,6 +15,7 @@ import {
 import { ProbeBadge, relTime } from "../components/adapters/ProbeBadge";
 import { InstanceModal } from "../components/adapters/InstanceModal";
 import { Button } from "../components/ui/button";
+import { Section } from "../components/section";
 import { cn } from "../lib/utils";
 
 export default function Adapters() {
@@ -78,45 +79,51 @@ export default function Adapters() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
-      <header>
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">Adapters</h1>
+    <div className="mx-auto max-w-5xl overflow-y-auto h-full px-8 py-10 space-y-10">
+      <Section
+        number="03"
+        eyebrow="Adapters"
+        title={
+          <>
+            Agent{" "}
+            <span className="italic text-accent">runners.</span>
+          </>
+        }
+        subtitle="Configure which agent runners are available to your workflows. ACP adapters speak the Zed Agent Client Protocol over child-process stdio."
+        actions={
           <Link
             to="/"
-            className="text-xs text-muted-foreground hover:underline"
+            className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground hover:text-foreground"
           >
-            ← back to projects
+            ← Projects
           </Link>
-        </div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Configure which agent runners are available to your workflows. ACP
-          adapters speak the Zed Agent Client Protocol over child-process stdio.
-        </p>
-      </header>
+        }
+      />
 
-      <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Catalog
+      <section className="space-y-4">
+        <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          § Catalog
         </h2>
-        {catLoading && <p className="text-sm text-muted-foreground">loading…</p>}
+        {catLoading && (
+          <p className="font-mono text-xs text-muted-foreground">loading…</p>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {(catalog ?? []).map((entry) => {
             const inst = byCatalog.get(entry.id);
             return (
               <article
                 key={entry.id}
-                className="flex flex-col gap-2 rounded-md border bg-card p-4"
+                className="flex flex-col gap-3 border border-border bg-card p-5 transition-colors hover:border-accent/60"
               >
                 <div className="flex items-start justify-between">
                   <div className="min-w-0">
-                    <h3 className="text-sm font-semibold">{entry.label}</h3>
-                    <p className="text-xs text-muted-foreground">
+                    <h3 className="font-display text-base">{entry.label}</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       {entry.description}
                     </p>
                     {entry.defaultCommand && (
-                      <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                        ${entry.defaultCommand}
+                      <p className="mt-1.5 font-mono text-[10px] text-muted-foreground">
+                        $ {entry.defaultCommand}
                         {entry.defaultArgs?.length
                           ? " " + entry.defaultArgs.join(" ")
                           : ""}
@@ -133,16 +140,16 @@ export default function Adapters() {
                   />
                 </div>
                 {inst && (
-                  <div className="flex items-center gap-2 border-t pt-2 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-2 border-t border-border pt-2.5 font-mono text-[11px] text-muted-foreground">
                     <ProbeBadge status={inst.status} detail={inst.status_detail} />
-                    <span className="font-mono">{inst.name}</span>
+                    <span>{inst.name}</span>
                     <span className="ml-auto opacity-70">
                       probed {relTime(inst.last_probed_at)}
                     </span>
                   </div>
                 )}
                 {inst?.status === "error" && inst.status_detail && (
-                  <pre className="max-h-24 overflow-auto rounded bg-rose-50 px-2 py-1 text-[10px] text-rose-700">
+                  <pre className="max-h-24 overflow-auto border border-destructive/40 bg-destructive/10 px-3 py-2 font-mono text-[10px] text-destructive">
                     {inst.status_detail}
                   </pre>
                 )}
@@ -152,56 +159,73 @@ export default function Adapters() {
         </div>
       </section>
 
-      <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Custom & registered instances
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            § Custom & registered instances
           </h2>
           <Button size="sm" onClick={() => setModal({ mode: "create-custom" })}>
             + Add custom
           </Button>
         </div>
-        {instLoading && <p className="text-sm text-muted-foreground">loading…</p>}
-        <table className="w-full overflow-hidden rounded-md border bg-card text-xs">
-          <thead className="bg-muted/40 text-muted-foreground">
+        {instLoading && (
+          <p className="font-mono text-xs text-muted-foreground">loading…</p>
+        )}
+        <table className="w-full border-y border-border text-xs">
+          <thead className="border-b border-border bg-muted/30">
             <tr>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Source</th>
-              <th className="px-3 py-2 text-left">Command</th>
-              <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-left">Probed</th>
-              <th className="px-3 py-2 text-right">Actions</th>
+              <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Name
+              </th>
+              <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Source
+              </th>
+              <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Command
+              </th>
+              <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Status
+              </th>
+              <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Probed
+              </th>
+              <th className="px-4 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {(instances ?? []).length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">
+                <td
+                  colSpan={6}
+                  className="px-4 py-6 text-center font-mono text-xs text-muted-foreground"
+                >
                   no instances yet
                 </td>
               </tr>
             )}
             {(instances ?? []).map((inst) => (
-              <tr key={inst.name} className="border-t">
-                <td className="px-3 py-2 font-mono">{inst.name}</td>
-                <td className="px-3 py-2 text-muted-foreground">
+              <tr key={inst.name} className="border-b border-border last:border-b-0 hover:bg-muted/40">
+                <td className="px-4 py-3 font-mono text-xs">{inst.name}</td>
+                <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                   {inst.read_only
                     ? inst.status_detail ?? "builtin"
                     : inst.catalog_id ?? "custom"}
                 </td>
-                <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
+                <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">
                   {inst.command
                     ? `${inst.command} ${(inst.args ?? []).join(" ")}`
                     : "—"}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-4 py-3">
                   <ProbeBadge status={inst.status} detail={inst.status_detail} />
                 </td>
-                <td className="px-3 py-2 text-muted-foreground">
+                <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                   {relTime(inst.last_probed_at)}
                 </td>
-                <td className="px-3 py-2">
-                  <div className="flex justify-end gap-1">
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-1.5">
                     {!inst.read_only && (
                       <>
                         <Button
@@ -225,7 +249,7 @@ export default function Adapters() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-6 border-rose-300 px-2 text-[11px] text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                          className="h-6 border-destructive/40 px-2 text-[11px] text-destructive hover:bg-destructive/10"
                           disabled={acting(inst.name)}
                           onClick={() => {
                             if (confirm(`Delete adapter '${inst.name}'?`))
@@ -237,7 +261,7 @@ export default function Adapters() {
                       </>
                     )}
                     {inst.read_only && (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="font-mono text-[10px] text-muted-foreground">
                         read-only
                       </span>
                     )}
@@ -290,7 +314,7 @@ function Toggle({
       aria-checked={checked}
       className={cn(
         "relative h-5 w-9 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        checked ? "bg-emerald-500" : "bg-muted-foreground/30",
+        checked ? "bg-success" : "bg-muted-foreground/30",
         disabled && "opacity-50",
       )}
     >

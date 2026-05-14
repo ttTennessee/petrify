@@ -29,7 +29,7 @@ export function LanguageSwitcher() {
       }}
     >
       <SelectTrigger
-        className="h-8 w-auto gap-2 px-2.5 text-xs"
+        className="h-7 w-auto gap-1.5 border-0 bg-transparent px-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground shadow-none hover:text-foreground focus:ring-0"
         aria-label="Language"
       >
         <SelectValue />

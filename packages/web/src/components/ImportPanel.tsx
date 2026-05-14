@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowGraphSchema } from "@petrify/shared";
 import { useImportWorkflow } from "../api/client";
@@ -10,6 +10,7 @@ export function ImportPanel({ projectId }: { projectId: string }) {
   const importWf = useImportWorkflow(projectId);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   async function onSubmit() {
     setError(null);
@@ -43,28 +44,41 @@ export function ImportPanel({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section className="rounded-md border bg-card p-4">
-      <h2 className="mb-2 font-medium">Import Blueprint</h2>
+    <section className="border-l-2 border-accent pl-5 py-3 space-y-3">
+      <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        § Import Blueprint
+      </h2>
       <Textarea
         rows={10}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder='{"nodes":[...],"edges":[...]}'
-        className="font-mono text-xs"
+        className="font-mono text-[11px] bg-card border-border focus-visible:ring-ring resize-none"
       />
-      <div className="mt-2 flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <input
+          ref={fileRef}
           type="file"
           accept="application/json"
-          onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-          className="text-xs file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onFile(f);
+          }}
         />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => fileRef.current?.click()}
+        >
+          Choose File
+        </Button>
         <Button size="sm" onClick={onSubmit} disabled={importWf.isPending}>
           {importWf.isPending ? "Importing…" : "Import & Compile"}
         </Button>
       </div>
       {error && (
-        <pre className="mt-2 whitespace-pre-wrap text-xs text-destructive">
+        <pre className="whitespace-pre-wrap font-mono text-[10px] text-destructive">
           {error}
         </pre>
       )}

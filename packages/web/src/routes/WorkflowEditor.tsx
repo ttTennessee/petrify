@@ -17,6 +17,7 @@ import { NodeDetailPanel } from "../components/NodeDetailPanel";
 import { VerifyPanel, deriveIssueByNodeRef } from "../components/VerifyPanel";
 import { SaveAsTemplateDialog } from "../components/SaveAsTemplateDialog";
 import { Button } from "../components/ui/button";
+import { Separator } from "../components/ui/separator";
 
 export default function WorkflowEditor() {
   const { workflowId } = useParams();
@@ -68,42 +69,49 @@ export default function WorkflowEditor() {
   const issueByRef = useMemo(() => deriveIssueByNodeRef(verifyReport), [verifyReport]);
 
   if (isLoading || !workflowId)
-    return <p className="p-6 text-sm text-muted-foreground">loading…</p>;
+    return <p className="p-6 font-mono text-xs text-muted-foreground">loading…</p>;
   if (!data)
-    return <p className="p-6 text-sm text-destructive">workflow not found</p>;
+    return <p className="p-6 font-mono text-xs text-destructive">workflow not found</p>;
 
-  const rightCol = selected ? "360px" : "320px";
+  const rightCol = selected ? "380px" : "320px";
 
   return (
     <div
       className="grid h-full grid-rows-[auto_auto_auto_minmax(0,1fr)]"
       style={{ gridTemplateColumns: `1fr ${rightCol}` }}
     >
-      <div className="col-span-2 flex items-center justify-between border-b bg-card px-4 py-1.5">
-        <span className="text-xs text-muted-foreground">
-          workflow <span className="font-mono">{workflowId}</span>
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowSaveTemplate(true)}
-        >
-          Save as Template
-        </Button>
+      <div className="col-span-2 flex h-11 items-center justify-between border-b border-border bg-card/40 px-6">
+        <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+          <span>workflow</span>
+          <span className="text-muted-foreground/40">›</span>
+          <span className="text-foreground">{workflowId}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Separator orientation="vertical" className="h-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSaveTemplate(true)}
+          >
+            Save as Template
+          </Button>
+        </div>
       </div>
+
       {showSaveTemplate && (
         <SaveAsTemplateDialog
           workflowId={workflowId}
           onClose={() => setShowSaveTemplate(false)}
         />
       )}
+
       <div className="col-span-2">
         <VerifyPanel workflowId={workflowId} />
       </div>
       <div className="col-span-2">
         <RunPanel workflowId={workflowId} />
       </div>
-      <div className="min-h-0 min-w-0">
+      <div className="min-h-0 min-w-0 border-r border-border">
         <DagCanvas
           graph={data.graph}
           nodeStatus={nodeStatus}

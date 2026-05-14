@@ -1,26 +1,63 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { ThemeToggle } from "./components/theme-toggle";
+import { Separator } from "./components/ui/separator";
+import { cn } from "./lib/utils";
+
+function NavItem({
+  to,
+  idx,
+  end,
+  children,
+}: {
+  to: string;
+  idx: string;
+  end?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          "relative pb-1 transition-colors",
+          isActive
+            ? "text-accent after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-accent"
+            : "text-muted-foreground hover:text-foreground",
+        )
+      }
+    >
+      <span className="mr-1.5 opacity-40">{idx} ─</span>
+      {children}
+    </NavLink>
+  );
+}
 
 export default function App() {
   return (
     <div className="flex h-screen flex-col">
-      <header className="border-b bg-white px-6 py-3 shadow-sm flex items-baseline gap-4">
-        <Link to="/" className="text-lg font-semibold tracking-tight">
-          Petrify
+      <header className="flex h-20 shrink-0 items-end justify-between border-b border-border bg-background/85 px-8 pb-3 backdrop-blur-sm">
+        <Link to="/" className="leading-none">
+          <div className="font-display text-2xl tracking-tight">
+            Petrify<span className="text-accent">.</span>
+          </div>
+          <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+            Verifiable Agent Workflow Runtime · v0.1
+          </div>
         </Link>
-        <span className="text-xs text-slate-500">
-          Verifiable Agent Workflow Runtime
-        </span>
-        <nav className="ml-auto flex gap-4 text-sm">
-          <Link to="/" className="text-slate-700 hover:text-slate-900">
+        <nav className="flex items-center gap-5 font-mono text-[11px] uppercase tracking-wider">
+          <NavItem to="/" idx="01" end>
             Projects
-          </Link>
-          <Link to="/templates" className="text-slate-700 hover:text-slate-900">
+          </NavItem>
+          <NavItem to="/templates" idx="02">
             Templates
-          </Link>
-          <Link to="/adapters" className="text-slate-700 hover:text-slate-900">
+          </NavItem>
+          <NavItem to="/adapters" idx="03">
             Adapters
-          </Link>
+          </NavItem>
+          <Separator orientation="vertical" className="h-4 mx-1" />
+          <ThemeToggle />
           <LanguageSwitcher />
         </nav>
       </header>

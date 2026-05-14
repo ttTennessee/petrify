@@ -2,14 +2,14 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { NodeStatus, WorkflowNode } from "@petrify/shared";
 
 const STATUS_STYLES: Record<NodeStatus, string> = {
-  idle: "border-slate-300 bg-white",
-  pending: "border-amber-400 bg-amber-50",
-  running: "border-sky-500 bg-sky-50 animate-pulse",
-  completed: "border-emerald-500 bg-emerald-50",
-  failed: "border-rose-500 bg-rose-50",
-  blocked: "border-slate-500 bg-slate-100",
-  skipped: "border-slate-400 bg-slate-50 opacity-60",
-  compensating: "border-violet-500 bg-violet-50",
+  idle: "border-border bg-card",
+  pending: "border-warning/60 bg-warning/10 animate-pulse",
+  running: "border-accent/70 bg-accent/10 animate-pulse",
+  completed: "border-success/60 bg-success/10",
+  failed: "border-destructive/60 bg-destructive/10",
+  blocked: "border-muted-foreground/40 bg-muted",
+  skipped: "border-border bg-muted opacity-60",
+  compensating: "border-warning bg-warning/10",
 };
 
 const STATUS_LABEL: Record<NodeStatus, string> = {
@@ -36,29 +36,29 @@ export function NodeCard({ data }: NodeProps) {
   const depCount = (node.dependencies ?? []).length;
   const issueRing =
     issue === "error"
-      ? "ring-2 ring-rose-500"
+      ? "ring-2 ring-destructive"
       : issue === "warning"
-        ? "ring-2 ring-amber-500"
+        ? "ring-2 ring-warning"
         : "";
   return (
     <div
-      className={`min-w-[200px] max-w-[220px] rounded-md border-2 px-3 py-2 text-sm shadow-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-sky-400 ring-offset-1" : ""} ${issueRing}`}
+      className={`min-w-[200px] max-w-[220px] border-2 px-3 py-2 text-sm transition ${STATUS_STYLES[status]} ${selected ? "ring-2 ring-accent ring-offset-1" : ""} ${issueRing}`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="font-medium leading-tight">{node.title}</div>
-      <div className="mt-0.5 text-[10px] text-slate-400">{node.ref}</div>
-      <div className="mt-1 flex items-center justify-between text-[10px] text-slate-500">
+      <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{node.ref}</div>
+      <div className="mt-1 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
         <span>{node.adapter.name}</span>
         <span>{STATUS_LABEL[status]}</span>
       </div>
-      <div className="mt-1 flex items-center gap-1 text-[10px] text-slate-400">
+      <div className="mt-1 flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
         <span title="control prerequisites">⇡ {depCount}</span>
         {hasResources && (
           <span className="flex flex-wrap gap-1">
             {node.resources.map((r) => (
               <span
                 key={r.name}
-                className="rounded bg-slate-200 px-1 text-[10px] text-slate-700"
+                className="border border-border bg-muted px-1 text-[10px]"
                 title="resource claim (M1: declared, not enforced)"
               >
                 {r.name}:{r.amount}
