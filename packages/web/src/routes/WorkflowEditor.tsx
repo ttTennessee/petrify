@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 import type { NodeStatus, WorkflowNode } from "@petrify/shared";
 import {
   useWorkflow,
@@ -69,6 +70,26 @@ export default function WorkflowEditor() {
   useEffect(() => {
     if (history) replayEvents(history, seedStatus);
   }, [history, seedStatus, replayEvents]);
+
+  // When a run transitions out of "running", force one more event fetch.
+  // The WebSocket should already have streamed every event in real time, but
+  // this guards against transient drops or events emitted in the same tick as
+  // the status update being missed by the live subscription. Without this,
+  // the user would see a stale event list / wrong node statuses until they
+  // manually refresh.
+  const qc = useQueryClient();
+  const lastSettledRunId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentRunId || !runMeta) return;
+    if (runMeta.status === "running") {
+      lastSettledRunId.current = null;
+      return;
+    }
+    if (lastSettledRunId.current === currentRunId) return;
+    lastSettledRunId.current = currentRunId;
+    qc.invalidateQueries({ queryKey: ["run-events", currentRunId] });
+    qc.invalidateQueries({ queryKey: ["checkpoints", currentRunId] });
+  }, [currentRunId, runMeta?.status, qc]);
 
   const { data: verifyReport } = useVerifyWorkflow(workflowId);
   const issueByRef = useMemo(() => deriveIssueByNodeRef(verifyReport), [verifyReport]);

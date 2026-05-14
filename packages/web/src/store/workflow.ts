@@ -120,21 +120,45 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => {
       set((s) => {
         pending = [];
         const seed = seedStatus ?? {};
-        if (s.scrubMode === "paused" && s.scrubCursor < events.length) {
-          const slice = events.slice(0, s.scrubCursor);
+        // Merge HTTP seed with WS-ingested state, deduping by event_id and
+        // re-sorting by timestamp. Without this, a re-fire of the seeding
+        // effect (e.g. seedStatus reference changes when a late checkpoint
+        // poll lands) would clobber trailing events that already arrived
+        // via WebSocket but aren't yet in the HTTP fetch.
+        const seen = new Set<string>();
+        const merged: RuntimeEvent[] = [];
+        for (const ev of events) {
+          if (seen.has(ev.event_id)) continue;
+          seen.add(ev.event_id);
+          merged.push(ev);
+        }
+        for (const ev of s.allEvents) {
+          if (seen.has(ev.event_id)) continue;
+          seen.add(ev.event_id);
+          merged.push(ev);
+        }
+        merged.sort((a, b) =>
+          a.timestamp !== b.timestamp
+            ? a.timestamp - b.timestamp
+            : a.event_id < b.event_id
+              ? -1
+              : 1,
+        );
+        if (s.scrubMode === "paused" && s.scrubCursor < merged.length) {
+          const slice = merged.slice(0, s.scrubCursor);
           return {
-            allEvents: events,
+            allEvents: merged,
             events: slice,
             seedStatus: seed,
             nodeStatus: computeStatusFromEvents(slice, seed),
           };
         }
         return {
-          allEvents: events,
-          events,
+          allEvents: merged,
+          events: merged,
           seedStatus: seed,
-          nodeStatus: computeStatusFromEvents(events, seed),
-          scrubCursor: events.length,
+          nodeStatus: computeStatusFromEvents(merged, seed),
+          scrubCursor: merged.length,
         };
       }),
     setScrubCursor: (cursor) =>
