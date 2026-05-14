@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { WorkflowNode } from "@petrify/shared";
 import { usePatchNode, ApiError } from "../api/client";
 import { useAdapters } from "../api/adapters";
-
-// M1 editor: title gets a real <input>, every other editable field is a JSON
-// textarea. Forbidden fields (id/ref/dependencies/status) stay read-only.
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { cn } from "../lib/utils";
 
 interface JsonField {
   key: keyof WorkflowNode;
@@ -98,8 +99,6 @@ export function NodeDetailPanel({
       if (!dirtyKeys.includes(k)) continue;
       const raw = jsonValues[k] ?? "";
       if (raw.trim() === "") {
-        // Empty textarea — interpret as "clear to null" for nullable fields,
-        // skip otherwise. Schema-wise condition/loop/prompt/schema accept null.
         body[k] = null;
         continue;
       }
@@ -126,34 +125,39 @@ export function NodeDetailPanel({
   }
 
   return (
-    <aside className="flex h-full flex-col border-l bg-white">
+    <aside className="flex h-full flex-col border-l bg-card">
       <header className="flex items-center justify-between border-b px-3 py-2">
-        <div className="min-w-0">
-          <input
+        <div className="min-w-0 flex-1">
+          <Input
             value={titleValue}
             onChange={(e) => setTitleValue(e.target.value)}
-            className="w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold outline-none focus:border-slate-300"
+            className="h-7 border-transparent bg-transparent px-1 text-sm font-semibold shadow-none focus-visible:border-input"
           />
-          <div className="px-1 text-[11px] text-slate-500">
+          <div className="px-1 text-[11px] text-muted-foreground">
             <span className="font-mono">{node.ref}</span>
-            <span className="ml-2 text-slate-400">id {node.id}</span>
+            <span className="ml-2 opacity-70">id {node.id}</span>
           </div>
           {localErrors.title && (
-            <div className="px-1 text-[11px] text-rose-600">{localErrors.title}</div>
+            <div className="px-1 text-[11px] text-destructive">
+              {localErrors.title}
+            </div>
           )}
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
+          className="ml-2 h-7 w-7 shrink-0"
           onClick={onClose}
-          className="ml-2 shrink-0 rounded px-2 py-1 text-xs text-slate-500 hover:bg-slate-100"
+          aria-label="Close"
         >
           ✕
-        </button>
+        </Button>
       </header>
 
       <div className="flex-1 space-y-3 overflow-auto px-3 py-3">
         <ReadonlyField label="Dependencies (immutable in M1)">
           {node.dependencies.length === 0 ? (
-            <span className="text-slate-400">(root)</span>
+            <span className="text-muted-foreground">(root)</span>
           ) : (
             <ul className="list-disc pl-4 text-xs">
               {node.dependencies.map((d) => (
@@ -189,11 +193,12 @@ export function NodeDetailPanel({
                             adapter: JSON.stringify({ name }, null, 2),
                           }))
                         }
-                        className={`rounded border px-1.5 py-0.5 font-mono text-[10px] ${
+                        className={cn(
+                          "rounded-md border px-1.5 py-0.5 font-mono text-[10px] transition-colors",
                           active
-                            ? "border-slate-900 bg-slate-900 text-white"
-                            : "border-slate-200 text-slate-600 hover:bg-slate-100"
-                        }`}
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        )}
                       >
                         {name}
                       </button>
@@ -216,35 +221,36 @@ export function NodeDetailPanel({
       </div>
 
       {(dirty || serverIssues) && (
-        <div className="border-t bg-slate-50 px-3 py-2">
+        <div className="border-t bg-muted/40 px-3 py-2">
           {serverIssues && (
-            <ul className="mb-2 space-y-0.5 rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[11px] text-rose-700">
+            <ul className="mb-2 space-y-0.5 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
               {serverIssues.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
           )}
           <div className="flex items-center justify-between">
-            <div className="text-[11px] text-slate-500">
+            <div className="text-[11px] text-muted-foreground">
               {dirty
                 ? `${dirtyKeys.length} field${dirtyKeys.length > 1 ? "s" : ""} changed`
                 : "no changes"}
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={discard}
                 disabled={!dirty || patch.isPending}
-                className="rounded border px-2.5 py-1 text-xs hover:bg-white disabled:opacity-50"
               >
                 Discard
-              </button>
-              <button
+              </Button>
+              <Button
+                size="sm"
                 onClick={save}
                 disabled={!dirty || patch.isPending}
-                className="rounded bg-slate-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
               >
                 {patch.isPending ? "Saving…" : "Save"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -262,7 +268,7 @@ function ReadonlyField({
 }) {
   return (
     <div>
-      <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+      <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
       <div className="text-xs">{children}</div>
@@ -287,21 +293,24 @@ function JsonTextareaField({
   return (
     <div>
       <div className="mb-0.5 flex items-center justify-between">
-        <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+        <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
-          {note && <span className="ml-1 text-slate-400 normal-case">({note})</span>}
+          {note && (
+            <span className="ml-1 normal-case opacity-70">({note})</span>
+          )}
         </div>
       </div>
-      <textarea
+      <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={lines}
         spellCheck={false}
-        className={`w-full rounded border bg-slate-50 p-2 font-mono text-[11px] outline-none focus:bg-white ${
-          error ? "border-rose-300" : "border-slate-200 focus:border-slate-400"
-        }`}
+        className={cn(
+          "bg-muted/40 font-mono text-[11px] focus-visible:bg-card",
+          error && "border-destructive focus-visible:ring-destructive",
+        )}
       />
-      {error && <div className="text-[11px] text-rose-600">{error}</div>}
+      {error && <div className="text-[11px] text-destructive">{error}</div>}
     </div>
   );
 }

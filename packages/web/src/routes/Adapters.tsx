@@ -14,6 +14,8 @@ import {
 } from "../api/adapters";
 import { ProbeBadge, relTime } from "../components/adapters/ProbeBadge";
 import { InstanceModal } from "../components/adapters/InstanceModal";
+import { Button } from "../components/ui/button";
+import { cn } from "../lib/utils";
 
 export default function Adapters() {
   const { data: catalog, isLoading: catLoading } = useAdapterCatalog();
@@ -38,11 +40,6 @@ export default function Adapters() {
     return map;
   }, [instances]);
 
-  const customInstances = useMemo(
-    () => (instances ?? []).filter((i) => !i.catalog_id),
-    [instances],
-  );
-
   const acting = (name: string) =>
     (enable.isPending && enable.variables === name) ||
     (disable.isPending && disable.variables === name) ||
@@ -59,13 +56,11 @@ export default function Adapters() {
   }
 
   async function onCatalogEnable(entry: CatalogEntry) {
-    // If we already have an instance for this catalog id, just enable it.
     const existing = byCatalog.get(entry.id);
     if (existing) {
       try {
         await enable.mutateAsync(existing.name);
       } catch {
-        /* fall through to modal so user can fix */
         setModal({ mode: "create-from-catalog", entry });
       }
       return;
@@ -75,11 +70,10 @@ export default function Adapters() {
 
   async function onCreateSubmit(input: AdapterInput) {
     await create.mutateAsync(input);
-    // Best-effort: also enable so the toggle settles to "on" in one step.
     try {
       await enable.mutateAsync(input.name);
     } catch {
-      /* leave disabled if probe failed; UI will surface status */
+      /* leave disabled if probe failed */
     }
   }
 
@@ -88,35 +82,40 @@ export default function Adapters() {
       <header>
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold">Adapters</h1>
-          <Link to="/" className="text-xs text-slate-500 hover:underline">
+          <Link
+            to="/"
+            className="text-xs text-muted-foreground hover:underline"
+          >
             ← back to projects
           </Link>
         </div>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           Configure which agent runners are available to your workflows. ACP
           adapters speak the Zed Agent Client Protocol over child-process stdio.
         </p>
       </header>
 
       <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Catalog
         </h2>
-        {catLoading && <p className="text-sm text-slate-500">loading…</p>}
+        {catLoading && <p className="text-sm text-muted-foreground">loading…</p>}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {(catalog ?? []).map((entry) => {
             const inst = byCatalog.get(entry.id);
             return (
               <article
                 key={entry.id}
-                className="flex flex-col gap-2 rounded-md border bg-white p-4"
+                className="flex flex-col gap-2 rounded-md border bg-card p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold">{entry.label}</h3>
-                    <p className="text-xs text-slate-600">{entry.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {entry.description}
+                    </p>
                     {entry.defaultCommand && (
-                      <p className="mt-1 font-mono text-[10px] text-slate-500">
+                      <p className="mt-1 font-mono text-[10px] text-muted-foreground">
                         ${entry.defaultCommand}
                         {entry.defaultArgs?.length
                           ? " " + entry.defaultArgs.join(" ")
@@ -134,10 +133,10 @@ export default function Adapters() {
                   />
                 </div>
                 {inst && (
-                  <div className="flex items-center gap-2 border-t pt-2 text-[11px] text-slate-500">
+                  <div className="flex items-center gap-2 border-t pt-2 text-[11px] text-muted-foreground">
                     <ProbeBadge status={inst.status} detail={inst.status_detail} />
                     <span className="font-mono">{inst.name}</span>
-                    <span className="ml-auto text-slate-400">
+                    <span className="ml-auto opacity-70">
                       probed {relTime(inst.last_probed_at)}
                     </span>
                   </div>
@@ -155,19 +154,16 @@ export default function Adapters() {
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Custom & registered instances
           </h2>
-          <button
-            onClick={() => setModal({ mode: "create-custom" })}
-            className="rounded bg-slate-900 px-2.5 py-1 text-xs text-white hover:bg-slate-800"
-          >
+          <Button size="sm" onClick={() => setModal({ mode: "create-custom" })}>
             + Add custom
-          </button>
+          </Button>
         </div>
-        {instLoading && <p className="text-sm text-slate-500">loading…</p>}
-        <table className="w-full overflow-hidden rounded-md border bg-white text-xs">
-          <thead className="bg-slate-50 text-slate-600">
+        {instLoading && <p className="text-sm text-muted-foreground">loading…</p>}
+        <table className="w-full overflow-hidden rounded-md border bg-card text-xs">
+          <thead className="bg-muted/40 text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left">Name</th>
               <th className="px-3 py-2 text-left">Source</th>
@@ -180,7 +176,7 @@ export default function Adapters() {
           <tbody>
             {(instances ?? []).length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-4 text-center text-slate-400">
+                <td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">
                   no instances yet
                 </td>
               </tr>
@@ -188,12 +184,12 @@ export default function Adapters() {
             {(instances ?? []).map((inst) => (
               <tr key={inst.name} className="border-t">
                 <td className="px-3 py-2 font-mono">{inst.name}</td>
-                <td className="px-3 py-2 text-slate-600">
+                <td className="px-3 py-2 text-muted-foreground">
                   {inst.read_only
                     ? inst.status_detail ?? "builtin"
                     : inst.catalog_id ?? "custom"}
                 </td>
-                <td className="px-3 py-2 font-mono text-[10px] text-slate-600">
+                <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
                   {inst.command
                     ? `${inst.command} ${(inst.args ?? []).join(" ")}`
                     : "—"}
@@ -201,41 +197,49 @@ export default function Adapters() {
                 <td className="px-3 py-2">
                   <ProbeBadge status={inst.status} detail={inst.status_detail} />
                 </td>
-                <td className="px-3 py-2 text-slate-500">
+                <td className="px-3 py-2 text-muted-foreground">
                   {relTime(inst.last_probed_at)}
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex justify-end gap-1">
                     {!inst.read_only && (
                       <>
-                        <button
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px]"
                           disabled={acting(inst.name)}
                           onClick={() => probe.mutate(inst.name)}
-                          className="rounded border px-2 py-0.5 hover:bg-slate-50 disabled:opacity-50"
                         >
                           Probe
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px]"
                           disabled={acting(inst.name)}
                           onClick={() => onToggle(inst)}
-                          className="rounded border px-2 py-0.5 hover:bg-slate-50 disabled:opacity-50"
                         >
                           {inst.live ? "Disable" : "Enable"}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 border-rose-300 px-2 text-[11px] text-rose-700 hover:bg-rose-50 hover:text-rose-800"
                           disabled={acting(inst.name)}
                           onClick={() => {
                             if (confirm(`Delete adapter '${inst.name}'?`))
                               del.mutate(inst.name);
                           }}
-                          className="rounded border border-rose-200 px-2 py-0.5 text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                         >
                           Delete
-                        </button>
+                        </Button>
                       </>
                     )}
                     {inst.read_only && (
-                      <span className="text-[10px] text-slate-400">read-only</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        read-only
+                      </span>
                     )}
                   </div>
                 </td>
@@ -284,14 +288,17 @@ function Toggle({
       disabled={disabled}
       role="switch"
       aria-checked={checked}
-      className={`relative h-5 w-9 shrink-0 rounded-full transition ${
-        checked ? "bg-emerald-500" : "bg-slate-300"
-      } ${disabled ? "opacity-50" : ""}`}
+      className={cn(
+        "relative h-5 w-9 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        checked ? "bg-emerald-500" : "bg-muted-foreground/30",
+        disabled && "opacity-50",
+      )}
     >
       <span
-        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${
-          checked ? "left-[18px]" : "left-0.5"
-        }`}
+        className={cn(
+          "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all",
+          checked ? "left-[18px]" : "left-0.5",
+        )}
       />
     </button>
   );

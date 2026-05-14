@@ -16,6 +16,7 @@ import { EventStream } from "../components/EventStream";
 import { NodeDetailPanel } from "../components/NodeDetailPanel";
 import { VerifyPanel, deriveIssueByNodeRef } from "../components/VerifyPanel";
 import { SaveAsTemplateDialog } from "../components/SaveAsTemplateDialog";
+import { Button } from "../components/ui/button";
 
 export default function WorkflowEditor() {
   const { workflowId } = useParams();
@@ -31,8 +32,6 @@ export default function WorkflowEditor() {
     setSelectedId(null);
   }, [workflowId]);
 
-  // Re-resolve selected node from the live graph so edits saved via PATCH
-  // propagate back into the detail panel without keeping a stale snapshot.
   const selected = useMemo<WorkflowNode | null>(() => {
     if (!selectedId || !data?.graph) return null;
     return data.graph.nodes.find((n) => n.id === selectedId) ?? null;
@@ -42,7 +41,6 @@ export default function WorkflowEditor() {
     if (data?.graph) setGraph(data.graph);
   }, [data?.graph, setGraph]);
 
-  // On mount, latch onto the latest run for this workflow so refresh restores view.
   useEffect(() => {
     if (!runs || runs.length === 0 || currentRunId) return;
     setCurrentRunId(runs[0]!.id);
@@ -53,8 +51,6 @@ export default function WorkflowEditor() {
   const { data: history } = useRunEvents(currentRunId ?? undefined);
   const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined, isLiveRun);
 
-  // Resumed runs don't re-emit events for nodes the prior run already finished,
-  // so the latest checkpoint is the authoritative source of their visual state.
   const seedStatus = useMemo<Record<string, NodeStatus>>(() => {
     const latest = checkpoints?.[0]?.blob;
     if (!latest) return {};
@@ -71,8 +67,10 @@ export default function WorkflowEditor() {
   const { data: verifyReport } = useVerifyWorkflow(workflowId);
   const issueByRef = useMemo(() => deriveIssueByNodeRef(verifyReport), [verifyReport]);
 
-  if (isLoading || !workflowId) return <p className="p-6 text-sm text-slate-500">loading…</p>;
-  if (!data) return <p className="p-6 text-sm text-rose-600">workflow not found</p>;
+  if (isLoading || !workflowId)
+    return <p className="p-6 text-sm text-muted-foreground">loading…</p>;
+  if (!data)
+    return <p className="p-6 text-sm text-destructive">workflow not found</p>;
 
   const rightCol = selected ? "360px" : "320px";
 
@@ -81,16 +79,17 @@ export default function WorkflowEditor() {
       className="grid h-full grid-rows-[auto_auto_auto_minmax(0,1fr)]"
       style={{ gridTemplateColumns: `1fr ${rightCol}` }}
     >
-      <div className="col-span-2 flex items-center justify-between border-b bg-white px-4 py-1.5">
-        <span className="text-xs text-slate-500">
+      <div className="col-span-2 flex items-center justify-between border-b bg-card px-4 py-1.5">
+        <span className="text-xs text-muted-foreground">
           workflow <span className="font-mono">{workflowId}</span>
         </span>
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => setShowSaveTemplate(true)}
-          className="rounded border px-2.5 py-1 text-xs hover:bg-slate-50"
         >
           Save as Template
-        </button>
+        </Button>
       </div>
       {showSaveTemplate && (
         <SaveAsTemplateDialog

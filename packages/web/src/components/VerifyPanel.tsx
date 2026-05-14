@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { DryRunReport, VerificationReport } from "@petrify/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRunVerify, useRunDryRun, useVerifyWorkflow } from "../api/client";
+import { Button } from "./ui/button";
 
 const STATUS_STYLE: Record<string, string> = {
   pass: "bg-emerald-100 text-emerald-800",
@@ -26,25 +27,26 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
   const report: VerificationReport | null = verifyMu.data ?? lastReport ?? null;
 
   return (
-    <section className="border-b bg-slate-50 px-4 py-2">
+    <section className="border-b bg-muted/40 px-4 py-2">
       <div className="flex flex-wrap items-center gap-3">
-        <button
+        <Button
+          size="sm"
           onClick={async () => {
             await verifyMu.mutateAsync();
             qc.invalidateQueries({ queryKey: ["verify", workflowId] });
           }}
           disabled={verifyMu.isPending}
-          className="rounded bg-slate-900 px-3 py-1.5 text-xs text-white disabled:opacity-50"
         >
           {verifyMu.isPending ? "Verifying…" : "Verify"}
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           onClick={async () => setDry(await dryMu.mutateAsync())}
           disabled={dryMu.isPending}
-          className="rounded border border-slate-300 px-3 py-1.5 text-xs text-slate-700 disabled:opacity-50"
         >
           {dryMu.isPending ? "Dry running…" : "Dry Run"}
-        </button>
+        </Button>
         {report && (
           <>
             <span
@@ -55,7 +57,7 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
             <span className={`text-[11px] ${RISK_STYLE[report.risk] ?? ""}`}>
               risk: {report.risk}
             </span>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[11px] text-muted-foreground">
               {report.stats.place_count}P / {report.stats.transition_count}T ·{" "}
               {report.stats.explored_markings} markings
               {report.stats.truncated ? " (truncated)" : ""}
@@ -74,17 +76,17 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
                   ? "border-rose-300 bg-rose-50 text-rose-800"
                   : i.level === "warning"
                     ? "border-amber-300 bg-amber-50 text-amber-800"
-                    : "border-slate-300 bg-white text-slate-700"
+                    : "border-input bg-card text-foreground"
               }`}
             >
               <div className="font-medium">[{i.code}] {i.message}</div>
               {i.affected_node_refs && i.affected_node_refs.length > 0 && (
-                <div className="mt-0.5 text-[10px] text-slate-600">
+                <div className="mt-0.5 text-[10px] text-muted-foreground">
                   nodes: {i.affected_node_refs.join(", ")}
                 </div>
               )}
               {i.affected_pools && i.affected_pools.length > 0 && (
-                <div className="mt-0.5 text-[10px] text-slate-600">
+                <div className="mt-0.5 text-[10px] text-muted-foreground">
                   pools: {i.affected_pools.join(", ")}
                 </div>
               )}
@@ -94,7 +96,7 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
       )}
 
       {dry && (
-        <div className="mt-2 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700">
+        <div className="mt-2 rounded-md border border-input bg-card px-2 py-1 text-xs text-foreground">
           <div>
             estimated:{" "}
             <span className="font-mono">
@@ -126,7 +128,6 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
   );
 }
 
-// Derive a node-ref -> issue level map for highlighting on the DAG canvas.
 export function deriveIssueByNodeRef(
   report: VerificationReport | null | undefined,
 ): Record<string, "warning" | "error"> {
@@ -135,7 +136,10 @@ export function deriveIssueByNodeRef(
   for (const i of report.issues) {
     for (const ref of i.affected_node_refs ?? []) {
       const cur = out[ref];
-      if (i.level === "error" || cur !== "error") out[ref] = (i.level === "info" ? "warning" : i.level) as "warning" | "error";
+      if (i.level === "error" || cur !== "error")
+        out[ref] = (i.level === "info" ? "warning" : i.level) as
+          | "warning"
+          | "error";
     }
   }
   return out;

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowGraphSchema } from "@petrify/shared";
 import { useImportWorkflow } from "../api/client";
+import { Button } from "./ui/button";
+import { Textarea } from "./ui/textarea";
 
 export function ImportPanel({ projectId }: { projectId: string }) {
   const nav = useNavigate();
@@ -22,7 +24,9 @@ export function ImportPanel({ projectId }: { projectId: string }) {
     if (!parsed.success) {
       setError(
         "schema validation failed:\n" +
-          parsed.error.issues.map((i) => `· ${i.path.join(".")}: ${i.message}`).join("\n"),
+          parsed.error.issues
+            .map((i) => `· ${i.path.join(".")}: ${i.message}`)
+            .join("\n"),
       );
       return;
     }
@@ -39,31 +43,31 @@ export function ImportPanel({ projectId }: { projectId: string }) {
   }
 
   return (
-    <section className="rounded-md border bg-white p-4">
+    <section className="rounded-md border bg-card p-4">
       <h2 className="mb-2 font-medium">Import Blueprint</h2>
-      <textarea
+      <Textarea
         rows={10}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder='{"nodes":[...],"edges":[...]}'
-        className="w-full rounded border px-3 py-2 font-mono text-xs"
+        className="font-mono text-xs"
       />
       <div className="mt-2 flex items-center gap-3">
         <input
           type="file"
           accept="application/json"
           onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-          className="text-xs"
+          className="text-xs file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80"
         />
-        <button
-          onClick={onSubmit}
-          disabled={importWf.isPending}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
+        <Button size="sm" onClick={onSubmit} disabled={importWf.isPending}>
           {importWf.isPending ? "Importing…" : "Import & Compile"}
-        </button>
+        </Button>
       </div>
-      {error && <pre className="mt-2 whitespace-pre-wrap text-xs text-red-600">{error}</pre>}
+      {error && (
+        <pre className="mt-2 whitespace-pre-wrap text-xs text-destructive">
+          {error}
+        </pre>
+      )}
     </section>
   );
 }
