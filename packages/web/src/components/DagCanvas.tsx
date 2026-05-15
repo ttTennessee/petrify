@@ -65,6 +65,9 @@ export function DagCanvas({
   issueByRef,
   breakpointNodeIds,
   pausedNodeIds,
+  onRunNode,
+  runnableNodeIds,
+  runningNodeId,
 }: {
   graph: WorkflowGraph;
   nodeStatus: Record<string, NodeStatus>;
@@ -73,6 +76,9 @@ export function DagCanvas({
   issueByRef?: Record<string, "warning" | "error">;
   breakpointNodeIds?: Set<string>;
   pausedNodeIds?: Set<string>;
+  onRunNode?: (nodeId: string) => void;
+  runnableNodeIds?: Set<string>;
+  runningNodeId?: string | null;
 }) {
   const { theme } = useTheme();
   const KIND_STYLE = theme === "dark" ? KIND_STYLE_DARK : KIND_STYLE_LIGHT;
@@ -92,6 +98,9 @@ export function DagCanvas({
           issue: issueByRef?.[n.ref],
           hasBreakpoint: breakpointNodeIds?.has(n.id) ?? false,
           pausedAtBreakpoint: pausedNodeIds?.has(n.id) ?? false,
+          onRunNode,
+          canRun: runnableNodeIds?.has(n.id) ?? false,
+          isRunning: runningNodeId === n.id,
         },
         sourcePosition: Position.Bottom,
         targetPosition: Position.Top,
@@ -145,7 +154,18 @@ export function DagCanvas({
       });
 
     return { nodes: layoutNodes, edges: layoutEdges };
-  }, [graph, nodeStatus, selectedNodeId, issueByRef, breakpointNodeIds, pausedNodeIds, KIND_STYLE]);
+  }, [
+    graph,
+    nodeStatus,
+    selectedNodeId,
+    issueByRef,
+    breakpointNodeIds,
+    pausedNodeIds,
+    onRunNode,
+    runnableNodeIds,
+    runningNodeId,
+    KIND_STYLE,
+  ]);
 
   return (
     <ReactFlow

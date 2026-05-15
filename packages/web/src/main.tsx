@@ -10,6 +10,7 @@ import ProjectDetail from "./routes/ProjectDetail";
 import WorkflowEditor from "./routes/WorkflowEditor";
 import Templates from "./routes/Templates";
 import Adapters from "./routes/Adapters";
+import Settings from "./routes/Settings";
 import { ThemeProvider } from "./components/theme-provider";
 import "./index.css";
 
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: "workflows/:workflowId", element: <WorkflowEditor /> },
       { path: "templates", element: <Templates /> },
       { path: "adapters", element: <Adapters /> },
+      { path: "settings", element: <Settings /> },
     ],
   },
 ]);

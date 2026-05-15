@@ -20,8 +20,27 @@
     "projects": "Projects",
     "templates": "Templates",
     "adapters": "Adapters",
+    "settings": "Settings",
     "back_to_projects": "← Projects",
     "subtitle": "Verifiable Agent Workflow Runtime · v0.1"
+  },
+  "settings": {
+    "eyebrow": "Global Config",
+    "title": "System",
+    "title_accent": "settings.",
+    "subtitle": "Control default execution behavior and available agent runners.",
+    "execution_section": "§ Execution",
+    "adapters_section": "§ Adapters",
+    "auto_run": {
+      "label": "Auto-run",
+      "description": "When enabled, clicking Run executes the entire workflow in one shot. When disabled, the runtime switches to step mode and pauses before every node so you can advance manually.",
+      "on_hint": "Current: auto-run whole graph",
+      "off_hint": "Current: step mode (pause every node)"
+    },
+    "adapters_link": {
+      "label": "Manage adapters",
+      "description": "View, enable, and add agent runners (ACP and other categories)."
+    }
   },
   "adapters": {
     "title": "Agent",
@@ -29,6 +48,16 @@
     "eyebrow": "Adapters",
     "subtitle": "Configure which agent runners are available to your workflows. ACP adapters speak the Zed Agent Client Protocol over child-process stdio.",
     "catalog_section": "§ Catalog",
+    "category": {
+      "acp": {
+        "label": "ACP adapters",
+        "hint": "Speak the Zed Agent Client Protocol over child-process stdio."
+      },
+      "other": {
+        "label": "Other",
+        "hint": "Non-ACP adapters (OpenAI Tools, custom — coming later)."
+      }
+    },
     "instances_section": "§ Custom & registered instances",
     "add_custom": "+ Add custom",
     "table": {
@@ -122,10 +151,16 @@
     },
     "run": {
       "run": "Run",
+      "run_step": "Run (step)",
+      "run_node": "Run node",
+      "run_node_blocked": "Predecessors not completed",
       "running": "Running…",
       "starting": "Starting…",
       "resume": "Resume",
       "resuming": "Resuming…",
+      "continue_run": "Continue",
+      "clear": "Clear",
+      "clear_hint": "Clear the current run view (run records are preserved — pick them again from the dropdown)",
       "cancel": "Cancel",
       "resume_hint": "resume from latest checkpoint ({{count}} nodes done)",
       "resume_hint_unknown": "resume",

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -11,6 +11,7 @@ import {
   useProbeAdapter,
   type AdapterInput,
   type AdapterInstance,
+  type CatalogCategory,
   type CatalogEntry,
 } from "../api/adapters";
 import { ProbeBadge, useRelTime } from "../components/adapters/ProbeBadge";
@@ -105,15 +106,14 @@ export default function Adapters() {
         }
       />
 
-      <section className="space-y-4">
+      <section className="space-y-6">
         <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           {t("catalog_section")}
         </h2>
         {catLoading && (
           <p className="font-mono text-xs text-muted-foreground">{tc("loading")}</p>
         )}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {(catalog ?? []).map((entry) => {
+        {renderCategoryGroups(catalog ?? [], (entry) => {
             const inst = byCatalog.get(entry.id);
             return (
               <article
@@ -160,8 +160,7 @@ export default function Adapters() {
                 )}
               </article>
             );
-          })}
-        </div>
+          }, t)}
       </section>
 
       <section className="space-y-4">
@@ -297,6 +296,42 @@ export default function Adapters() {
           onClose={() => setModal(null)}
         />
       )}
+    </div>
+  );
+}
+
+const CATEGORY_ORDER: CatalogCategory[] = ["acp", "other"];
+
+function renderCategoryGroups(
+  entries: CatalogEntry[],
+  renderCard: (entry: CatalogEntry) => ReactNode,
+  t: (key: string) => string,
+) {
+  const byCat = new Map<CatalogCategory, CatalogEntry[]>();
+  for (const e of entries) {
+    const c = e.category ?? "other";
+    const bucket = byCat.get(c) ?? [];
+    bucket.push(e);
+    byCat.set(c, bucket);
+  }
+  const groups = CATEGORY_ORDER.filter((c) => byCat.has(c));
+  return (
+    <div className="space-y-6">
+      {groups.map((cat) => (
+        <div key={cat} className="space-y-2.5">
+          <div>
+            <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-foreground">
+              {t(`category.${cat}.label`)}
+            </h3>
+            <p className="font-mono text-[10px] text-muted-foreground">
+              {t(`category.${cat}.hint`)}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {byCat.get(cat)!.map(renderCard)}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

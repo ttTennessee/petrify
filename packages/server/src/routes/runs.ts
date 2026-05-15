@@ -22,6 +22,10 @@ const insertRun = db.prepare(
   `INSERT INTO runs (id, workflow_id, status, started_at, resumed_from) VALUES (?, ?, 'running', ?, ?)`,
 );
 
+const insertSingleNodeRun = db.prepare(
+  `INSERT INTO runs (id, workflow_id, status, started_at, resumed_from, target_node_id) VALUES (?, ?, 'running', ?, ?, ?)`,
+);
+
 runsRouter.post("/workflows/:workflowId/runs", (req, res) => {
   const wf = db
     .prepare(`SELECT graph_json, last_verify_json FROM workflows WHERE id = ?`)
@@ -61,10 +65,110 @@ runsRouter.post("/workflows/:workflowId/runs", (req, res) => {
     throw err;
   }
 
+  const stepMode =
+    req.query.step === "true" || (req.body && req.body.step_mode === true);
+
   const runId = nanoid();
   insertRun.run(runId, req.params.workflowId, Date.now(), null);
-  void executeRun(runId, plan);
+  void executeRun(runId, plan, { stepMode });
   res.status(201).json({ id: runId });
+});
+
+// === POST /workflows/:workflowId/nodes/:nodeId/run ==========================
+// Single-node run. Requires that every predecessor has been completed in the
+// latest checkpoint of the workflow's most recent run. Uses that checkpoint
+// as the seed so the target node can reference upstream outputs/variables.
+runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", (req, res) => {
+  const { workflowId, nodeId } = req.params;
+  const wf = db
+    .prepare(`SELECT graph_json FROM workflows WHERE id = ?`)
+    .get(workflowId) as { graph_json: string } | undefined;
+  if (!wf) return res.status(404).json({ error: "workflow not found" });
+
+  let plan;
+  try {
+    plan = compile(JSON.parse(wf.graph_json));
+  } catch (err) {
+    if (err instanceof CompileError) {
+      return res.status(400).json({ error: err.message, issues: err.issues });
+    }
+    throw err;
+  }
+
+  const target = plan.nodesById[nodeId];
+  if (!target) return res.status(404).json({ error: "node not found" });
+
+  const preds = plan.predecessors[nodeId] ?? [];
+
+  // Find the latest run for this workflow + its latest checkpoint, if any.
+  const latestRun = db
+    .prepare(
+      `SELECT id FROM runs WHERE workflow_id = ? ORDER BY started_at DESC LIMIT 1`,
+    )
+    .get(workflowId) as { id: string } | undefined;
+  const seedCp = latestRun ? getLatestCheckpoint(latestRun.id) : null;
+  const completedIds = new Set<string>(seedCp?.blob.completed_node_ids ?? []);
+
+  const missing = preds
+    .filter((p) => !completedIds.has(p))
+    .map((p) => plan.nodesById[p]?.ref ?? p);
+  if (missing.length > 0) {
+    return res.status(412).json({
+      error: `node "${target.ref}" has unsatisfied predecessors`,
+      issues: missing,
+      missing,
+    });
+  }
+
+  // Build a trimmed plan that only schedules the target node. nodesById stays
+  // intact so expression scope (outputsByRef) keeps working for upstream refs.
+  const trimmedPlan = {
+    ...plan,
+    order: [nodeId],
+    predecessors: { ...plan.predecessors, [nodeId]: [] as string[] },
+    successors: { ...plan.successors, [nodeId]: [] as string[] },
+  };
+
+  const newRunId = nanoid();
+  insertSingleNodeRun.run(
+    newRunId,
+    workflowId,
+    Date.now(),
+    seedCp ? latestRun!.id : null,
+    nodeId,
+  );
+
+  // Seed the new run with the predecessors' outputs by cloning the latest
+  // checkpoint blob under the new run id. Mirrors the resume logic above.
+  let resumeCpId: string | undefined;
+  if (seedCp) {
+    const insertCp = db.prepare(
+      `INSERT INTO checkpoints (id, run_id, label, blob_json, created_at) VALUES (?, ?, ?, ?, ?)`,
+    );
+    const newCpId = nanoid();
+    insertCp.run(
+      newCpId,
+      newRunId,
+      `single_node_seed:${target.ref}`,
+      JSON.stringify({
+        ...seedCp.blob,
+        run_id: newRunId,
+        // Don't pre-mark the target as completed even if it was previously.
+        completed_node_ids: seedCp.blob.completed_node_ids.filter(
+          (id) => id !== nodeId,
+        ),
+      }),
+      Date.now(),
+    );
+    db.prepare(`UPDATE runs SET last_checkpoint_id = ? WHERE id = ?`).run(
+      newCpId,
+      newRunId,
+    );
+    resumeCpId = newCpId;
+  }
+
+  void executeRun(newRunId, trimmedPlan, { resumeFromCheckpointId: resumeCpId });
+  res.status(201).json({ id: newRunId, target_node_id: nodeId });
 });
 
 runsRouter.post("/runs/:id/resume", (req, res) => {
@@ -112,7 +216,11 @@ runsRouter.post("/runs/:id/resume", (req, res) => {
   );
   db.prepare(`UPDATE runs SET last_checkpoint_id = ? WHERE id = ?`).run(newCpId, newRunId);
 
-  void executeRun(newRunId, plan, { resumeFromCheckpointId: newCpId });
+  const stepMode = req.body?.step_mode === true;
+  void executeRun(newRunId, plan, {
+    resumeFromCheckpointId: newCpId,
+    stepMode,
+  });
   res.status(201).json({ id: newRunId, resumed_from: original.id });
 });
 
@@ -155,7 +263,7 @@ runsRouter.get("/runs/:id/checkpoints", (req, res) => {
 runsRouter.get("/workflows/:workflowId/runs", (req, res) => {
   const rows = db
     .prepare(
-      `SELECT id, status, started_at, finished_at, error, resumed_from
+      `SELECT id, status, started_at, finished_at, error, resumed_from, target_node_id
        FROM runs WHERE workflow_id = ? ORDER BY started_at DESC LIMIT 50`,
     )
     .all(req.params.workflowId);

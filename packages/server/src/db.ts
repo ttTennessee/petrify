@@ -74,6 +74,27 @@ try {
   /* ignore */
 }
 
+// Single-node run: runs.target_node_id stores the node id when a run was
+// triggered for a specific node only (vs whole-graph).
+try {
+  const cols = db.prepare(`PRAGMA table_info(runs)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "target_node_id")) {
+    db.exec(`ALTER TABLE runs ADD COLUMN target_node_id TEXT`);
+  }
+} catch {
+  /* ignore */
+}
+
+// Global key-value config — small singleton store for app-wide settings such
+// as the auto_run toggle.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS global_config (
+    key TEXT PRIMARY KEY,
+    value_json TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+`);
+
 // M3: workflows.last_verify_json holds the most recent VerificationReport.
 try {
   const cols = db.prepare(`PRAGMA table_info(workflows)`).all() as Array<{ name: string }>;
