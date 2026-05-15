@@ -116,7 +116,9 @@ npm --workspace @petrify/server start
 
 ### ACP Adapter
 
-Set the environment variable `PETRIFY_ACP_CMD` to the command that spawns your ACP-compatible agent (e.g. `opencode`):
+**Option A — via the UI (recommended):** Open Settings → Adapters, click **Add Adapter**, enter the command that spawns your ACP-compatible agent (e.g. `opencode`), and enable it. No restart required.
+
+**Option B — via environment variable:** Set `PETRIFY_ACP_CMD` before starting the server and an ACP adapter will be registered automatically at boot:
 
 ```bash
 PETRIFY_ACP_CMD=opencode npm run dev

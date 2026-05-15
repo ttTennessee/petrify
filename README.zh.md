@@ -116,7 +116,9 @@ npm --workspace @petrify/server start
 
 ### ACP Adapter
 
-将环境变量 `PETRIFY_ACP_CMD` 设置为启动 ACP 兼容智能体的命令（例如 `opencode`）：
+**方式 A — 通过 UI 配置（推荐）：** 打开 Settings → Adapters，点击 **Add Adapter**，填入启动 ACP 兼容智能体的命令（例如 `opencode`），启用即可，无需重启服务。
+
+**方式 B — 通过环境变量：** 启动服务前设置 `PETRIFY_ACP_CMD`，服务启动时会自动注册一个 ACP adapter：
 
 ```bash
 PETRIFY_ACP_CMD=opencode npm run dev
