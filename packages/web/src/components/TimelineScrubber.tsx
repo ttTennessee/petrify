@@ -6,14 +6,19 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { cn } from "../lib/utils";
 
-interface CheckpointMark {
+interface CheckpointEntry {
   index: number; // event index right after this checkpoint
   ckpt: CheckpointSummary;
-  lane: 0 | 1 | -1; // 0 = on-track, 1 = above, -1 = below — anti-overlap stagger
 }
 
-// Pins closer than this percentage of the track width get spread into adjacent lanes.
-const STAGGER_THRESHOLD_PCT = 3.5;
+interface CheckpointCluster {
+  pct: number; // anchor position (centroid of cluster)
+  entries: CheckpointEntry[];
+}
+
+// Pins closer than this percentage of the track width are merged into one
+// grouped pin instead of stacked above/below — keeps the track visually tidy.
+const CLUSTER_THRESHOLD_PCT = 3.5;
 
 export function TimelineScrubber({
   runId,
@@ -35,8 +40,11 @@ export function TimelineScrubber({
 
   const total = allEvents.length;
 
-  // Map checkpoint_id -> event index (where the CheckpointSaved event sits).
-  const checkpointMarks = useMemo<CheckpointMark[]>(() => {
+  // Map checkpoint_id -> event index (where the CheckpointSaved event sits),
+  // then collapse overlapping pins into clusters. A cluster of size 1 renders
+  // as a normal diamond; size > 1 renders as a single grouped pin with a count
+  // badge that expands on hover.
+  const checkpointClusters = useMemo<CheckpointCluster[]>(() => {
     if (!checkpoints || total === 0) return [];
     const byId = new Map(checkpoints.map((c) => [c.id, c]));
     const raw: Array<{ index: number; ckpt: CheckpointSummary; pct: number }> = [];
@@ -49,25 +57,20 @@ export function TimelineScrubber({
       const index = i + 1;
       raw.push({ index, ckpt, pct: (index / total) * 100 });
     });
-    // Lane assignment: walk left→right; if a pin is within STAGGER_THRESHOLD_PCT
-    // of any pin already placed in the active cluster, push it to the next lane.
-    // Lanes cycle 0 → 1 (above) → -1 (below) → 0 → … so up to 3 visually
-    // distinguishable pins in any tight cluster.
-    const result: CheckpointMark[] = [];
-    let clusterStartPct = -Infinity;
-    let clusterLaneCounter = 0;
+    const clusters: CheckpointCluster[] = [];
     for (const r of raw) {
-      if (r.pct - clusterStartPct >= STAGGER_THRESHOLD_PCT) {
-        clusterStartPct = r.pct;
-        clusterLaneCounter = 0;
+      const last = clusters[clusters.length - 1];
+      if (last && r.pct - last.pct < CLUSTER_THRESHOLD_PCT) {
+        last.entries.push({ index: r.index, ckpt: r.ckpt });
+        // Re-anchor to the centroid so the grouped pin sits in the middle of
+        // its cluster's actual span instead of drifting toward the leftmost.
+        const sum = last.entries.reduce((acc, e) => acc + (e.index / total) * 100, 0);
+        last.pct = sum / last.entries.length;
       } else {
-        clusterLaneCounter++;
+        clusters.push({ pct: r.pct, entries: [{ index: r.index, ckpt: r.ckpt }] });
       }
-      const lane: 0 | 1 | -1 =
-        clusterLaneCounter % 3 === 0 ? 0 : clusterLaneCounter % 3 === 1 ? 1 : -1;
-      result.push({ index: r.index, ckpt: r.ckpt, lane });
     }
-    return result;
+    return clusters;
   }, [allEvents, checkpoints, total]);
 
   if (total === 0) return null;
@@ -129,45 +132,49 @@ export function TimelineScrubber({
         />
 
         {/* checkpoint pins — z-10 so they sit above the range input */}
-        {checkpointMarks.map((m) => {
-          const pct = total === 0 ? 0 : (m.index / total) * 100;
+        {checkpointClusters.map((cluster) => {
+          const isGroup = cluster.entries.length > 1;
           // Anchor tooltip to whichever side keeps it on screen.
           const tipAlign =
-            pct < 20
+            cluster.pct < 20
               ? "left-0 translate-x-0"
-              : pct > 80
+              : cluster.pct > 80
                 ? "right-0 translate-x-0"
                 : "left-1/2 -translate-x-1/2";
-          // Vertical lane: 0 = on-track center, 1 = above, -1 = below.
-          // 12px offset from center keeps the pin readable but still visually
-          // tethered to the track.
-          const laneOffsetPx = m.lane === 1 ? -12 : m.lane === -1 ? 12 : 0;
+          const first = cluster.entries[0]!;
+          const cursorOnCluster = cluster.entries.some((e) => e.index === scrubCursor);
+          const key = isGroup ? `cluster:${first.ckpt.id}` : first.ckpt.id;
           return (
             <div
-              key={m.ckpt.id}
+              key={key}
               className="group absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${pct}%`, marginTop: `${laneOffsetPx}px` }}
+              style={{ left: `${cluster.pct}%` }}
             >
-              {/* connector stub linking off-track pin back to the track axis */}
-              {m.lane !== 0 && (
-                <div
-                  className="pointer-events-none absolute left-1/2 w-px -translate-x-1/2 bg-accent/40"
-                  style={
-                    m.lane === 1
-                      ? { top: "100%", height: "12px" }
-                      : { bottom: "100%", height: "12px" }
-                  }
-                />
-              )}
               <button
                 type="button"
-                onClick={() => setScrubCursor(m.index)}
+                onClick={() => setScrubCursor(first.index)}
                 className={cn(
-                  "block h-3 w-3 rotate-45 border border-accent bg-card transition-colors hover:bg-accent/30",
-                  scrubCursor === m.index && "bg-accent",
+                  "relative block h-3 w-3 rotate-45 border border-accent bg-card transition-colors hover:bg-accent/30",
+                  cursorOnCluster && "bg-accent",
                 )}
-                aria-label={`${t("timeline.checkpoint")} · ${m.ckpt.blob.completed_node_ids.length} done`}
-              />
+                aria-label={
+                  isGroup
+                    ? `${t("timeline.checkpoint")} ×${cluster.entries.length}`
+                    : `${t("timeline.checkpoint")} · ${first.ckpt.blob.completed_node_ids.length} done`
+                }
+              >
+                {isGroup && (
+                  // Counter badge: counter-rotate so the digits stay upright
+                  // against the diamond. Sits flush at the top-right corner.
+                  <span
+                    className="pointer-events-none absolute -right-2 -top-2 -rotate-45 rounded-full
+                      border border-accent bg-accent px-1 font-mono text-[9px] leading-[14px]
+                      text-accent-foreground shadow-sm"
+                  >
+                    {cluster.entries.length}
+                  </span>
+                )}
+              </button>
               {/* Outer wrapper sits flush with the pin and uses padding to
                   create a transparent bridge — cursor can travel from pin to
                   card without ever leaving the hover area. */}
@@ -177,28 +184,43 @@ export function TimelineScrubber({
                   tipAlign,
                 )}
               >
-                <div className="whitespace-nowrap border border-border bg-card px-2 py-1 font-mono text-[10px] shadow-md">
-                  <div className="text-muted-foreground">
-                    {t("timeline.checkpoint")} · {m.ckpt.id.slice(0, 8)}
-                  </div>
-                  <div className="text-muted-foreground/70">
-                    done: {m.ckpt.blob.completed_node_ids.length}
-                    {m.ckpt.blob.skipped_node_ids.length > 0
-                      ? ` · skipped: ${m.ckpt.blob.skipped_node_ids.length}`
-                      : ""}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-1 h-6 w-full px-2 text-[10px]"
-                    disabled={resumeRun.isPending}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void onFork(m.ckpt.id);
-                    }}
-                  >
-                    {resumeRun.isPending ? t("run.forking") : t("run.fork_here")}
-                  </Button>
+                <div className="min-w-[180px] border border-border bg-card font-mono text-[10px] shadow-md">
+                  {cluster.entries.map((e, i) => (
+                    <div
+                      key={e.ckpt.id}
+                      className={cn(
+                        "px-2 py-1",
+                        i > 0 && "border-t border-border/60",
+                        scrubCursor === e.index && "bg-accent/10",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setScrubCursor(e.index)}
+                        className="block w-full text-left text-muted-foreground hover:text-foreground"
+                      >
+                        {t("timeline.checkpoint")} · {e.ckpt.id.slice(0, 8)}
+                      </button>
+                      <div className="text-muted-foreground/70">
+                        done: {e.ckpt.blob.completed_node_ids.length}
+                        {e.ckpt.blob.skipped_node_ids.length > 0
+                          ? ` · skipped: ${e.ckpt.blob.skipped_node_ids.length}`
+                          : ""}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-1 h-6 w-full px-2 text-[10px]"
+                        disabled={resumeRun.isPending}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          void onFork(e.ckpt.id);
+                        }}
+                      >
+                        {resumeRun.isPending ? t("run.forking") : t("run.fork_here")}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

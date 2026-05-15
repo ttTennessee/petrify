@@ -11,16 +11,27 @@ import {
 import dagre from "@dagrejs/dagre";
 import type { WorkflowGraph, NodeStatus, WorkflowNode } from "@petrify/shared";
 import { NodeCard, type NodeCardData } from "./NodeCard";
+import { useTheme } from "./theme-provider";
 
 const nodeTypes = { petrify: NodeCard };
 
 const NODE_W = 220;
 const NODE_H = 88;
 
-const KIND_STYLE: Record<string, { stroke: string; dasharray?: string }> = {
+type EdgeStyle = { stroke: string; dasharray?: string };
+
+// Light/dark palettes diverge on the control edge: slate-900 disappears against
+// the dark canvas, so dark mode lifts it to slate-300.
+const KIND_STYLE_LIGHT: Record<string, EdgeStyle> = {
   control: { stroke: "#0f172a" },
-  data: { stroke: "#94a3b8", dasharray: "4 4" },
+  data: { stroke: "#64748b", dasharray: "4 4" },
   resource: { stroke: "#a855f7", dasharray: "2 2" },
+};
+
+const KIND_STYLE_DARK: Record<string, EdgeStyle> = {
+  control: { stroke: "#cbd5e1" },
+  data: { stroke: "#94a3b8", dasharray: "4 4" },
+  resource: { stroke: "#c084fc", dasharray: "2 2" },
 };
 
 function layout(graph: WorkflowGraph) {
@@ -63,6 +74,8 @@ export function DagCanvas({
   breakpointNodeIds?: Set<string>;
   pausedNodeIds?: Set<string>;
 }) {
+  const { theme } = useTheme();
+  const KIND_STYLE = theme === "dark" ? KIND_STYLE_DARK : KIND_STYLE_LIGHT;
   const { nodes, edges } = useMemo(() => {
     const g = layout(graph);
 
@@ -132,7 +145,7 @@ export function DagCanvas({
       });
 
     return { nodes: layoutNodes, edges: layoutEdges };
-  }, [graph, nodeStatus, selectedNodeId, issueByRef, breakpointNodeIds, pausedNodeIds]);
+  }, [graph, nodeStatus, selectedNodeId, issueByRef, breakpointNodeIds, pausedNodeIds, KIND_STYLE]);
 
   return (
     <ReactFlow
