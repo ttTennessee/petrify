@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 All five milestones (M1–M5) have been implemented: import, edit, sequential & parallel execution, Petri-net verification, Dry Run, Checkpoint/Resume, Time Travel, breakpoint debugger, ACP Adapter, and the template marketplace. The codebase is in active iteration — bugs are still being fixed and edge cases addressed.
 
-Before proposing new work: read `prd.md` to locate the task on the milestone ladder, and check whether the relevant module already exists in `packages/server/src/` or `packages/web/src/` before writing new code. Avoid re-implementing what is already there.
+Before proposing new work: check whether the relevant module already exists in `packages/server/src/` or `packages/web/src/` before writing new code. Avoid re-implementing what is already there.
 
 ## Product: Petrify
 

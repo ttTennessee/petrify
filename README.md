@@ -143,7 +143,6 @@ petrify/
 │   │       └── store/   # Zustand state
 │   └── shared/          # Zod schemas shared by server and web
 ├── examples/            # Bilingual JSON workflow blueprints
-├── prd.md               # Product Requirements Document
 └── CLAUDE.md            # AI-assisted development guidance
 ```
 
@@ -167,7 +166,7 @@ TypeScript strict mode is enabled across all packages.
 
 Contributions are welcome. Please:
 
-1. Read `prd.md` to understand product scope and architectural invariants before proposing changes.
+1. Read `CLAUDE.md` to understand product scope and architectural invariants before proposing changes.
 2. Locate your change on the milestone ladder — avoid pulling post-MVP semantics into core paths.
 3. Add or update tests in `packages/server/src/**/*.test.ts` for runtime changes.
 4. Follow the existing TypeScript strict-mode conventions and use `zod` for all boundary validation.
