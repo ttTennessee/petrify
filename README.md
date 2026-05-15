@@ -29,6 +29,8 @@ The emergence of the **ACP (Agent Communication Protocol)** made a better answer
 
 **A note on authorship.** My own coding ability is fairly average. The current version of Petrify was written almost entirely by Claude Code; I contributed the ideas, the architecture decisions, and the product thinking. I mention this not as a disclaimer, but because it is itself a demonstration of what this project is about: AI tools are already powerful enough that the bottleneck is no longer writing code — it is knowing what to build.
 
+**Current state.** Petrify can reliably handle straightforward workflows today. Complex, multi-branch scenarios with heavy concurrency have not been thoroughly stress-tested yet, and rough edges remain. This is a work in progress — I intend to keep refining it, and any feedback or contributions are genuinely welcome.
+
 ---
 
 ## Key Features
@@ -156,20 +158,6 @@ petrify/
 | `npm --workspace @petrify/server run test:watch` | Watch mode for tests |
 
 TypeScript strict mode is enabled across all packages.
-
----
-
-## Roadmap
-
-| Milestone | Description | Status |
-|-----------|-------------|--------|
-| M1 | Import + edit + sequential execution | ✅ Done |
-| M2 | Runtime Engine + Checkpoint + Resume | ✅ Done |
-| M3 | Petri-net verification + Dry Run | ✅ Done |
-| M4 | Time Travel + breakpoint debugger | ✅ Done |
-| M5 | Adapter ecosystem + template marketplace | ✅ Done |
-
-Active work is focused on stabilization, edge-case fixes, and adapter expansion.
 
 ---
 
