@@ -49,15 +49,21 @@
     "subtitle": "Configure which agent runners are available to your workflows. ACP adapters speak the Zed Agent Client Protocol over child-process stdio.",
     "catalog_section": "§ Catalog",
     "category": {
+      "count_unit": "runners",
       "acp": {
-        "label": "ACP adapters",
-        "hint": "Speak the Zed Agent Client Protocol over child-process stdio."
+        "eyebrow": "Protocol",
+        "label": "Agent Client Protocol",
+        "title_accent": "ACP",
+        "hint": "Bridge Zed-compatible ACP runners over child-process stdio. Petrify's primary adapter family.",
+        "learn_more": "Read the spec"
       },
       "other": {
-        "label": "Other",
+        "eyebrow": "Other",
+        "label": "Other adapters",
         "hint": "Non-ACP adapters (OpenAI Tools, custom — coming later)."
       }
     },
+    "edit": "Edit",
     "instances_section": "§ Custom & registered instances",
     "add_custom": "+ Add custom",
     "table": {

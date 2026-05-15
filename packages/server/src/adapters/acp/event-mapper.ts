@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import type { RuntimeEvent } from "@petrify/shared";
-import type { SessionUpdate } from "./protocol.js";
+import type { SessionNotification, SessionUpdate } from "@agentclientprotocol/sdk";
 
 interface MapContext {
   runId: string;
@@ -9,6 +9,20 @@ interface MapContext {
 
 interface MapState {
   textChunks: string[];
+}
+
+function chunkText(update: SessionUpdate): string | undefined {
+  if (
+    update.sessionUpdate !== "agent_message_chunk" &&
+    update.sessionUpdate !== "agent_thought_chunk" &&
+    update.sessionUpdate !== "user_message_chunk"
+  ) {
+    return undefined;
+  }
+  const content = update.content;
+  if (!content) return undefined;
+  if (content.type === "text") return content.text;
+  return undefined;
 }
 
 export function createMapper(ctx: MapContext) {
@@ -34,60 +48,47 @@ export function createMapper(ctx: MapContext) {
      * Unknown variants are surfaced as ToolCalled with raw payload so the trace
      * is never silently lossy.
      */
-    map(update: SessionUpdate): RuntimeEvent[] {
-      const kind = update.update.sessionUpdate;
-      switch (kind) {
+    map(note: SessionNotification): RuntimeEvent[] {
+      const update = note.update;
+      switch (update.sessionUpdate) {
         case "agent_message_chunk": {
-          const content = (update.update as { content?: { text?: string } })
-            .content;
-          if (!content?.text) return [];
-          state.textChunks.push(content.text);
-          return [
-            event("ToolCalled", {
-              kind: "text_delta",
-              delta: content.text,
-            }),
-          ];
-        }
-        case "tool_call":
-        case "tool_call_update": {
-          return [
-            event("ToolCalled", {
-              tool_call_id: (update.update as { toolCallId?: string }).toolCallId,
-              kind: (update.update as { kind?: string }).kind,
-              label: (update.update as { label?: string }).label,
-              status: (update.update as { status?: string }).status,
-              raw: update.update,
-            }),
-          ];
+          const text = chunkText(update);
+          if (!text) return [];
+          state.textChunks.push(text);
+          return [event("ToolCalled", { kind: "text_delta", delta: text })];
         }
         case "agent_thought_chunk": {
           // Same shape as agent_message_chunk: { content: { type, text } }.
           // Stream the thought text as its own delta channel so the UI can
           // render it in a separate "thinking" bubble that grows alongside
           // the agent reply, instead of one ToolCalled card per character.
-          const content = (update.update as { content?: { text?: string } })
-            .content;
-          if (!content?.text) return [];
+          const text = chunkText(update);
+          if (!text) return [];
+          return [event("ToolCalled", { kind: "thought_delta", delta: text })];
+        }
+        case "tool_call":
+        case "tool_call_update": {
           return [
             event("ToolCalled", {
-              kind: "thought_delta",
-              delta: content.text,
+              tool_call_id: update.toolCallId,
+              kind: (update as { kind?: string }).kind,
+              label: (update as { label?: string }).label,
+              status: (update as { status?: string }).status,
+              raw: update,
             }),
           ];
         }
         case "plan":
-          return [
-            event("ToolCalled", {
-              kind: "plan",
-              raw: update.update,
-            }),
-          ];
+          return [event("ToolCalled", { kind: "plan", raw: update })];
         default:
+          // Forward-compatible fallback: SDK may add new variants
+          // (available_commands_update, current_mode_update, etc.). Record but
+          // don't interpret — keeps the trace observable without coupling us
+          // to every future protocol extension.
           return [
             event("ToolCalled", {
-              kind: `acp:${kind}`,
-              raw: update.update,
+              kind: `acp:${(update as { sessionUpdate: string }).sessionUpdate}`,
+              raw: update,
             }),
           ];
       }

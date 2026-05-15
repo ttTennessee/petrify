@@ -17,6 +17,7 @@ import { cn } from "../../lib/utils";
 export interface InstanceModalProps {
   catalogEntry?: CatalogEntry;
   initial?: Partial<AdapterInput>;
+  mode?: "create" | "edit";
   title: string;
   submitLabel: string;
   takenNames?: string[];
@@ -27,12 +28,14 @@ export interface InstanceModalProps {
 export function InstanceModal({
   catalogEntry,
   initial,
+  mode: modeProp,
   title,
   submitLabel,
   takenNames,
   onSubmit,
   onClose,
 }: InstanceModalProps) {
+  const isEdit = modeProp === "edit" || (!!initial?.name && !catalogEntry);
   const [mode, setMode] = useState<"spawn" | "connect">(
     (initial?.kind as "spawn" | "connect" | undefined) ??
       catalogEntry?.defaultKind ??
@@ -107,28 +110,30 @@ export function InstanceModal({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="flex gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setMode("spawn")}
-              className={cn(
-                "rounded-md border px-2.5 py-1 transition-colors",
-                mode === "spawn"
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-input text-foreground hover:bg-accent",
-              )}
-            >
-              {t("modal.spawn")}
-            </button>
-            <button
-              type="button"
-              disabled
-              title={t("modal.coming_soon")}
-              className="cursor-not-allowed rounded-md border border-input px-2.5 py-1 text-muted-foreground"
-            >
-              {t("modal.connect_soon")}
-            </button>
-          </div>
+          {!isEdit && (
+            <div className="flex gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setMode("spawn")}
+                className={cn(
+                  "rounded-md border px-2.5 py-1 transition-colors",
+                  mode === "spawn"
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input text-foreground hover:bg-accent",
+                )}
+              >
+                {t("modal.spawn")}
+              </button>
+              <button
+                type="button"
+                disabled
+                title={t("modal.coming_soon")}
+                className="cursor-not-allowed rounded-md border border-input px-2.5 py-1 text-muted-foreground"
+              >
+                {t("modal.connect_soon")}
+              </button>
+            </div>
+          )}
 
           <Field label={t("modal.instance_name_label")}>
             <Input

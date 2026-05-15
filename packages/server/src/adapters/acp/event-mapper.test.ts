@@ -1,19 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { createMapper } from "./event-mapper.js";
-import type { SessionUpdate } from "./protocol.js";
+import type { SessionNotification } from "@agentclientprotocol/sdk";
 
-function update(sessionUpdate: string, extra: Record<string, unknown> = {}): SessionUpdate {
+function note(
+  sessionUpdate: string,
+  extra: Record<string, unknown> = {},
+): SessionNotification {
   return {
     sessionId: "s1",
-    update: { sessionUpdate, ...extra } as SessionUpdate["update"],
+    update: { sessionUpdate, ...extra } as SessionNotification["update"],
   };
 }
 
 describe("acp event-mapper", () => {
   it("streams agent_message_chunk as text_delta events and finalizes with full text", () => {
     const m = createMapper({ runId: "r1", nodeId: "n1" });
-    const d1 = m.map(update("agent_message_chunk", { content: { type: "text", text: "foo " } }));
-    const d2 = m.map(update("agent_message_chunk", { content: { type: "text", text: "bar" } }));
+    const d1 = m.map(
+      note("agent_message_chunk", { content: { type: "text", text: "foo " } }),
+    );
+    const d2 = m.map(
+      note("agent_message_chunk", { content: { type: "text", text: "bar" } }),
+    );
     expect(d1).toHaveLength(1);
     expect(d1[0]!.type).toBe("ToolCalled");
     expect(d1[0]!.payload.kind).toBe("text_delta");
@@ -28,7 +35,7 @@ describe("acp event-mapper", () => {
   it("streams agent_thought_chunk as thought_delta events", () => {
     const m = createMapper({ runId: "r", nodeId: "n" });
     const d = m.map(
-      update("agent_thought_chunk", { content: { type: "text", text: "let me think" } }),
+      note("agent_thought_chunk", { content: { type: "text", text: "let me think" } }),
     );
     expect(d).toHaveLength(1);
     expect(d[0]!.payload.kind).toBe("thought_delta");
@@ -41,7 +48,7 @@ describe("acp event-mapper", () => {
   it("maps tool_call to ToolCalled with preserved metadata", () => {
     const m = createMapper({ runId: "r", nodeId: "n" });
     const evs = m.map(
-      update("tool_call", {
+      note("tool_call", {
         toolCallId: "tc1",
         kind: "edit",
         label: "Apply diff",
@@ -56,7 +63,7 @@ describe("acp event-mapper", () => {
 
   it("preserves unknown sessionUpdate kinds as ToolCalled with acp: prefix", () => {
     const m = createMapper({ runId: "r", nodeId: "n" });
-    const evs = m.map(update("future_thing", { foo: "bar" }));
+    const evs = m.map(note("future_thing", { foo: "bar" }));
     expect(evs).toHaveLength(1);
     expect(evs[0]!.payload.kind).toBe("acp:future_thing");
   });

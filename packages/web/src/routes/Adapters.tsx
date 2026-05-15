@@ -8,6 +8,7 @@ import {
   useDeleteAdapter,
   useDisableAdapter,
   useEnableAdapter,
+  usePatchAdapter,
   useProbeAdapter,
   type AdapterInput,
   type AdapterInstance,
@@ -28,6 +29,7 @@ export default function Adapters() {
   const { data: catalog, isLoading: catLoading } = useAdapterCatalog();
   const { data: instances, isLoading: instLoading } = useAdapters();
   const create = useCreateAdapter();
+  const patch = usePatchAdapter();
   const enable = useEnableAdapter();
   const disable = useDisableAdapter();
   const probe = useProbeAdapter();
@@ -36,6 +38,7 @@ export default function Adapters() {
   const [modal, setModal] = useState<
     | { mode: "create-from-catalog"; entry: CatalogEntry }
     | { mode: "create-custom" }
+    | { mode: "edit"; instance: AdapterInstance }
     | null
   >(null);
 
@@ -81,6 +84,25 @@ export default function Adapters() {
       await enable.mutateAsync(input.name);
     } catch {
       /* leave disabled if probe failed */
+    }
+  }
+
+  async function onEditSubmit(instance: AdapterInstance, input: AdapterInput) {
+    await patch.mutateAsync({
+      name: instance.name,
+      patch: {
+        command: input.command,
+        args: input.args,
+        env: input.env,
+        default_cwd: input.default_cwd,
+      },
+    });
+    // Re-probe so the status badge reflects the new command/env immediately.
+    // Swallow probe failure — the row already surfaces it via status_detail.
+    try {
+      await probe.mutateAsync(instance.name);
+    } catch {
+      /* ignore */
     }
   }
 
@@ -237,6 +259,15 @@ export default function Adapters() {
                           variant="outline"
                           className="h-6 px-2 text-[11px]"
                           disabled={acting(inst.name)}
+                          onClick={() => setModal({ mode: "edit", instance: inst })}
+                        >
+                          {t("edit")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[11px]"
+                          disabled={acting(inst.name)}
                           onClick={() => probe.mutate(inst.name)}
                         >
                           {t("probe")}
@@ -296,11 +327,37 @@ export default function Adapters() {
           onClose={() => setModal(null)}
         />
       )}
+      {modal?.mode === "edit" && (
+        <InstanceModal
+          mode="edit"
+          initial={{
+            name: modal.instance.name,
+            catalog_id: modal.instance.catalog_id,
+            kind: "spawn",
+            command: modal.instance.command ?? "",
+            args: modal.instance.args ?? [],
+            env: modal.instance.env ?? {},
+            default_cwd: modal.instance.default_cwd,
+          }}
+          title={`${t("edit")} · ${modal.instance.name}`}
+          submitLabel={tc("save")}
+          onSubmit={(input) => onEditSubmit(modal.instance, input)}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }
 
 const CATEGORY_ORDER: CatalogCategory[] = ["acp", "other"];
+
+const CATEGORY_META: Record<
+  CatalogCategory,
+  { index: string; href?: string }
+> = {
+  acp: { index: "01", href: "https://agentclientprotocol.com" },
+  other: { index: "02" },
+};
 
 function renderCategoryGroups(
   entries: CatalogEntry[],
@@ -316,22 +373,62 @@ function renderCategoryGroups(
   }
   const groups = CATEGORY_ORDER.filter((c) => byCat.has(c));
   return (
-    <div className="space-y-6">
-      {groups.map((cat) => (
-        <div key={cat} className="space-y-2.5">
-          <div>
-            <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-foreground">
-              {t(`category.${cat}.label`)}
-            </h3>
-            <p className="font-mono text-[10px] text-muted-foreground">
-              {t(`category.${cat}.hint`)}
-            </p>
+    <div className="space-y-10">
+      {groups.map((cat) => {
+        const items = byCat.get(cat)!;
+        const meta = CATEGORY_META[cat];
+        const isAcp = cat === "acp";
+        return (
+          <div key={cat} className="space-y-4">
+            <div className="flex items-baseline gap-4 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              <span>
+                {meta.index} / {t(`category.${cat}.eyebrow`)}
+              </span>
+              <span
+                className={cn(
+                  "h-px flex-1",
+                  isAcp ? "bg-accent/40" : "bg-border",
+                )}
+              />
+              <span>
+                {items.length.toString().padStart(2, "0")}{" "}
+                {t("category.count_unit")}
+              </span>
+              {meta.href && (
+                <a
+                  href={meta.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[10px] text-muted-foreground underline-offset-4 hover:text-accent hover:underline"
+                >
+                  {t("category.acp.learn_more")} ↗
+                </a>
+              )}
+            </div>
+            <div className="flex items-end justify-between gap-6">
+              <h3
+                className={cn(
+                  "font-display text-2xl font-normal tracking-tight",
+                  isAcp && "text-foreground",
+                )}
+              >
+                {t(`category.${cat}.label`)}
+                {isAcp && (
+                  <span className="ml-2 align-middle text-xs italic text-accent">
+                    — {t("category.acp.title_accent")}
+                  </span>
+                )}
+              </h3>
+              <p className="hidden max-w-md text-right text-xs text-muted-foreground sm:block">
+                {t(`category.${cat}.hint`)}
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {items.map(renderCard)}
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {byCat.get(cat)!.map(renderCard)}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

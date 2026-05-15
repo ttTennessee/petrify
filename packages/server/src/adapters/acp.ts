@@ -1,8 +1,19 @@
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { Readable, Writable } from "node:stream";
 import { nanoid } from "nanoid";
+import * as acp from "@agentclientprotocol/sdk";
+import type {
+  Client,
+  ReadTextFileRequest,
+  ReadTextFileResponse,
+  RequestPermissionRequest,
+  RequestPermissionResponse,
+  SessionNotification,
+  WriteTextFileRequest,
+  WriteTextFileResponse,
+} from "@agentclientprotocol/sdk";
 import type { AdapterManifest, RuntimeEvent } from "@petrify/shared";
 import type { AgentAdapter, InvokeRequest } from "./types.js";
-import { AcpTransport } from "./acp/transport.js";
-import { SessionUpdateParamsSchema, type SessionUpdate } from "./acp/protocol.js";
 import { createMapper } from "./acp/event-mapper.js";
 
 export interface AcpAdapterConfig {
@@ -23,13 +34,23 @@ interface AcpCheckpointBlob {
   args?: string[];
 }
 
+interface OpenSession {
+  child: ChildProcessWithoutNullStreams;
+  conn: acp.ClientSideConnection;
+  /** Pushes `session/update` notifications for the current sessionId. */
+  pushUpdate: (n: SessionNotification) => void;
+  /** Swap which queue the client impl writes into when a new invocation reuses
+   * an already-open connection (we currently open a fresh child per invoke). */
+  setQueue: (q: AsyncEventQueue<SessionNotification> | null) => void;
+}
+
 interface ActiveInvocation {
-  transport: AcpTransport;
+  session: OpenSession;
   sessionId: string;
   cancelled: boolean;
 }
 
-const PROTOCOL_VERSION_DEFAULT = 1;
+const PROTOCOL_VERSION_DEFAULT = acp.PROTOCOL_VERSION;
 
 export class AcpAdapter implements AgentAdapter {
   private active = new Map<string, ActiveInvocation>();
@@ -60,9 +81,15 @@ export class AcpAdapter implements AgentAdapter {
     };
 
     const promptText = buildPromptText(req);
-    let active: ActiveInvocation;
+    let session: OpenSession;
+    let sessionId: string;
     try {
-      active = await this.openSession();
+      session = await this.spawnAndInit(this.cfg);
+      const newSess = await session.conn.newSession({
+        cwd: this.resolvedCwd(),
+        mcpServers: [],
+      });
+      sessionId = newSess.sessionId;
     } catch (err) {
       yield {
         ...base,
@@ -73,24 +100,18 @@ export class AcpAdapter implements AgentAdapter {
       };
       return;
     }
+
+    const active: ActiveInvocation = { session, sessionId, cancelled: false };
     this.active.set(req.invocationId, active);
+
     const mapper = createMapper({ runId: req.runId, nodeId: req.node.id });
+    const queue = new AsyncEventQueue<SessionNotification>();
+    session.setQueue(queue);
 
-    const queue = new AsyncEventQueue<SessionUpdate>();
-    const onNotification = (msg: { method?: string; params?: unknown }) => {
-      if (msg.method !== "session/update") return;
-      const parsed = SessionUpdateParamsSchema.safeParse(msg.params);
-      if (parsed.success && parsed.data.sessionId === active.sessionId) {
-        queue.push(parsed.data);
-      }
-    };
-    active.transport.on("notification", onNotification);
-
-    // Fire the prompt request and resolve its completion concurrently with the
-    // notification stream.
-    const promptPromise = active.transport
-      .request<{ stopReason?: string }>("session/prompt", {
-        sessionId: active.sessionId,
+    // Fire the prompt request and stream notifications concurrently.
+    const promptPromise = session.conn
+      .prompt({
+        sessionId,
         prompt: [{ type: "text", text: promptText }],
       })
       .then(
@@ -100,9 +121,10 @@ export class AcpAdapter implements AgentAdapter {
       .finally(() => queue.close());
 
     try {
-      for await (const update of queue) {
+      for await (const note of queue) {
         if (active.cancelled) break;
-        const evs = mapper.map(update);
+        if (note.sessionId !== sessionId) continue;
+        const evs = mapper.map(note);
         for (const ev of evs) yield ev;
       }
       const result = await promptPromise;
@@ -121,9 +143,9 @@ export class AcpAdapter implements AgentAdapter {
         for (const ev of mapper.fail(result.err.message)) yield ev;
       }
     } finally {
-      active.transport.off("notification", onNotification);
+      session.setQueue(null);
       this.lastBlobByNode.set(`${req.runId}:${req.node.id}`, {
-        sessionId: active.sessionId,
+        sessionId,
         protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
         promptHistory: [{ role: "user", text: promptText }],
         inputsSnapshot: req.inputs,
@@ -131,7 +153,7 @@ export class AcpAdapter implements AgentAdapter {
         args: this.cfg.args,
       });
       this.active.delete(req.invocationId);
-      active.transport.close();
+      closeSession(session);
     }
   }
 
@@ -140,7 +162,10 @@ export class AcpAdapter implements AgentAdapter {
     if (!a) return;
     a.cancelled = true;
     try {
-      a.transport.notify("session/cancel", { sessionId: a.sessionId });
+      // Fire-and-forget — the SDK turns this into a `session/cancel`
+      // notification. The agent is then expected to wind down and respond
+      // to the in-flight prompt with stopReason="cancelled".
+      await a.session.conn.cancel({ sessionId: a.sessionId });
     } catch {
       /* ignore */
     }
@@ -171,30 +196,21 @@ export class AcpAdapter implements AgentAdapter {
     }
     // Re-open transport + session. ACP doesn't standardize session resume yet,
     // so for `soft` we open a fresh session and replay user-side prompt history.
-    const transport = await this.spawnAndInit({
+    const session = await this.spawnAndInit({
       command: b.command ?? this.cfg.command,
       args: b.args ?? this.cfg.args,
     });
-    const session = await transport.request<{ sessionId: string }>(
-      "session/new",
-      this.newSessionParams(),
-    );
+    const newSess = await session.conn.newSession({
+      cwd: this.resolvedCwd(),
+      mcpServers: [],
+    });
     const invocationId = nanoid();
     this.active.set(invocationId, {
-      transport,
-      sessionId: session.sessionId,
+      session,
+      sessionId: newSess.sessionId,
       cancelled: false,
     });
     return invocationId;
-  }
-
-  private async openSession(): Promise<ActiveInvocation> {
-    const transport = await this.spawnAndInit(this.cfg);
-    const session = await transport.request<{ sessionId: string }>(
-      "session/new",
-      this.newSessionParams(),
-    );
-    return { transport, sessionId: session.sessionId, cancelled: false };
   }
 
   private resolvedCwd(): string {
@@ -205,45 +221,90 @@ export class AcpAdapter implements AgentAdapter {
     command: string;
     args?: string[];
     env?: Record<string, string>;
-  }): Promise<AcpTransport> {
+  }): Promise<OpenSession> {
     // Anchor the spawned agent process to the SAME cwd we advertise via
     // session/new. Otherwise the agent sees a process cwd inherited from the
     // server (often packages/server when started via the workspace dev script)
     // while session.cwd points elsewhere — its file-write tools then resolve
     // relative paths inconsistently across concurrent invocations.
     const cwd = this.resolvedCwd();
-    const transport = new AcpTransport({
-      command: opts.command,
-      args: opts.args,
-      env: opts.env,
+    const child = spawn(opts.command, opts.args ?? [], {
       cwd,
-    });
+      env: { ...process.env, ...(opts.env ?? {}) },
+      stdio: ["pipe", "pipe", "pipe"],
+    }) as ChildProcessWithoutNullStreams;
+
     // Surface ACP-server stderr to our server log — without this we're blind
     // when the agent rejects our handshake.
-    transport.on("stderr", (chunk: string) => {
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
       process.stderr.write(`[acp:${opts.command}] ${chunk}`);
     });
-    transport.on("exit", ({ code, signal }: { code: number | null; signal: string | null }) => {
+    child.on("exit", (code, signal) => {
       if (code !== 0 && code !== null) {
         process.stderr.write(
           `[acp:${opts.command}] exited code=${code} signal=${signal ?? "none"}\n`,
         );
       }
     });
-    await transport.request("initialize", {
+    child.on("error", (err) => {
+      process.stderr.write(`[acp:${opts.command}] spawn error: ${err.message}\n`);
+    });
+
+    const stream = acp.ndJsonStream(
+      Writable.toWeb(child.stdin) as WritableStream<Uint8Array>,
+      Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
+    );
+
+    let queueRef: AsyncEventQueue<SessionNotification> | null = null;
+    const clientImpl: Client = {
+      async sessionUpdate(params: SessionNotification): Promise<void> {
+        queueRef?.push(params);
+      },
+      async requestPermission(
+        _params: RequestPermissionRequest,
+      ): Promise<RequestPermissionResponse> {
+        // We advertise no fs/permission capabilities — agent shouldn't reach
+        // here. If it does, deny by responding with a cancelled outcome.
+        return { outcome: { outcome: "cancelled" } };
+      },
+      async readTextFile(
+        _params: ReadTextFileRequest,
+      ): Promise<ReadTextFileResponse> {
+        throw new Error("fs.readTextFile not supported by Petrify ACP client");
+      },
+      async writeTextFile(
+        _params: WriteTextFileRequest,
+      ): Promise<WriteTextFileResponse> {
+        throw new Error("fs.writeTextFile not supported by Petrify ACP client");
+      },
+    };
+
+    const conn = new acp.ClientSideConnection(() => clientImpl, stream);
+
+    await conn.initialize({
       protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
       clientCapabilities: {
         fs: { readTextFile: false, writeTextFile: false },
       },
     });
-    return transport;
-  }
 
-  private newSessionParams(): Record<string, unknown> {
     return {
-      cwd: this.resolvedCwd(),
-      mcpServers: [],
+      child,
+      conn,
+      pushUpdate: (n) => queueRef?.push(n),
+      setQueue: (q) => {
+        queueRef = q;
+      },
     };
+  }
+}
+
+function closeSession(s: OpenSession): void {
+  try {
+    s.child.kill();
+  } catch {
+    /* ignore */
   }
 }
 

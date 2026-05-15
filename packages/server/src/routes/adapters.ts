@@ -18,7 +18,9 @@ import {
   registerAdapter,
   unregisterAdapter,
 } from "../adapters/registry.js";
-import { AcpTransport } from "../adapters/acp/transport.js";
+import { spawn } from "node:child_process";
+import { Readable, Writable } from "node:stream";
+import * as acp from "@agentclientprotocol/sdk";
 
 export const adaptersRouter = Router();
 
@@ -273,27 +275,40 @@ async function probeAcp(opts: {
   cwd?: string;
 }): Promise<ProbeOk | ProbeErr> {
   const started = Date.now();
-  let transport: AcpTransport | null = null;
+  let child: ReturnType<typeof spawn> | null = null;
   const stderrChunks: string[] = [];
   try {
-    transport = new AcpTransport({
-      command: opts.command,
-      args: opts.args,
-      env: opts.env,
+    child = spawn(opts.command, opts.args ?? [], {
       cwd: opts.cwd,
+      env: { ...process.env, ...(opts.env ?? {}) },
+      stdio: ["pipe", "pipe", "pipe"],
     });
-    transport.on("stderr", (chunk: string) => {
+    child.stderr!.setEncoding("utf8");
+    child.stderr!.on("data", (chunk: string) => {
       if (stderrChunks.length < 16) stderrChunks.push(chunk);
     });
     // Swallow EPIPE / spawn failures — they surface as a rejected handshake below.
-    transport.on("error", () => {});
-    transport.on("exit", () => {});
-    const handshake = transport.request<{
-      protocolVersion?: number;
-      agentCapabilities?: unknown;
-      capabilities?: unknown;
-    }>("initialize", {
-      protocolVersion: 1,
+    child.on("error", () => {});
+    child.on("exit", () => {});
+
+    const stream = acp.ndJsonStream(
+      Writable.toWeb(child.stdin!) as WritableStream<Uint8Array>,
+      Readable.toWeb(child.stdout!) as ReadableStream<Uint8Array>,
+    );
+    // Minimal Client impl — probe only does `initialize`, so none of these
+    // should ever be called by the agent.
+    const conn = new acp.ClientSideConnection(
+      () => ({
+        async sessionUpdate() {},
+        async requestPermission() {
+          return { outcome: { outcome: "cancelled" as const } };
+        },
+      }),
+      stream,
+    );
+
+    const handshake = conn.initialize({
+      protocolVersion: acp.PROTOCOL_VERSION,
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false } },
     });
     const timeoutMs = 8000;
@@ -309,7 +324,7 @@ async function probeAcp(opts: {
     return {
       ok: true,
       protocolVersion: res.protocolVersion,
-      capabilities: res.agentCapabilities ?? res.capabilities,
+      capabilities: res.agentCapabilities,
       durationMs: Date.now() - started,
     };
   } catch (err) {
@@ -321,7 +336,7 @@ async function probeAcp(opts: {
     };
   } finally {
     try {
-      transport?.close();
+      child?.kill();
     } catch {
       /* ignore */
     }

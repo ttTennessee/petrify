@@ -49,15 +49,21 @@
     "subtitle": "配置工作流可用的 Agent 运行器。ACP 适配器通过子进程 stdio 使用 Zed Agent Client Protocol。",
     "catalog_section": "§ 目录",
     "category": {
+      "count_unit": "项",
       "acp": {
-        "label": "ACP 协议适配器",
-        "hint": "通过子进程 stdio 使用 Zed Agent Client Protocol。"
+        "eyebrow": "协议族",
+        "label": "Agent Client Protocol",
+        "title_accent": "ACP",
+        "hint": "通过子进程 stdio 与 Zed Agent Client Protocol 兼容运行器对接。Petrify 当前的主力适配协议族。",
+        "learn_more": "查看协议规范"
       },
       "other": {
-        "label": "其他",
+        "eyebrow": "其他",
+        "label": "其他适配器",
         "hint": "非 ACP 协议的适配器（OpenAI Tools、自定义等，敬请期待）。"
       }
     },
+    "edit": "编辑",
     "instances_section": "§ 自定义与已注册实例",
     "add_custom": "+ 添加自定义",
     "table": {
