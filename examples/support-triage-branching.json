@@ -24,7 +24,10 @@
       "title": "分类与紧急度判定",
       "adapter": { "name": "mock" },
       "dependencies": ["intake"],
-      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "inputs": {
+        "ticket_ref": "$.outputs.ticket",
+        "emit_variables": { "category": "shipping", "urgency": "high" }
+      },
       "outputs": {
         "classification": "artifact://classification.json"
       },
