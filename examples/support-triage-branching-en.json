@@ -1,0 +1,117 @@
+{
+  "nodes": [
+    {
+      "id": "n_intake",
+      "ref": "intake",
+      "title": "Ingest Ticket",
+      "adapter": { "name": "mock" },
+      "dependencies": [],
+      "inputs": {
+        "ticket_id": "T-2026-0421",
+        "channel": "email",
+        "raw_body": "My order #88321 shows as shipped but tracking hasn't moved in 5 days. Is it stuck? Also can you update the billing name on my invoice?"
+      },
+      "outputs": { "ticket": "artifact://ticket.json" },
+      "runtime": { "timeout": 30, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "Normalize ticket fields (user, raw body, attachments) into a standard ticket.json."
+      },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_classify",
+      "ref": "classify",
+      "title": "Classify & Assess Urgency",
+      "adapter": { "name": "mock" },
+      "dependencies": ["intake"],
+      "inputs": {
+        "ticket_ref": "$.outputs.ticket",
+        "emit_variables": { "category": "shipping", "urgency": "high" }
+      },
+      "outputs": {
+        "classification": "artifact://classification.json"
+      },
+      "runtime": { "timeout": 60, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "Valid categories are: shipping / billing / refund / general.",
+        "task_prompt": "Output { primary_category, secondary_category?, urgency: low|normal|high }. Write to $.variables.category and $.variables.urgency."
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_shipping",
+      "ref": "handle_shipping",
+      "title": "Shipping Branch: Query & Reply",
+      "adapter": { "name": "mock" },
+      "dependencies": ["classify"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": { "draft_reply": "artifact://shipping-reply.md" },
+      "condition": "$.variables.category == 'shipping'",
+      "runtime": { "timeout": 180, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "Call the shipping carrier API, explain the current location and estimated delivery date to the customer, and suggest next steps."
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_billing",
+      "ref": "handle_billing",
+      "title": "Billing Branch: Invoice / Refund Flow",
+      "adapter": { "name": "mock" },
+      "dependencies": ["classify"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": { "draft_reply": "artifact://billing-reply.md" },
+      "condition": "$.variables.category == 'billing' || $.variables.category == 'refund'",
+      "runtime": { "timeout": 180, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "Verify account identity, list available actions (update billing name / refund eligibility), and present them in a customer-friendly format."
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_general",
+      "ref": "handle_general",
+      "title": "Fallback Branch: General Reply",
+      "adapter": { "name": "mock" },
+      "dependencies": ["classify"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": { "draft_reply": "artifact://general-reply.md" },
+      "condition": "$.variables.category == 'general'",
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "Provide relevant FAQ links and instructions for reaching a human agent. Do not make unconfirmed promises."
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_send",
+      "ref": "send_reply",
+      "title": "Send Reply / Escalate to Human",
+      "adapter": { "name": "mock" },
+      "dependencies": ["handle_shipping", "handle_billing", "handle_general"],
+      "inputs": {
+        "candidates": [
+          "$.outputs.handle_shipping.draft_reply",
+          "$.outputs.handle_billing.draft_reply",
+          "$.outputs.handle_general.draft_reply"
+        ]
+      },
+      "outputs": { "delivery": "artifact://delivery.json" },
+      "runtime": { "timeout": 60, "retries": 2, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "Select the single non-null draft and send it. If urgency=high, also push a summary to the oncall channel."
+      },
+      "on_failure": { "strategy": "compensate", "compensate_ref": "intake" }
+    }
+  ],
+  "edges": [
+    { "from": "n_intake", "to": "n_classify", "kind": "control" },
+    { "from": "n_classify", "to": "n_shipping", "kind": "control" },
+    { "from": "n_classify", "to": "n_billing", "kind": "control" },
+    { "from": "n_classify", "to": "n_general", "kind": "control" },
+    { "from": "n_shipping", "to": "n_send", "kind": "control" },
+    { "from": "n_billing", "to": "n_send", "kind": "control" },
+    { "from": "n_general", "to": "n_send", "kind": "control" },
+    { "from": "n_intake", "to": "n_classify", "kind": "data", "binding": "$.outputs.ticket" }
+  ]
+}
