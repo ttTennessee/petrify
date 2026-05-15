@@ -1,0 +1,76 @@
+{
+  "nodes": [
+    {
+      "id": "n_identity",
+      "ref": "identity",
+      "title": "Identify Model & Host",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": { "identity": "artifact://identity.md" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "You are running inside an ACP agent runner. Answer concisely in plain text — no markdown headings.",
+        "task_prompt": "Two questions:\n1. Which underlying language model are you (vendor + model family + version if you know it)?\n2. Which agent CLI / IDE host is currently driving this ACP session (e.g. Claude Code, Codex CLI, Cursor Agent, opencode)?\n\nReply in exactly two short lines:\nmodel: <answer>\nhost: <answer>"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_uname",
+      "ref": "uname",
+      "title": "Inspect Host OS",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": { "uname": "artifact://uname.txt" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "You have shell tool access. Run exactly one command and return its raw output. Do not paraphrase.",
+        "task_prompt": "Execute `uname -a` in a shell and return the verbatim stdout as the entire reply. No commentary, no markdown fences."
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_date",
+      "ref": "today",
+      "title": "Read Today's Date",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": { "date": "artifact://date.txt" },
+      "runtime": { "timeout": 60, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "You have shell tool access. Prefer running a command over guessing the date from training data.",
+        "task_prompt": "Run `date -u +%Y-%m-%dT%H:%M:%SZ` (or the closest equivalent on this host) and reply with one line:\nutc: <iso-8601 timestamp>"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_summary",
+      "ref": "summary",
+      "title": "Roll-up Report",
+      "adapter": { "name": "acp" },
+      "dependencies": ["identity", "uname", "today"],
+      "inputs": {
+        "identity_ref": "$.outputs.identity",
+        "uname_ref": "$.outputs.uname",
+        "date_ref": "$.outputs.date"
+      },
+      "outputs": { "report": "artifact://environment-report.md" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "You are writing a short environment report for an engineer who will paste it into a runbook.",
+        "task_prompt": "Combine the three upstream payloads into a compact markdown report with this exact structure:\n\n# ACP Self-Probe Report\n\n- **Captured at:** <utc timestamp from date_ref>\n- **Model:** <model line from identity_ref>\n- **Host runner:** <host line from identity_ref>\n- **Kernel:** <uname output from uname_ref>\n\n## Notes\n<one or two bullet sentences flagging anything notable — e.g. mismatch between declared model and host, unusual kernel string, clock drift.>\n\nReturn only the markdown — no preamble."
+      },
+      "on_failure": { "strategy": "abort" }
+    }
+  ],
+  "edges": [
+    { "from": "n_identity", "to": "n_summary", "kind": "control" },
+    { "from": "n_uname", "to": "n_summary", "kind": "control" },
+    { "from": "n_date", "to": "n_summary", "kind": "control" },
+    { "from": "n_identity", "to": "n_summary", "kind": "data", "binding": "$.outputs.identity" },
+    { "from": "n_uname", "to": "n_summary", "kind": "data", "binding": "$.outputs.uname" },
+    { "from": "n_date", "to": "n_summary", "kind": "data", "binding": "$.outputs.date" }
+  ]
+}

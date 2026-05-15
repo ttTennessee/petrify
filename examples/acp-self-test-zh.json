@@ -1,0 +1,76 @@
+{
+  "nodes": [
+    {
+      "id": "n_identity",
+      "ref": "identity",
+      "title": "识别模型与宿主",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": { "identity": "artifact://identity.md" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你正运行在一个 ACP agent runner 内部。请用纯文本简洁回答，不要使用 markdown 标题。",
+        "task_prompt": "两个问题：\n1. 你底层使用的语言模型是哪一个（厂商 + 模型家族 + 如知版本号）？\n2. 当前驱动这次 ACP 会话的 agent CLI / IDE 宿主是哪一个（如 Claude Code、Codex CLI、Cursor Agent、opencode 等）？\n\n严格用两行简短答复：\nmodel: <回答>\nhost: <回答>"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_uname",
+      "ref": "uname",
+      "title": "查看宿主系统",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": { "uname": "artifact://uname.txt" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你具备 shell 工具调用能力。只执行一条命令，并直接返回原始输出，不要复述、不要改写。",
+        "task_prompt": "在 shell 中执行 `uname -a`，把 stdout 原样作为整条回复返回。不要任何解释，不要包裹 markdown 代码块。"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_date",
+      "ref": "today",
+      "title": "读取当天日期",
+      "adapter": { "name": "acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": { "date": "artifact://date.txt" },
+      "runtime": { "timeout": 60, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你具备 shell 工具调用能力。优先通过运行命令获取日期，而不是凭训练数据猜测。",
+        "task_prompt": "执行 `date -u +%Y-%m-%dT%H:%M:%SZ`（或宿主上等价的命令），用一行返回：\nutc: <iso-8601 时间戳>"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_summary",
+      "ref": "summary",
+      "title": "汇总报告",
+      "adapter": { "name": "acp" },
+      "dependencies": ["identity", "uname", "today"],
+      "inputs": {
+        "identity_ref": "$.outputs.identity",
+        "uname_ref": "$.outputs.uname",
+        "date_ref": "$.outputs.date"
+      },
+      "outputs": { "report": "artifact://environment-report.md" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你在为一位工程师整理一份简短的环境报告，最终会被粘贴进 runbook。",
+        "task_prompt": "把三路上游负载合成一份紧凑的 markdown 报告，严格使用以下结构：\n\n# ACP 自检报告\n\n- **抓取时间：** <date_ref 中的 utc 时间戳>\n- **模型：** <identity_ref 中的 model 行>\n- **宿主 runner：** <identity_ref 中的 host 行>\n- **内核：** <uname_ref 中的 uname 输出>\n\n## 备注\n<用一两句要点提示值得关注的差异——例如声明模型与宿主不匹配、内核串异常、系统时钟漂移等。>\n\n只返回 markdown 本体，不要任何前言。"
+      },
+      "on_failure": { "strategy": "abort" }
+    }
+  ],
+  "edges": [
+    { "from": "n_identity", "to": "n_summary", "kind": "control" },
+    { "from": "n_uname", "to": "n_summary", "kind": "control" },
+    { "from": "n_date", "to": "n_summary", "kind": "control" },
+    { "from": "n_identity", "to": "n_summary", "kind": "data", "binding": "$.outputs.identity" },
+    { "from": "n_uname", "to": "n_summary", "kind": "data", "binding": "$.outputs.uname" },
+    { "from": "n_date", "to": "n_summary", "kind": "data", "binding": "$.outputs.date" }
+  ]
+}
