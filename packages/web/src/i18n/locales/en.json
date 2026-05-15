@@ -172,6 +172,8 @@
       "changed_one": "{{count}} field changed",
       "changed_other": "{{count}} fields changed",
       "no_changes": "no changes",
+      "tab_form": "Form",
+      "tab_json": "JSON",
       "fields": {
         "adapter": "Adapter",
         "inputs": "Inputs",
@@ -188,6 +190,29 @@
         "resources": "M1 declared-only",
         "condition": "M3",
         "loop": "M3"
+      },
+      "form": {
+        "adapter_version": "Version (optional)",
+        "task_prompt": "Task prompt",
+        "system_prompt": "System prompt (optional)",
+        "timeout_sec": "Timeout (s)",
+        "retries": "Retries",
+        "checkpoint": "Enable checkpoint",
+        "on_failure_strategy": "Strategy",
+        "max_attempts": "Max attempts",
+        "backoff_ms": "Backoff (ms)",
+        "compensate_ref": "Compensation node ref",
+        "loop_max": "Max iterations",
+        "loop_exit": "Exit condition",
+        "resource_name": "Name",
+        "resource_amount": "Amount",
+        "resource_release": "Release on completion",
+        "add_resource": "+ Add resource",
+        "add_input": "+ Add input",
+        "add_output": "+ Add output",
+        "kv_invalid_json": "invalid JSON value",
+        "schema_advanced": "input/output JSON Schema — advanced field",
+        "schema_open_json": "Edit in JSON view"
       }
     },
     "status": {

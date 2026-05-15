@@ -172,6 +172,8 @@
       "changed_one": "已修改 {{count}} 个字段",
       "changed_other": "已修改 {{count}} 个字段",
       "no_changes": "无变更",
+      "tab_form": "表单",
+      "tab_json": "JSON",
       "fields": {
         "adapter": "适配器",
         "inputs": "输入",
@@ -188,6 +190,29 @@
         "resources": "M1 仅声明",
         "condition": "M3",
         "loop": "M3"
+      },
+      "form": {
+        "adapter_version": "版本（可选）",
+        "task_prompt": "任务提示词",
+        "system_prompt": "系统提示词（可选）",
+        "timeout_sec": "超时（秒）",
+        "retries": "重试次数",
+        "checkpoint": "启用检查点",
+        "on_failure_strategy": "策略",
+        "max_attempts": "最大尝试次数",
+        "backoff_ms": "退避时间（ms）",
+        "compensate_ref": "补偿节点 ref",
+        "loop_max": "最大迭代次数",
+        "loop_exit": "退出条件",
+        "resource_name": "名称",
+        "resource_amount": "数量",
+        "resource_release": "完成后释放",
+        "add_resource": "+ 添加资源",
+        "add_input": "+ 添加输入",
+        "add_output": "+ 添加输出",
+        "kv_invalid_json": "JSON 值格式错误",
+        "schema_advanced": "input/output JSON Schema — 高级字段",
+        "schema_open_json": "在 JSON 视图中编辑"
       }
     },
     "status": {
