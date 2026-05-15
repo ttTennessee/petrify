@@ -56,11 +56,13 @@ export default function WorkflowEditor() {
   const [prevWorkflowId, setPrevWorkflowId] = useState<string | undefined>(
     undefined,
   );
+  const didAutoSelectRun = useRef(false);
   if (prevWorkflowId !== workflowId) {
     setPrevWorkflowId(workflowId);
     resetRun();
     setGraph(null);
     setSelectedId(null);
+    didAutoSelectRun.current = false;
   }
 
   const selected = useMemo<WorkflowNode | null>(() => {
@@ -72,8 +74,13 @@ export default function WorkflowEditor() {
     if (data?.graph) setGraph(data.graph);
   }, [data?.graph, setGraph]);
 
+  // Auto-select the most recent run, but only once per workflow mount —
+  // otherwise clicking Clear immediately rehydrates currentRunId from the
+  // dropdown's freshest entry and the button looks dead.
   useEffect(() => {
+    if (didAutoSelectRun.current) return;
     if (!runs || runs.length === 0 || currentRunId) return;
+    didAutoSelectRun.current = true;
     setCurrentRunId(runs[0]!.id);
   }, [runs, currentRunId, setCurrentRunId]);
 
@@ -151,26 +158,16 @@ export default function WorkflowEditor() {
   const [nodeRunError, setNodeRunError] = useState<string | null>(null);
 
   const isRunActive = runMeta?.status === "running";
+  // Per-node ▶ is only meaningful while a run is live — clicking it advances
+  // the paused node via continueBp. When no run is active, the user must
+  // click the global Run button first; spawning standalone single-node runs
+  // out of nowhere was confusing and is disabled here.
   const runnableNodeIds = useMemo(() => {
     const set = new Set<string>();
-    if (!data?.graph) return set;
-    // While a run is in flight, only the node(s) currently paused at a
-    // breakpoint / step boundary are runnable — clicking ▶ on them advances
-    // the live run (see handleRunNode). All other nodes are locked.
-    if (isRunActive) {
-      for (const id of pausedNodeIds) set.add(id);
-      return set;
-    }
-    const refToId = new Map(data.graph.nodes.map((n) => [n.ref, n.id]));
-    for (const n of data.graph.nodes) {
-      const depIds = (n.dependencies ?? [])
-        .map((r) => refToId.get(r))
-        .filter((x): x is string => !!x);
-      const depsOk = depIds.every((id) => nodeStatus[id] === "completed");
-      if (depsOk) set.add(n.id);
-    }
+    if (!isRunActive) return set;
+    for (const id of pausedNodeIds) set.add(id);
     return set;
-  }, [data?.graph, nodeStatus, isRunActive, pausedNodeIds]);
+  }, [isRunActive, pausedNodeIds]);
 
   const runningNodeId =
     runMeta?.status === "running" ? runMeta.target_node_id ?? null : null;

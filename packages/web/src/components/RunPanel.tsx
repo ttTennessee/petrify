@@ -164,10 +164,22 @@ export function RunActions({
 
   const isRunning = run?.status === "running";
   const isStarting = startRun.isPending;
-  const canResume =
-    run && (run.status === "failed" || run.status === "cancelled") &&
-    (checkpoints?.length ?? 0) > 0;
+  // Continue is offered when there's progress to pick up from:
+  //  - failed / cancelled runs → resume from latest checkpoint
+  //  - single-node runs that completed → the rest of the graph is still TODO
+  // A fully-completed end-to-end run has no remaining work, so we hide it.
+  const canContinue =
+    !!run &&
+    run.status !== "running" &&
+    (checkpoints?.length ?? 0) > 0 &&
+    (run.status === "failed" ||
+      run.status === "cancelled" ||
+      (run.status === "completed" && !!run.target_node_id));
   const lastCheckpoint = checkpoints?.[0];
+  const continueLabel =
+    run?.status === "failed" || run?.status === "cancelled"
+      ? t("run.resume")
+      : t("run.continue_run");
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -190,23 +202,38 @@ export function RunActions({
               : t("run.run_step")}
       </Button>
 
-      {canResume && currentRunId && (
+      {canContinue && currentRunId && (
         <Button
           size="sm"
           variant="outline"
           onClick={async () => {
-            const r = await resumeRun.mutateAsync({ runId: currentRunId });
+            const r = await resumeRun.mutateAsync({
+              runId: currentRunId,
+              stepMode: !autoRun,
+            });
             setCurrentRunId(r.id);
           }}
           disabled={resumeRun.isPending}
-          className="h-7 px-2.5 text-[11px] border-warning text-warning hover:bg-warning/10"
+          className="h-7 px-2.5 text-[11px] border-accent text-accent hover:bg-accent/10"
           title={
             lastCheckpoint
               ? t("run.resume_hint", { count: lastCheckpoint.blob.completed_node_ids.length })
               : t("run.resume_hint_unknown")
           }
         >
-          {resumeRun.isPending ? t("run.resuming") : t("run.resume")}
+          {resumeRun.isPending ? t("run.resuming") : continueLabel}
+        </Button>
+      )}
+
+      {currentRunId && !isRunning && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setCurrentRunId(null)}
+          className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-foreground"
+          title={t("run.clear_hint")}
+        >
+          {t("run.clear")}
         </Button>
       )}
 

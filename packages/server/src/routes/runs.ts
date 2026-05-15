@@ -216,7 +216,11 @@ runsRouter.post("/runs/:id/resume", (req, res) => {
   );
   db.prepare(`UPDATE runs SET last_checkpoint_id = ? WHERE id = ?`).run(newCpId, newRunId);
 
-  void executeRun(newRunId, plan, { resumeFromCheckpointId: newCpId });
+  const stepMode = req.body?.step_mode === true;
+  void executeRun(newRunId, plan, {
+    resumeFromCheckpointId: newCpId,
+    stepMode,
+  });
   res.status(201).json({ id: newRunId, resumed_from: original.id });
 });
 

@@ -271,10 +271,21 @@ export function useCheckpoints(runId: string | undefined, isLive = true) {
 
 export function useResumeRun() {
   return useMutation({
-    mutationFn: ({ runId, checkpointId }: { runId: string; checkpointId?: string }) =>
+    mutationFn: ({
+      runId,
+      checkpointId,
+      stepMode,
+    }: {
+      runId: string;
+      checkpointId?: string;
+      stepMode?: boolean;
+    }) =>
       http<{ id: string; resumed_from: string }>(`/api/runs/${runId}/resume`, {
         method: "POST",
-        body: JSON.stringify(checkpointId ? { checkpoint_id: checkpointId } : {}),
+        body: JSON.stringify({
+          ...(checkpointId ? { checkpoint_id: checkpointId } : {}),
+          ...(stepMode ? { step_mode: true } : {}),
+        }),
       }),
   });
 }
