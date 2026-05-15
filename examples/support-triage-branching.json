@@ -1,0 +1,114 @@
+{
+  "nodes": [
+    {
+      "id": "n_intake",
+      "ref": "intake",
+      "title": "接收工单",
+      "adapter": { "name": "mock" },
+      "dependencies": [],
+      "inputs": {
+        "ticket_id": "T-2026-0421",
+        "channel": "email",
+        "raw_body": "我的订单 #88321 显示已发货但物流没动，是不是被拦截了？另外能否帮我把发票抬头改一下？"
+      },
+      "outputs": { "ticket": "artifact://ticket.json" },
+      "runtime": { "timeout": 30, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "归一化工单字段（用户、原文、附件），输出标准 ticket.json。"
+      },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_classify",
+      "ref": "classify",
+      "title": "分类与紧急度判定",
+      "adapter": { "name": "mock" },
+      "dependencies": ["intake"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": {
+        "classification": "artifact://classification.json"
+      },
+      "runtime": { "timeout": 60, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "类目仅可选择 shipping / billing / refund / general。",
+        "task_prompt": "输出 { primary_category, secondary_category?, urgency: low|normal|high }；写入 $.variables.category 与 $.variables.urgency。"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "n_shipping",
+      "ref": "handle_shipping",
+      "title": "物流路径：查询并答复",
+      "adapter": { "name": "mock" },
+      "dependencies": ["classify"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": { "draft_reply": "artifact://shipping-reply.md" },
+      "condition": "$.variables.category == 'shipping'",
+      "runtime": { "timeout": 180, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "调用物流查询，向用户解释当前节点与预计送达日期，附下一步建议。"
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_billing",
+      "ref": "handle_billing",
+      "title": "账务路径：发票/退款流程",
+      "adapter": { "name": "mock" },
+      "dependencies": ["classify"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": { "draft_reply": "artifact://billing-reply.md" },
+      "condition": "$.variables.category == 'billing' || $.variables.category == 'refund'",
+      "runtime": { "timeout": 180, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "确认账户身份，列出可执行操作（改抬头 / 退款资格），用户视图友好。"
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_general",
+      "ref": "handle_general",
+      "title": "兜底路径：通用回复",
+      "adapter": { "name": "mock" },
+      "dependencies": ["classify"],
+      "inputs": { "ticket_ref": "$.outputs.ticket" },
+      "outputs": { "draft_reply": "artifact://general-reply.md" },
+      "condition": "$.variables.category == 'general'",
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "提供 FAQ 链接与人工客服转接说明，避免给出未确认的承诺。"
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_send",
+      "ref": "send_reply",
+      "title": "发送回复 / 升级到人工",
+      "adapter": { "name": "mock" },
+      "dependencies": ["handle_shipping", "handle_billing", "handle_general"],
+      "inputs": {
+        "candidates": [
+          "$.outputs.handle_shipping.draft_reply",
+          "$.outputs.handle_billing.draft_reply",
+          "$.outputs.handle_general.draft_reply"
+        ]
+      },
+      "outputs": { "delivery": "artifact://delivery.json" },
+      "runtime": { "timeout": 60, "retries": 2, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "选择唯一非空草稿发送；若 urgency=high 则同时把摘要推送到 oncall 频道。"
+      },
+      "on_failure": { "strategy": "compensate", "compensate_ref": "intake" }
+    }
+  ],
+  "edges": [
+    { "from": "n_intake", "to": "n_classify", "kind": "control" },
+    { "from": "n_classify", "to": "n_shipping", "kind": "control" },
+    { "from": "n_classify", "to": "n_billing", "kind": "control" },
+    { "from": "n_classify", "to": "n_general", "kind": "control" },
+    { "from": "n_shipping", "to": "n_send", "kind": "control" },
+    { "from": "n_billing", "to": "n_send", "kind": "control" },
+    { "from": "n_general", "to": "n_send", "kind": "control" },
+    { "from": "n_intake", "to": "n_classify", "kind": "data", "binding": "$.outputs.ticket" }
+  ]
+}

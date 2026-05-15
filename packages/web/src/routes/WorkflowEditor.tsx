@@ -59,7 +59,11 @@ export default function WorkflowEditor() {
   }, [runs, currentRunId, setCurrentRunId]);
 
   const { data: runMeta } = useRun(currentRunId ?? undefined);
-  const isLiveRun = !runMeta || runMeta.status === "running";
+  // Only treat the editor as "live" when a real running run exists. The previous
+  // `!runMeta || running` form falsely flipped on for freshly-imported workflows
+  // (no runs yet → runMeta undefined), which hid the form/json tabs in
+  // NodeDetailPanel and left the user looking at an events-only view.
+  const isLiveRun = runMeta?.status === "running";
   const { data: history } = useRunEvents(currentRunId ?? undefined);
   const { data: checkpoints } = useCheckpoints(currentRunId ?? undefined, isLiveRun);
 
@@ -134,7 +138,7 @@ export default function WorkflowEditor() {
   if (!data)
     return <p className="p-6 font-mono text-xs text-destructive">{t("not_found")}</p>;
 
-  const rightCol = selected ? "380px" : "320px";
+  const rightCol = "460px";
 
   return (
     <div

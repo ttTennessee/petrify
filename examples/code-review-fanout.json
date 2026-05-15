@@ -1,0 +1,112 @@
+{
+  "nodes": [
+    {
+      "id": "n_fetch",
+      "ref": "fetch_diff",
+      "title": "拉取 PR diff",
+      "adapter": { "name": "mock" },
+      "dependencies": [],
+      "inputs": {
+        "repo": "acme/payments-service",
+        "pr_number": 1284
+      },
+      "outputs": {
+        "diff": "artifact://pr.diff",
+        "metadata": "artifact://pr-meta.json"
+      },
+      "runtime": { "timeout": 60, "retries": 2, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "下载 PR 的 unified diff 与元数据（作者、改动文件列表、CI 状态）。"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 3, "backoff_ms": 1000 }
+    },
+    {
+      "id": "n_static",
+      "ref": "static_analysis",
+      "title": "静态分析",
+      "adapter": { "name": "mock" },
+      "dependencies": ["fetch_diff"],
+      "inputs": { "diff_ref": "$.outputs.diff" },
+      "outputs": { "findings": "artifact://static-findings.json" },
+      "resources": [{ "name": "linter_pool", "amount": 1 }],
+      "runtime": { "timeout": 180, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "运行类型检查与 lint，报告新增告警，按严重度分级。"
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_security",
+      "ref": "security_scan",
+      "title": "安全扫描",
+      "adapter": { "name": "mock" },
+      "dependencies": ["fetch_diff"],
+      "inputs": { "diff_ref": "$.outputs.diff" },
+      "outputs": { "findings": "artifact://security-findings.json" },
+      "resources": [{ "name": "scanner_pool", "amount": 1 }],
+      "runtime": { "timeout": 240, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "扫描秘钥泄露、注入风险、依赖 CVE，按 OWASP Top 10 归类。"
+      },
+      "on_failure": { "strategy": "skip" }
+    },
+    {
+      "id": "n_intent",
+      "ref": "intent_review",
+      "title": "意图与可读性审查",
+      "adapter": { "name": "mock" },
+      "dependencies": ["fetch_diff"],
+      "inputs": {
+        "diff_ref": "$.outputs.diff",
+        "metadata_ref": "$.outputs.metadata"
+      },
+      "outputs": { "comments": "artifact://intent-comments.json" },
+      "runtime": { "timeout": 300, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你是高级工程师，重点关注变更动机与可读性，不重复 lint 工具能给出的建议。",
+        "task_prompt": "对每个改动文件给出 1-3 条建议，标注是否为阻塞性意见。"
+      },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_summary",
+      "ref": "summary",
+      "title": "汇总评审报告",
+      "adapter": { "name": "mock" },
+      "dependencies": ["static_analysis", "security_scan", "intent_review"],
+      "inputs": {
+        "static_ref": "$.outputs.static_analysis.findings",
+        "security_ref": "$.outputs.security_scan.findings",
+        "intent_ref": "$.outputs.intent_review.comments"
+      },
+      "outputs": {
+        "report": "artifact://review-report.md",
+        "verdict": "artifact://verdict.json"
+      },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "合并三路结果，按文件分组写出可张贴到 PR 的 Markdown 评审，并给出 approve / request_changes / comment 之一作为结论。"
+      },
+      "on_failure": { "strategy": "abort" }
+    }
+  ],
+  "edges": [
+    { "from": "n_fetch", "to": "n_static", "kind": "control" },
+    { "from": "n_fetch", "to": "n_security", "kind": "control" },
+    { "from": "n_fetch", "to": "n_intent", "kind": "control" },
+    { "from": "n_static", "to": "n_summary", "kind": "control" },
+    { "from": "n_security", "to": "n_summary", "kind": "control" },
+    { "from": "n_intent", "to": "n_summary", "kind": "control" },
+    { "from": "n_fetch", "to": "n_static", "kind": "data", "binding": "$.outputs.diff" },
+    { "from": "n_fetch", "to": "n_security", "kind": "data", "binding": "$.outputs.diff" },
+    { "from": "n_fetch", "to": "n_intent", "kind": "data", "binding": "$.outputs.diff" },
+    { "from": "n_static", "to": "pool:linter_pool", "kind": "resource", "amount": 1 },
+    { "from": "n_security", "to": "pool:scanner_pool", "kind": "resource", "amount": 1 }
+  ],
+  "runtime_policy": {
+    "pools": {
+      "linter_pool": { "capacity": 2 },
+      "scanner_pool": { "capacity": 1 }
+    }
+  }
+}

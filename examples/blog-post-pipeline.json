@@ -1,0 +1,75 @@
+{
+  "nodes": [
+    {
+      "id": "n_research",
+      "ref": "research",
+      "title": "调研主题",
+      "adapter": { "name": "mock" },
+      "dependencies": [],
+      "inputs": {
+        "topic": "Petri 网在 AI 工作流中的应用",
+        "depth": "intermediate"
+      },
+      "outputs": { "notes": "artifact://research-notes.md" },
+      "runtime": { "timeout": 180, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你是技术内容研究员，输出结构化要点而非长文。",
+        "task_prompt": "围绕主题收集 5-8 条关键论点，列出来源与一句话摘要。"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 2000 }
+    },
+    {
+      "id": "n_outline",
+      "ref": "outline",
+      "title": "撰写大纲",
+      "adapter": { "name": "mock" },
+      "dependencies": ["research"],
+      "inputs": { "notes_ref": "$.outputs.notes" },
+      "outputs": { "outline": "artifact://outline.md" },
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "把研究要点组织成三段式大纲：开篇 / 论证 / 结论，每段标注 2-3 个子主题。"
+      },
+      "on_failure": { "strategy": "abort" }
+    },
+    {
+      "id": "n_draft",
+      "ref": "draft",
+      "title": "撰写初稿",
+      "adapter": { "name": "mock" },
+      "dependencies": ["outline"],
+      "inputs": { "outline_ref": "$.outputs.outline" },
+      "outputs": { "draft": "artifact://draft.md" },
+      "runtime": { "timeout": 600, "retries": 1, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "按大纲撰写约 1200 字博客初稿，使用第二人称，加入 1 个代码示例。"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 5000 }
+    },
+    {
+      "id": "n_polish",
+      "ref": "polish",
+      "title": "润色与配图建议",
+      "adapter": { "name": "mock" },
+      "dependencies": ["draft"],
+      "inputs": { "draft_ref": "$.outputs.draft" },
+      "outputs": {
+        "final": "artifact://post.md",
+        "image_briefs": "artifact://image-briefs.json"
+      },
+      "runtime": { "timeout": 240, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "task_prompt": "修订语言风格、压缩冗余段落，并为关键概念产出 2-3 个配图说明（用途/构图/色调）。"
+      },
+      "on_failure": { "strategy": "abort" }
+    }
+  ],
+  "edges": [
+    { "from": "n_research", "to": "n_outline", "kind": "control" },
+    { "from": "n_outline", "to": "n_draft", "kind": "control" },
+    { "from": "n_draft", "to": "n_polish", "kind": "control" },
+    { "from": "n_research", "to": "n_outline", "kind": "data", "binding": "$.outputs.notes" },
+    { "from": "n_outline", "to": "n_draft", "kind": "data", "binding": "$.outputs.outline" },
+    { "from": "n_draft", "to": "n_polish", "kind": "data", "binding": "$.outputs.draft" }
+  ]
+}
