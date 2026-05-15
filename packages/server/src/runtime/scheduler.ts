@@ -31,6 +31,11 @@ interface RunStateInternal {
   resourcePool: ResourcePool;
   workflowId: string;
   pausedNodes: Map<string, PauseHandle>;
+  stepMode: boolean;
+  // Step-mode UX: the very first node should run immediately; the pause
+  // happens at the END of that node, i.e. before the *next* node — which
+  // is the same as pausing before every node except the first.
+  stepModeAnyStarted: boolean;
 }
 
 const activeRuns = new Map<string, RunStateInternal>();
@@ -102,8 +107,14 @@ async function runNode(
   runId: string,
   node: WorkflowNode,
 ): Promise<"completed" | "skipped" | "failed"> {
-  // ---- M4: breakpoint pause ----
-  if (!state.cancelRequested && isBreakpointActive(state.workflowId, node.id)) {
+  // ---- M4: breakpoint pause (also triggered by step-mode auto-pause) ----
+  // In step mode the first node runs without a pre-pause; pauses then fire
+  // before every subsequent node (equivalent to "pause at end of previous").
+  const stepPause = state.stepMode && state.stepModeAnyStarted;
+  if (
+    !state.cancelRequested &&
+    (stepPause || isBreakpointActive(state.workflowId, node.id))
+  ) {
     publishEvent({
       event_id: nanoid(),
       run_id: runId,
@@ -122,6 +133,8 @@ async function runNode(
       return "failed";
     }
   }
+
+  if (state.stepMode) state.stepModeAnyStarted = true;
 
   const adapter = getAdapter(node.adapter.name);
   if (!adapter) {
@@ -281,6 +294,7 @@ function emitCheckpointSaved(runId: string, checkpointId: string, blob: Checkpoi
 
 export interface ExecuteOptions {
   resumeFromCheckpointId?: string;
+  stepMode?: boolean;
 }
 
 // M3 — DAG scheduler with condition / loop / resources execution semantics.
@@ -307,6 +321,8 @@ export async function executeRun(
     resourcePool: new ResourcePool(plan.pools ?? {}),
     workflowId,
     pausedNodes: new Map(),
+    stepMode: options.stepMode === true,
+    stepModeAnyStarted: false,
   };
 
   // If resuming, hydrate state from the chosen checkpoint (or the latest).

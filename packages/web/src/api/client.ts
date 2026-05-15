@@ -191,8 +191,21 @@ export function usePatchNode(workflowId: string) {
 
 export function useStartRun(workflowId: string) {
   return useMutation({
-    mutationFn: () =>
-      http<{ id: string }>(`/api/workflows/${workflowId}/runs`, { method: "POST" }),
+    mutationFn: (opts: { stepMode?: boolean } = {}) =>
+      http<{ id: string }>(
+        `/api/workflows/${workflowId}/runs${opts.stepMode ? "?step=true" : ""}`,
+        { method: "POST" },
+      ),
+  });
+}
+
+export function useRunSingleNode(workflowId: string) {
+  return useMutation({
+    mutationFn: (nodeId: string) =>
+      http<{ id: string; target_node_id: string }>(
+        `/api/workflows/${workflowId}/nodes/${nodeId}/run`,
+        { method: "POST" },
+      ),
   });
 }
 
@@ -212,6 +225,7 @@ export interface RunSummary {
   error: string | null;
   resumed_from?: string | null;
   last_checkpoint_id?: string | null;
+  target_node_id?: string | null;
 }
 
 export function useWorkflowRuns(workflowId: string | undefined) {

@@ -20,12 +20,24 @@ export interface NodeCardData extends Record<string, unknown> {
   issue?: "warning" | "error";
   hasBreakpoint?: boolean;
   pausedAtBreakpoint?: boolean;
+  canRun?: boolean;
+  isRunning?: boolean;
+  onRunNode?: (nodeId: string) => void;
 }
 
 export function NodeCard({ data }: NodeProps) {
   const { t } = useTranslation("workflow");
-  const { node, status, selected, issue, hasBreakpoint, pausedAtBreakpoint } =
-    data as NodeCardData;
+  const {
+    node,
+    status,
+    selected,
+    issue,
+    hasBreakpoint,
+    pausedAtBreakpoint,
+    canRun,
+    isRunning,
+    onRunNode,
+  } = data as NodeCardData;
   const hasResources = node.resources && node.resources.length > 0;
   const depCount = (node.dependencies ?? []).length;
   const issueRing =
@@ -67,6 +79,31 @@ export function NodeCard({ data }: NodeProps) {
           </span>
         )}
       </div>
+      {onRunNode && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (canRun && !isRunning) onRunNode(node.id);
+          }}
+          disabled={!canRun || isRunning}
+          className={`mt-2 flex h-6 w-full items-center justify-center gap-1 border font-mono text-[10px] uppercase tracking-wider transition-colors ${
+            canRun && !isRunning
+              ? "border-accent/60 text-accent hover:bg-accent/10"
+              : "border-border text-muted-foreground/60 cursor-not-allowed"
+          }`}
+          title={
+            isRunning
+              ? t("run.running")
+              : canRun
+                ? t("run.run_node")
+                : t("run.run_node_blocked")
+          }
+        >
+          <span aria-hidden>▶</span>
+          <span>{t("run.run_node")}</span>
+        </button>
+      )}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

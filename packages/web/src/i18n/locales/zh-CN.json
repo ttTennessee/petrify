@@ -20,8 +20,27 @@
     "projects": "项目",
     "templates": "模板",
     "adapters": "适配器",
+    "settings": "设置",
     "back_to_projects": "← 项目",
     "subtitle": "可验证 Agent 工作流运行时 · v0.1"
+  },
+  "settings": {
+    "eyebrow": "全局配置",
+    "title": "系统",
+    "title_accent": "设置。",
+    "subtitle": "控制工作流的默认执行行为与可用的 Agent 运行器。",
+    "execution_section": "§ 执行行为",
+    "adapters_section": "§ 适配器",
+    "auto_run": {
+      "label": "自动化执行",
+      "description": "开启后，点击「运行」会一次性自动执行整个工作流；关闭后切换为单步模式，每个节点开始前自动暂停，由您手动继续。",
+      "on_hint": "当前：自动执行整图",
+      "off_hint": "当前：单步执行（每节点暂停）"
+    },
+    "adapters_link": {
+      "label": "管理适配器",
+      "description": "查看、启用、新增 Agent 运行器（ACP 及其他类别）。"
+    }
   },
   "adapters": {
     "title": "Agent",
@@ -29,6 +48,16 @@
     "eyebrow": "适配器",
     "subtitle": "配置工作流可用的 Agent 运行器。ACP 适配器通过子进程 stdio 使用 Zed Agent Client Protocol。",
     "catalog_section": "§ 目录",
+    "category": {
+      "acp": {
+        "label": "ACP 协议适配器",
+        "hint": "通过子进程 stdio 使用 Zed Agent Client Protocol。"
+      },
+      "other": {
+        "label": "其他",
+        "hint": "非 ACP 协议的适配器（OpenAI Tools、自定义等，敬请期待）。"
+      }
+    },
     "instances_section": "§ 自定义与已注册实例",
     "add_custom": "+ 添加自定义",
     "table": {
@@ -122,6 +151,9 @@
     },
     "run": {
       "run": "运行",
+      "run_step": "单步运行",
+      "run_node": "运行此节点",
+      "run_node_blocked": "前置任务未完成",
       "running": "运行中…",
       "starting": "启动中…",
       "resume": "恢复",

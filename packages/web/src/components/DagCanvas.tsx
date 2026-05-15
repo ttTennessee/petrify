@@ -54,6 +54,9 @@ export function DagCanvas({
   issueByRef,
   breakpointNodeIds,
   pausedNodeIds,
+  onRunNode,
+  runnableNodeIds,
+  runningNodeId,
 }: {
   graph: WorkflowGraph;
   nodeStatus: Record<string, NodeStatus>;
@@ -62,6 +65,9 @@ export function DagCanvas({
   issueByRef?: Record<string, "warning" | "error">;
   breakpointNodeIds?: Set<string>;
   pausedNodeIds?: Set<string>;
+  onRunNode?: (nodeId: string) => void;
+  runnableNodeIds?: Set<string>;
+  runningNodeId?: string | null;
 }) {
   const { nodes, edges } = useMemo(() => {
     const g = layout(graph);
@@ -79,6 +85,9 @@ export function DagCanvas({
           issue: issueByRef?.[n.ref],
           hasBreakpoint: breakpointNodeIds?.has(n.id) ?? false,
           pausedAtBreakpoint: pausedNodeIds?.has(n.id) ?? false,
+          onRunNode,
+          canRun: runnableNodeIds?.has(n.id) ?? false,
+          isRunning: runningNodeId === n.id,
         },
         sourcePosition: Position.Bottom,
         targetPosition: Position.Top,
@@ -132,7 +141,17 @@ export function DagCanvas({
       });
 
     return { nodes: layoutNodes, edges: layoutEdges };
-  }, [graph, nodeStatus, selectedNodeId, issueByRef, breakpointNodeIds, pausedNodeIds]);
+  }, [
+    graph,
+    nodeStatus,
+    selectedNodeId,
+    issueByRef,
+    breakpointNodeIds,
+    pausedNodeIds,
+    onRunNode,
+    runnableNodeIds,
+    runningNodeId,
+  ]);
 
   return (
     <ReactFlow

@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "./client";
 
+export type CatalogCategory = "acp" | "other";
+
 export interface CatalogEntry {
   id: string;
   label: string;
   description: string;
+  category: CatalogCategory;
   defaultKind: "spawn" | "connect";
   defaultCommand?: string;
   defaultArgs?: string[];

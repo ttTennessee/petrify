@@ -58,6 +58,9 @@ export default function App() {
           <NavItem to="/adapters" idx="03">
             {t("adapters")}
           </NavItem>
+          <NavItem to="/settings" idx="04">
+            {t("settings")}
+          </NavItem>
           <Separator orientation="vertical" className="h-4 mx-1" />
           <ThemeToggle />
           <LanguageSwitcher />

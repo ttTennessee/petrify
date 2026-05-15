@@ -3,10 +3,13 @@
 // row in `adapter_instances`. Defaults are best-effort hints — the actual probe
 // uses whatever the user submits.
 
+export type CatalogCategory = "acp" | "other";
+
 export interface CatalogEntry {
   id: string;
   label: string;
   description: string;
+  category: CatalogCategory;
   defaultKind: "spawn" | "connect";
   defaultCommand?: string;
   defaultArgs?: string[];
@@ -18,6 +21,7 @@ export const ADAPTER_CATALOG: CatalogEntry[] = [
     id: "claude-code",
     label: "Claude Code",
     description: "Anthropic Claude Code, exposed via the ACP runner.",
+    category: "acp",
     defaultKind: "spawn",
     defaultCommand: "claude-code-acp",
     homepage: "https://docs.claude.com/en/docs/claude-code",
@@ -26,6 +30,7 @@ export const ADAPTER_CATALOG: CatalogEntry[] = [
     id: "codex",
     label: "Codex CLI",
     description: "OpenAI Codex agent (ACP-compatible build).",
+    category: "acp",
     defaultKind: "spawn",
     defaultCommand: "codex",
     defaultArgs: ["acp"],
@@ -34,6 +39,7 @@ export const ADAPTER_CATALOG: CatalogEntry[] = [
     id: "opencode",
     label: "opencode",
     description: "Open-source coding agent with ACP transport.",
+    category: "acp",
     defaultKind: "spawn",
     defaultCommand: "opencode",
     defaultArgs: ["acp"],
@@ -43,6 +49,7 @@ export const ADAPTER_CATALOG: CatalogEntry[] = [
     id: "cursor",
     label: "Cursor Agent",
     description: "Cursor agent CLI in ACP mode.",
+    category: "acp",
     defaultKind: "spawn",
     defaultCommand: "cursor-agent",
     defaultArgs: ["acp"],

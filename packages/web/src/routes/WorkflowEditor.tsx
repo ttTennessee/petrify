@@ -11,6 +11,8 @@ import {
   useCheckpoints,
   useVerifyWorkflow,
   useBreakpoints,
+  useRunSingleNode,
+  ApiError,
 } from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
 import { DagCanvas } from "../components/DagCanvas";
@@ -34,15 +36,32 @@ export default function WorkflowEditor() {
   const { workflowId } = useParams();
   const { data, isLoading } = useWorkflow(workflowId);
   const { data: runs } = useWorkflowRuns(workflowId);
-  const { setGraph, nodeStatus, currentRunId, setCurrentRunId, replayEvents, resetRun } =
-    useWorkflowStore();
+  const {
+    setGraph,
+    nodeStatus,
+    currentRunId,
+    setCurrentRunId,
+    replayEvents,
+    resetRun,
+  } = useWorkflowStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
 
-  useEffect(() => {
+  // Reset store state synchronously when the workflow id changes or when the
+  // editor mounts on a new workflow id. The store is a zustand singleton
+  // (lives outside React), so coming from a different workflow page leaves
+  // stale nodeStatus / events / currentRunId behind. Initialising
+  // prevWorkflowId to undefined guarantees the reset block fires on the
+  // first render of every mount, not only on subsequent param changes.
+  const [prevWorkflowId, setPrevWorkflowId] = useState<string | undefined>(
+    undefined,
+  );
+  if (prevWorkflowId !== workflowId) {
+    setPrevWorkflowId(workflowId);
     resetRun();
+    setGraph(null);
     setSelectedId(null);
-  }, [workflowId]);
+  }
 
   const selected = useMemo<WorkflowNode | null>(() => {
     if (!selectedId || !data?.graph) return null;
@@ -128,6 +147,63 @@ export default function WorkflowEditor() {
   // which case downstream hooks short-circuit on the empty key.
   const runCtl = useRunPanelData(workflowId ?? "");
   const verifyCtl = useVerifyController(workflowId ?? "");
+  const runSingleNode = useRunSingleNode(workflowId ?? "");
+  const [nodeRunError, setNodeRunError] = useState<string | null>(null);
+
+  const isRunActive = runMeta?.status === "running";
+  const runnableNodeIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!data?.graph) return set;
+    // While a run is in flight, only the node(s) currently paused at a
+    // breakpoint / step boundary are runnable — clicking ▶ on them advances
+    // the live run (see handleRunNode). All other nodes are locked.
+    if (isRunActive) {
+      for (const id of pausedNodeIds) set.add(id);
+      return set;
+    }
+    const refToId = new Map(data.graph.nodes.map((n) => [n.ref, n.id]));
+    for (const n of data.graph.nodes) {
+      const depIds = (n.dependencies ?? [])
+        .map((r) => refToId.get(r))
+        .filter((x): x is string => !!x);
+      const depsOk = depIds.every((id) => nodeStatus[id] === "completed");
+      if (depsOk) set.add(n.id);
+    }
+    return set;
+  }, [data?.graph, nodeStatus, isRunActive, pausedNodeIds]);
+
+  const runningNodeId =
+    runMeta?.status === "running" ? runMeta.target_node_id ?? null : null;
+
+  const handleRunNode = async (nodeId: string) => {
+    setNodeRunError(null);
+    // If the active run is currently paused at this node (step-mode or
+    // breakpoint), advance that run instead of spawning a fresh single-node
+    // run — otherwise we'd orphan the in-flight step-mode session.
+    if (
+      currentRunId &&
+      runMeta?.status === "running" &&
+      pausedNodeIds.has(nodeId)
+    ) {
+      try {
+        await runCtl.continueBp.mutateAsync({ runId: currentRunId, nodeId });
+      } catch (err) {
+        setNodeRunError((err as Error).message);
+      }
+      return;
+    }
+    try {
+      const r = await runSingleNode.mutateAsync(nodeId);
+      setCurrentRunId(r.id);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const detail = (err.issues ?? []).join(", ");
+        setNodeRunError(detail ? `${err.message}: ${detail}` : err.message);
+      } else {
+        setNodeRunError((err as Error).message);
+      }
+    }
+  };
 
   if (isLoading || !workflowId)
     return <p className="p-6 font-mono text-xs text-muted-foreground">{tc("loading")}</p>;
@@ -175,6 +251,18 @@ export default function WorkflowEditor() {
 
       <div className="col-span-2">
         <RunPausedBanner controller={runCtl} />
+        {nodeRunError && (
+          <div className="flex items-center justify-between border-b border-destructive bg-destructive/10 px-6 py-1.5 font-mono text-[11px] text-destructive">
+            <span>{nodeRunError}</span>
+            <button
+              type="button"
+              className="text-destructive/70 hover:text-destructive"
+              onClick={() => setNodeRunError(null)}
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
       <div className="col-span-2">
         <VerifyDetails controller={verifyCtl} />
@@ -196,6 +284,9 @@ export default function WorkflowEditor() {
           issueByRef={issueByRef}
           breakpointNodeIds={breakpointNodeIds}
           pausedNodeIds={pausedNodeIds}
+          onRunNode={handleRunNode}
+          runnableNodeIds={runnableNodeIds}
+          runningNodeId={runningNodeId}
         />
       </div>
       <div className="min-h-0">

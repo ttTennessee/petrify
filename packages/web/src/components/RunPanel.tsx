@@ -9,6 +9,7 @@ import {
   useContinueBreakpoint,
   useWorkflowRuns,
 } from "../api/client";
+import { useConfig } from "../api/config";
 import { useRunEventStream } from "../api/ws";
 import { useWorkflowStore } from "../store/workflow";
 import { Button } from "./ui/button";
@@ -74,6 +75,9 @@ function useRunController(workflowId: string) {
     return m;
   }, [graph]);
 
+  const { data: config } = useConfig();
+  const autoRun = config?.auto_run ?? true;
+
   return {
     startRun,
     resumeRun,
@@ -86,6 +90,7 @@ function useRunController(workflowId: string) {
     checkpoints,
     pausedNodes,
     refByNodeId,
+    autoRun,
   };
 }
 
@@ -154,6 +159,7 @@ export function RunActions({
     run,
     runs,
     checkpoints,
+    autoRun,
   } = controller;
 
   const isRunning = run?.status === "running";
@@ -168,13 +174,20 @@ export function RunActions({
       <Button
         size="sm"
         onClick={async () => {
-          const r = await startRun.mutateAsync();
+          const r = await startRun.mutateAsync({ stepMode: !autoRun });
           setCurrentRunId(r.id);
         }}
         disabled={isStarting || isRunning}
         className="h-7 px-2.5 text-[11px] bg-success text-success-foreground hover:bg-success/90"
+        title={autoRun ? t("run.run") : t("run.run_step")}
       >
-        {isStarting ? t("run.starting") : isRunning ? t("run.running") : t("run.run")}
+        {isStarting
+          ? t("run.starting")
+          : isRunning
+            ? t("run.running")
+            : autoRun
+              ? t("run.run")
+              : t("run.run_step")}
       </Button>
 
       {canResume && currentRunId && (
