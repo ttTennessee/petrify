@@ -7,7 +7,7 @@ import type { ExecutablePlan } from "./compiler.js";
 import { saveCheckpoint, getLatestCheckpoint } from "./checkpoints.js";
 import { tracer } from "../telemetry.js";
 import { ResourcePool } from "./resources.js";
-import { evaluateBoolean } from "./expr/evaluator.js";
+import { evaluateBoolean, evaluateExpression } from "./expr/evaluator.js";
 
 const updateRun = db.prepare(
   `UPDATE runs SET status = @status, finished_at = @finished_at, error = @error WHERE id = @id`,
@@ -88,6 +88,55 @@ function backoffMs(node: WorkflowNode, attempt: number): number {
 
 function publishEvent(ev: RuntimeEvent) {
   eventBus.publish(ev);
+}
+
+/**
+ * Walk node.inputs and evaluate any expression-shaped string values against
+ * the current run scope. Without this, `inputs: { "x": "$.outputs.foo.text" }`
+ * reaches the adapter as the literal string `"$.outputs.foo.text"` and the
+ * downstream agent never sees upstream data.
+ *
+ * - Only strings starting with `$.` are treated as expressions; everything
+ *   else is passed through (so configs with plain string/number/bool/object
+ *   inputs keep working).
+ * - Recurses into plain objects and arrays so nested input shapes resolve too.
+ * - On evaluation failure we keep the original string and let the prompt show
+ *   it — failing loudly later is better than swallowing a typo'd ref here.
+ */
+function resolveInputs(
+  inputs: Record<string, unknown>,
+  scope: { variables: Record<string, unknown>; outputs: Record<string, unknown>; env: Record<string, string> },
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(inputs)) {
+    out[k] = resolveValue(v, scope);
+  }
+  return out;
+}
+
+function resolveValue(
+  v: unknown,
+  scope: { variables: Record<string, unknown>; outputs: Record<string, unknown>; env: Record<string, string> },
+): unknown {
+  if (typeof v === "string") {
+    if (v.startsWith("$.")) {
+      try {
+        return evaluateExpression(v, scope);
+      } catch {
+        return v;
+      }
+    }
+    return v;
+  }
+  if (Array.isArray(v)) return v.map((it) => resolveValue(it, scope));
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, inner] of Object.entries(v as Record<string, unknown>)) {
+      out[k] = resolveValue(inner, scope);
+    }
+    return out;
+  }
+  return v;
 }
 
 function makeScope(state: RunStateInternal): {
@@ -177,11 +226,15 @@ async function runNode(
     try {
       await tracer.startActiveSpan(`node.${node.ref}.attempt.${attempt}`, async (span) => {
         try {
+          const resolvedInputs = resolveInputs(
+            node.inputs as Record<string, unknown>,
+            makeScope(state),
+          );
           for await (const ev of adapter.invoke({
             invocationId,
             runId,
             node,
-            inputs: node.inputs as Record<string, unknown>,
+            inputs: resolvedInputs,
           })) {
             span.addEvent(ev.type);
             publishEvent(ev);

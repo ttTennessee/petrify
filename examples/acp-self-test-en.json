@@ -7,10 +7,10 @@
       "adapter": { "name": "acp" },
       "dependencies": [],
       "inputs": {},
-      "outputs": { "identity": "artifact://identity.md" },
+      "outputs": { "text": "$.outputs.identity.text" },
       "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
       "prompt": {
-        "system_prompt": "You are running inside an ACP agent runner. Answer concisely in plain text — no markdown headings.",
+        "system_prompt": "You are running inside an ACP agent runner. Answer concisely in plain text — no markdown headings, no preamble.",
         "task_prompt": "Two questions:\n1. Which underlying language model are you (vendor + model family + version if you know it)?\n2. Which agent CLI / IDE host is currently driving this ACP session (e.g. Claude Code, Codex CLI, Cursor Agent, opencode)?\n\nReply in exactly two short lines:\nmodel: <answer>\nhost: <answer>"
       },
       "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
@@ -22,7 +22,7 @@
       "adapter": { "name": "acp" },
       "dependencies": [],
       "inputs": {},
-      "outputs": { "uname": "artifact://uname.txt" },
+      "outputs": { "text": "$.outputs.uname.text" },
       "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
       "prompt": {
         "system_prompt": "You have shell tool access. Run exactly one command and return its raw output. Do not paraphrase.",
@@ -37,7 +37,7 @@
       "adapter": { "name": "acp" },
       "dependencies": [],
       "inputs": {},
-      "outputs": { "date": "artifact://date.txt" },
+      "outputs": { "text": "$.outputs.today.text" },
       "runtime": { "timeout": 60, "retries": 0, "checkpoint": true },
       "prompt": {
         "system_prompt": "You have shell tool access. Prefer running a command over guessing the date from training data.",
@@ -52,15 +52,15 @@
       "adapter": { "name": "acp" },
       "dependencies": ["identity", "uname", "today"],
       "inputs": {
-        "identity_ref": "$.outputs.identity",
-        "uname_ref": "$.outputs.uname",
-        "date_ref": "$.outputs.date"
+        "identity": "$.outputs.identity.text",
+        "uname": "$.outputs.uname.text",
+        "date": "$.outputs.today.text"
       },
-      "outputs": { "report": "artifact://environment-report.md" },
+      "outputs": { "text": "$.outputs.summary.text" },
       "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
       "prompt": {
-        "system_prompt": "You are writing a short environment report for an engineer who will paste it into a runbook.",
-        "task_prompt": "Combine the three upstream payloads into a compact markdown report with this exact structure:\n\n# ACP Self-Probe Report\n\n- **Captured at:** <utc timestamp from date_ref>\n- **Model:** <model line from identity_ref>\n- **Host runner:** <host line from identity_ref>\n- **Kernel:** <uname output from uname_ref>\n\n## Notes\n<one or two bullet sentences flagging anything notable — e.g. mismatch between declared model and host, unusual kernel string, clock drift.>\n\nReturn only the markdown — no preamble."
+        "system_prompt": "You are writing a short environment report for an engineer who will paste it into a runbook. Do NOT run any shell commands — every value you need is already provided in `inputs` below; just reformat them.",
+        "task_prompt": "Read the three fields under `inputs`:\n- `inputs.identity` — two lines containing `model:` and `host:`.\n- `inputs.uname` — verbatim `uname -a` output.\n- `inputs.date` — one line `utc: <iso-8601 timestamp>`.\n\nProduce a compact markdown report with this exact structure:\n\n# ACP Self-Test Report\n\n- **Captured at:** <utc timestamp from inputs.date>\n- **Model:** <model line value from inputs.identity>\n- **Host runner:** <host line value from inputs.identity>\n- **Kernel:** <full inputs.uname value>\n\n## Notes\n<one or two bullet sentences flagging anything notable — e.g. mismatch between declared model and host, unusual kernel string, clock drift.>\n\nReturn only the markdown — no preamble, no fences."
       },
       "on_failure": { "strategy": "abort" }
     }
@@ -69,8 +69,8 @@
     { "from": "n_identity", "to": "n_summary", "kind": "control" },
     { "from": "n_uname", "to": "n_summary", "kind": "control" },
     { "from": "n_date", "to": "n_summary", "kind": "control" },
-    { "from": "n_identity", "to": "n_summary", "kind": "data", "binding": "$.outputs.identity" },
-    { "from": "n_uname", "to": "n_summary", "kind": "data", "binding": "$.outputs.uname" },
-    { "from": "n_date", "to": "n_summary", "kind": "data", "binding": "$.outputs.date" }
+    { "from": "n_identity", "to": "n_summary", "kind": "data", "binding": "$.outputs.identity.text" },
+    { "from": "n_uname", "to": "n_summary", "kind": "data", "binding": "$.outputs.uname.text" },
+    { "from": "n_date", "to": "n_summary", "kind": "data", "binding": "$.outputs.today.text" }
   ]
 }
