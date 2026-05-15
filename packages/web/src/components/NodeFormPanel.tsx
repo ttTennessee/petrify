@@ -341,7 +341,7 @@ export function NodeFormPanel({
                 emitPrompt(systemPrompt, e.target.value);
               }}
               rows={3}
-              className="resize-none bg-muted/40 font-mono text-[11px] focus-visible:bg-card"
+              className="resize-y min-h-[4.5rem] bg-muted/40 font-mono text-[11px] focus-visible:bg-card"
             />
           </div>
           <div>
@@ -355,7 +355,7 @@ export function NodeFormPanel({
                 emitPrompt(e.target.value, taskPrompt);
               }}
               rows={3}
-              className="resize-none bg-muted/40 font-mono text-[11px] focus-visible:bg-card"
+              className="resize-y min-h-[4.5rem] bg-muted/40 font-mono text-[11px] focus-visible:bg-card"
             />
           </div>
         </div>
