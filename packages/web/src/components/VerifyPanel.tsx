@@ -35,60 +35,86 @@ function issueAccent(level: string) {
   }
 }
 
-export function VerifyPanel({ workflowId }: { workflowId: string }) {
-  const { t } = useTranslation("workflow");
-  const qc = useQueryClient();
+// Shared state hook so Actions and Details stay in sync when rendered apart.
+export function useVerifyController(workflowId: string) {
   const verifyMu = useRunVerify(workflowId);
   const dryMu = useRunDryRun(workflowId);
   const { data: lastReport } = useVerifyWorkflow(workflowId);
   const [dry, setDry] = useState<DryRunReport | null>(null);
-
   const report: VerificationReport | null = verifyMu.data ?? lastReport ?? null;
+  return { verifyMu, dryMu, report, dry, setDry };
+}
+
+export function VerifyActions({
+  workflowId,
+  controller,
+}: {
+  workflowId: string;
+  controller: ReturnType<typeof useVerifyController>;
+}) {
+  const { t } = useTranslation("workflow");
+  const qc = useQueryClient();
+  const { verifyMu, dryMu, report, setDry } = controller;
 
   return (
-    <section className="border-b border-border bg-muted/30 px-6 py-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          size="sm"
-          onClick={async () => {
-            await verifyMu.mutateAsync();
-            qc.invalidateQueries({ queryKey: ["verify", workflowId] });
-          }}
-          disabled={verifyMu.isPending}
-        >
-          {verifyMu.isPending ? t("verify.verifying") : t("verify.verify")}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={async () => setDry(await dryMu.mutateAsync())}
-          disabled={dryMu.isPending}
-        >
-          {dryMu.isPending ? t("verify.dry_running") : t("verify.dry_run")}
-        </Button>
-        {report && (
-          <>
-            <Badge variant={statusVariant(report.status)} dot>
-              {report.status}
-            </Badge>
-            <Badge variant={riskVariant(report.risk)}>
-              {t("verify.risk")}{report.risk}
-            </Badge>
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {report.stats.place_count}P / {report.stats.transition_count}T ·{" "}
-              {report.stats.explored_markings} {t("verify.markings")}
-              {report.stats.truncated ? ` ${t("verify.truncated")}` : ""}
-            </span>
-          </>
-        )}
-      </div>
+    <div className="flex items-center gap-2">
+      <Button
+        size="sm"
+        className="h-7 px-2.5 text-[11px]"
+        onClick={async () => {
+          await verifyMu.mutateAsync();
+          qc.invalidateQueries({ queryKey: ["verify", workflowId] });
+        }}
+        disabled={verifyMu.isPending}
+      >
+        {verifyMu.isPending ? t("verify.verifying") : t("verify.verify")}
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-7 px-2.5 text-[11px]"
+        onClick={async () => setDry(await dryMu.mutateAsync())}
+        disabled={dryMu.isPending}
+      >
+        {dryMu.isPending ? t("verify.dry_running") : t("verify.dry_run")}
+      </Button>
+      {report && (
+        <>
+          <Badge variant={statusVariant(report.status)} dot>
+            {report.status}
+          </Badge>
+          <Badge variant={riskVariant(report.risk)}>
+            {t("verify.risk")}{report.risk}
+          </Badge>
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {report.stats.place_count}P / {report.stats.transition_count}T ·{" "}
+            {report.stats.explored_markings} {t("verify.markings")}
+            {report.stats.truncated ? ` ${t("verify.truncated")}` : ""}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
 
-      {report && report.issues.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {report.issues.map((i, idx) => (
+export function VerifyDetails({
+  controller,
+}: {
+  controller: ReturnType<typeof useVerifyController>;
+}) {
+  const { t } = useTranslation("workflow");
+  const { report, dry } = controller;
+  const hasIssues = report && report.issues.length > 0;
+  if (!hasIssues && !dry) return null;
+
+  return (
+    <section className="border-b border-border bg-muted/20 px-6 py-2">
+      {hasIssues && (
+        <ul className="space-y-1">
+          {report!.issues.map((i, idx) => (
             <li
               key={idx}
-              className={`border-l-2 pl-3 py-1 text-xs ${issueAccent(i.level)}`}
+              className={`border-l-2 pl-3 py-0.5 text-xs ${issueAccent(i.level)}`}
             >
               <div className="font-mono font-medium text-[11px]">
                 [{i.code}]{" "}
@@ -110,7 +136,9 @@ export function VerifyPanel({ workflowId }: { workflowId: string }) {
       )}
 
       {dry && (
-        <div className="mt-2 border-t border-border pt-2 font-mono text-[11px] text-foreground/80">
+        <div
+          className={`${hasIssues ? "mt-2 border-t border-border pt-2" : ""} font-mono text-[11px] text-foreground/80`}
+        >
           <span>
             {t("verify.estimated")}{" "}
             <span className="text-foreground">

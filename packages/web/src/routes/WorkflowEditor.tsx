@@ -14,11 +14,16 @@ import {
 } from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
 import { DagCanvas } from "../components/DagCanvas";
-import { RunPanel } from "../components/RunPanel";
+import { RunActions, RunPausedBanner, useRunPanelData } from "../components/RunPanel";
 import { EventStream } from "../components/EventStream";
 import { TimelineScrubber } from "../components/TimelineScrubber";
 import { NodeDetailPanel } from "../components/NodeDetailPanel";
-import { VerifyPanel, deriveIssueByNodeRef } from "../components/VerifyPanel";
+import {
+  VerifyActions,
+  VerifyDetails,
+  deriveIssueByNodeRef,
+  useVerifyController,
+} from "../components/VerifyPanel";
 import { SaveAsTemplateDialog } from "../components/SaveAsTemplateDialog";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
@@ -117,6 +122,13 @@ export default function WorkflowEditor() {
     return pausedAt;
   }, [allEvents]);
 
+  // Controllers must mount unconditionally so their hooks (WebSocket, queries)
+  // stay live across renders. They're created at top level even before the
+  // loading early-returns below — workflowId may briefly be undefined here, in
+  // which case downstream hooks short-circuit on the empty key.
+  const runCtl = useRunPanelData(workflowId ?? "");
+  const verifyCtl = useVerifyController(workflowId ?? "");
+
   if (isLoading || !workflowId)
     return <p className="p-6 font-mono text-xs text-muted-foreground">{tc("loading")}</p>;
   if (!data)
@@ -129,22 +141,29 @@ export default function WorkflowEditor() {
       className="grid h-full grid-rows-[auto_auto_auto_auto_minmax(0,1fr)]"
       style={{ gridTemplateColumns: `1fr ${rightCol}` }}
     >
-      <div className="col-span-2 flex h-11 items-center justify-between border-b border-border bg-card/40 px-6">
-        <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+      {/* Unified toolbar — breadcrumb, run controls, verify controls, save-as-template
+          all share one h-11 row. Replaces the previous four stacked rows. */}
+      <div className="col-span-2 flex h-11 items-center gap-3 border-b border-border bg-card/40 px-6">
+        <div className="flex shrink-0 items-center gap-2 font-mono text-[11px] text-muted-foreground">
           <span>{t("breadcrumb")}</span>
           <span className="text-muted-foreground/40">›</span>
-          <span className="text-foreground">{workflowId}</span>
+          <span className="max-w-[200px] truncate text-foreground" title={workflowId}>
+            {workflowId}
+          </span>
         </div>
-        <div className="flex items-center gap-3">
-          <Separator orientation="vertical" className="h-4" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSaveTemplate(true)}
-          >
-            {t("save_as_template")}
-          </Button>
-        </div>
+        <Separator orientation="vertical" className="h-5" />
+        <RunActions controller={runCtl} />
+        <Separator orientation="vertical" className="ml-auto h-5" />
+        <VerifyActions workflowId={workflowId} controller={verifyCtl} />
+        <Separator orientation="vertical" className="h-5" />
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 px-2.5 text-[11px]"
+          onClick={() => setShowSaveTemplate(true)}
+        >
+          {t("save_as_template")}
+        </Button>
       </div>
 
       {showSaveTemplate && (
@@ -155,10 +174,10 @@ export default function WorkflowEditor() {
       )}
 
       <div className="col-span-2">
-        <VerifyPanel workflowId={workflowId} />
+        <RunPausedBanner controller={runCtl} />
       </div>
       <div className="col-span-2">
-        <RunPanel workflowId={workflowId} />
+        <VerifyDetails controller={verifyCtl} />
       </div>
       <div className="col-span-2">
         {currentRunId && (
