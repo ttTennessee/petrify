@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Status
 
-This repo currently contains **only `prd.md`** — no source code, build system, or tests exist yet. Any implementation work starts from scratch against the PRD. Read `prd.md` before proposing structure or code; it is the single source of truth for product scope, data shapes, and milestone ordering.
+All five milestones (M1–M5) have been implemented: import, edit, sequential & parallel execution, Petri-net verification, Dry Run, Checkpoint/Resume, Time Travel, breakpoint debugger, ACP Adapter, and the template marketplace. The codebase is in active iteration — bugs are still being fixed and edge cases addressed.
+
+Before proposing new work: read `prd.md` to locate the task on the milestone ladder, and check whether the relevant module already exists in `packages/server/src/` or `packages/web/src/` before writing new code. Avoid re-implementing what is already there.
 
 ## Product: Petrify
 
@@ -41,18 +43,18 @@ Validate everything with **zod** at the boundary (per §8.2 stack).
 
 ## Tech Stack (MVP — PRD §8)
 
-- **Frontend:** React 19 · React Flow (graph) · Zustand · Tailwind · TanStack Query
+- **Frontend:** React 19 · React Flow (via `@xyflow/react`) · Zustand · Tailwind · TanStack Query
 - **Backend:** Node.js 20 · Express · zod · better-sqlite3 · nanoid · `ws` (realtime) · OpenTelemetry SDK
 - **Petri-net solver:** in-house (boundedness algorithm) for MVP; pluggable later (LoLA / TAPAAL)
 - Extension targets (post-MVP): Rust/Go/JVM runtime; Redis/BullMQ/NATS for distribution
 
 ## Milestones (each is independently shippable — PRD §10)
 
-- **M1** — End-to-end minimal loop: import + edit + sequential execution. Node Schema is **complete**, but only `dependencies/inputs/outputs` are consumed; `condition/loop/resources` are declared-only (not interpreted yet).
-- **M2** — Runtime Engine + Checkpoint + Resume (starts at `boundary-only`).
-- **M3** — Petri-net verification + Dry Run; activate `condition/loop/resources` semantics.
-- **M4** — Time Travel + debugger + breakpoints.
-- **M5** — Adapter ecosystem + template marketplace.
+- **M1** ✅ — End-to-end minimal loop: import + edit + sequential execution. Node Schema is **complete**, but only `dependencies/inputs/outputs` are consumed; `condition/loop/resources` are declared-only (not interpreted yet).
+- **M2** ✅ — Runtime Engine + Checkpoint + Resume (starts at `boundary-only`).
+- **M3** ✅ — Petri-net verification + Dry Run; activate `condition/loop/resources` semantics.
+- **M4** ✅ — Time Travel + debugger + breakpoints.
+- **M5** ✅ — Adapter ecosystem + template marketplace.
 
 When proposing work, locate it on this ladder. Don't pull M3+ semantics into M1 — the staging is deliberate.
 
