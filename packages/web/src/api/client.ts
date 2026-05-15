@@ -73,6 +73,62 @@ export function usePromptTemplate(projectId: string | undefined) {
   });
 }
 
+export interface GenerateWorkflowResult {
+  workflowId: string;
+  attempts: number;
+  order: string[];
+}
+
+export class GenerateApiError extends Error {
+  constructor(
+    message: string,
+    public readonly stage?: string,
+    public readonly attempts?: number,
+    public readonly raw?: string,
+    public readonly issues?: unknown,
+  ) {
+    super(message);
+  }
+}
+
+export function useGenerateWorkflow(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (adapter: string) => {
+      const res = await fetch(`/api/projects/${projectId}/generate-workflow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adapter }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        stage?: string;
+        attempts?: number;
+        raw?: string;
+        issues?: unknown;
+        workflowId?: string;
+        order?: string[];
+      };
+      if (!res.ok) {
+        throw new GenerateApiError(
+          body.error ?? `HTTP ${res.status}`,
+          body.stage,
+          body.attempts,
+          body.raw,
+          body.issues,
+        );
+      }
+      return {
+        workflowId: body.workflowId!,
+        attempts: body.attempts ?? 1,
+        order: body.order ?? [],
+      } as GenerateWorkflowResult;
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["project-workflows", projectId] }),
+  });
+}
+
 export function useImportWorkflow(projectId: string) {
   return useMutation({
     mutationFn: (graph: WorkflowGraph) =>

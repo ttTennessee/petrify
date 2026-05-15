@@ -92,6 +92,19 @@
       "invalid_json": "JSON 格式错误：",
       "validation_failed": "schema 验证失败：\n"
     },
+    "generate": {
+      "title": "根据描述生成工作流",
+      "description": "Petrify 会让选定的 Adapter 基于项目目标和描述起草一份 workflow JSON，然后校验入库。校验失败会自动重试一次。",
+      "adapter_label": "Adapter",
+      "pick_adapter": "选择一个已启用的 Adapter…",
+      "loading_adapters": "加载 Adapter 列表…",
+      "no_adapters": "没有已启用的 Adapter，请先注册。",
+      "submit": "生成",
+      "running": "生成中…",
+      "cancel": "取消",
+      "retry": "重试",
+      "show_raw": "查看原始输出"
+    },
     "verify": {
       "verify": "验证",
       "verifying": "验证中…",
@@ -142,6 +155,7 @@
     "events": {
       "title": "事件流",
       "no_events": "暂无事件",
+      "no_node_events": "该节点暂无运行时事件，请先运行工作流",
       "global": "§ 全局",
       "thinking": "思考中 · ",
       "chars": " 字符",
@@ -159,6 +173,9 @@
       "changed_one": "已修改 {{count}} 个字段",
       "changed_other": "已修改 {{count}} 个字段",
       "no_changes": "无变更",
+      "tab_form": "表单",
+      "tab_json": "JSON",
+      "tab_events": "事件",
       "fields": {
         "adapter": "适配器",
         "inputs": "输入",
@@ -175,6 +192,29 @@
         "resources": "M1 仅声明",
         "condition": "M3",
         "loop": "M3"
+      },
+      "form": {
+        "adapter_version": "版本（可选）",
+        "task_prompt": "任务提示词",
+        "system_prompt": "系统提示词（可选）",
+        "timeout_sec": "超时（秒）",
+        "retries": "重试次数",
+        "checkpoint": "启用检查点",
+        "on_failure_strategy": "策略",
+        "max_attempts": "最大尝试次数",
+        "backoff_ms": "退避时间（ms）",
+        "compensate_ref": "补偿节点 ref",
+        "loop_max": "最大迭代次数",
+        "loop_exit": "退出条件",
+        "resource_name": "名称",
+        "resource_amount": "数量",
+        "resource_release": "完成后释放",
+        "add_resource": "+ 添加资源",
+        "add_input": "+ 添加输入",
+        "add_output": "+ 添加输出",
+        "kv_invalid_json": "JSON 值格式错误",
+        "schema_advanced": "input/output JSON Schema — 高级字段",
+        "schema_open_json": "在 JSON 视图中编辑"
       }
     },
     "status": {
@@ -200,6 +240,9 @@
     "create_first": "创建第一个项目 →",
     "section_eyebrow": "项目",
     "from_template": "从模板创建…",
+    "generate": {
+      "button": "根据描述生成"
+    },
     "workflows_section": "§ 工作流",
     "workflow_not_found": "未找到工作流",
     "new": {

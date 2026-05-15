@@ -33,8 +33,7 @@ function statusVariant(status: string): BadgeVariant {
   }
 }
 
-export function RunPanel({ workflowId }: { workflowId: string }) {
-  const { t } = useTranslation("workflow");
+function useRunController(workflowId: string) {
   const startRun = useStartRun(workflowId);
   const resumeRun = useResumeRun();
   const cancelRun = useCancelRun();
@@ -75,6 +74,88 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
     return m;
   }, [graph]);
 
+  return {
+    startRun,
+    resumeRun,
+    cancelRun,
+    continueBp,
+    currentRunId,
+    setCurrentRunId,
+    run,
+    runs,
+    checkpoints,
+    pausedNodes,
+    refByNodeId,
+  };
+}
+
+export function useRunPanelData(workflowId: string) {
+  return useRunController(workflowId);
+}
+
+export function RunPausedBanner({
+  controller,
+}: {
+  controller: ReturnType<typeof useRunController>;
+}) {
+  const { t } = useTranslation("workflow");
+  const { continueBp, cancelRun, currentRunId, pausedNodes, refByNodeId, run } =
+    controller;
+  const isRunning = run?.status === "running";
+  const show = isRunning && pausedNodes.length > 0 && !!currentRunId;
+  if (!show) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 border-b border-warning bg-warning/10 px-6 py-1.5">
+      <Badge variant="warning" dot>
+        {t("run.paused_banner")}
+      </Badge>
+      {pausedNodes.map((nodeId) => (
+        <div key={nodeId} className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-foreground">
+            {refByNodeId[nodeId] ?? nodeId}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 border-success text-success hover:bg-success/10"
+            disabled={continueBp.isPending}
+            onClick={() => continueBp.mutate({ runId: currentRunId!, nodeId })}
+          >
+            {t("run.continue")}
+          </Button>
+        </div>
+      ))}
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-6 border-destructive text-destructive hover:bg-destructive/10"
+        onClick={() => cancelRun.mutate(currentRunId!)}
+        disabled={cancelRun.isPending}
+      >
+        {t("run.cancel")}
+      </Button>
+    </div>
+  );
+}
+
+export function RunActions({
+  controller,
+}: {
+  controller: ReturnType<typeof useRunController>;
+}) {
+  const { t } = useTranslation("workflow");
+  const {
+    startRun,
+    resumeRun,
+    cancelRun,
+    currentRunId,
+    setCurrentRunId,
+    run,
+    runs,
+    checkpoints,
+  } = controller;
+
   const isRunning = run?.status === "running";
   const isStarting = startRun.isPending;
   const canResume =
@@ -82,45 +163,8 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
     (checkpoints?.length ?? 0) > 0;
   const lastCheckpoint = checkpoints?.[0];
 
-  const showPausedBanner = isRunning && pausedNodes.length > 0;
-
   return (
-    <div className="flex flex-col">
-      {showPausedBanner && currentRunId && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-warning bg-warning/10 px-6 py-2">
-          <Badge variant="warning" dot>
-            {t("run.paused_banner")}
-          </Badge>
-          {pausedNodes.map((nodeId) => (
-            <div key={nodeId} className="flex items-center gap-2">
-              <span className="font-mono text-[11px] text-foreground">
-                {refByNodeId[nodeId] ?? nodeId}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 border-success text-success hover:bg-success/10"
-                disabled={continueBp.isPending}
-                onClick={() =>
-                  continueBp.mutate({ runId: currentRunId, nodeId })
-                }
-              >
-                {t("run.continue")}
-              </Button>
-            </div>
-          ))}
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 border-destructive text-destructive hover:bg-destructive/10"
-            onClick={() => cancelRun.mutate(currentRunId)}
-            disabled={cancelRun.isPending}
-          >
-            {t("run.cancel")}
-          </Button>
-        </div>
-      )}
-    <div className="flex h-11 flex-wrap items-center gap-4 border-b border-border bg-card/40 px-6">
+    <div className="flex flex-wrap items-center gap-2">
       <Button
         size="sm"
         onClick={async () => {
@@ -128,7 +172,7 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
           setCurrentRunId(r.id);
         }}
         disabled={isStarting || isRunning}
-        className="bg-success text-success-foreground hover:bg-success/90"
+        className="h-7 px-2.5 text-[11px] bg-success text-success-foreground hover:bg-success/90"
       >
         {isStarting ? t("run.starting") : isRunning ? t("run.running") : t("run.run")}
       </Button>
@@ -142,7 +186,7 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
             setCurrentRunId(r.id);
           }}
           disabled={resumeRun.isPending}
-          className="border-warning text-warning hover:bg-warning/10"
+          className="h-7 px-2.5 text-[11px] border-warning text-warning hover:bg-warning/10"
           title={
             lastCheckpoint
               ? t("run.resume_hint", { count: lastCheckpoint.blob.completed_node_ids.length })
@@ -159,7 +203,7 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
           variant="outline"
           onClick={() => cancelRun.mutate(currentRunId)}
           disabled={cancelRun.isPending}
-          className="border-destructive text-destructive hover:bg-destructive/10"
+          className="h-7 px-2.5 text-[11px] border-destructive text-destructive hover:bg-destructive/10"
         >
           {t("run.cancel")}
         </Button>
@@ -170,7 +214,7 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
           value={currentRunId ?? undefined}
           onValueChange={(v) => setCurrentRunId(v)}
         >
-          <SelectTrigger className="h-7 w-[230px] px-2 font-mono text-[11px]">
+          <SelectTrigger className="h-7 w-[210px] px-2 font-mono text-[11px]">
             <SelectValue placeholder={t("run.picker_placeholder")} />
           </SelectTrigger>
           <SelectContent>
@@ -191,9 +235,7 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
                     }`}
                   />
                   <span>{r.id.slice(0, 8)}</span>
-                  <span className="text-muted-foreground">
-                    {r.status}
-                  </span>
+                  <span className="text-muted-foreground">{r.status}</span>
                   <span className="text-muted-foreground/60">
                     {new Date(r.started_at).toLocaleTimeString()}
                   </span>
@@ -251,7 +293,6 @@ export function RunPanel({ workflowId }: { workflowId: string }) {
           {(resumeRun.error as Error).message}
         </span>
       )}
-    </div>
     </div>
   );
 }

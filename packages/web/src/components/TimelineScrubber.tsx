@@ -80,21 +80,19 @@ export function TimelineScrubber({
   };
 
   return (
-    <div className="border-b border-border bg-card/40 px-6 py-2">
-      <div className="mb-1.5 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <span className="uppercase tracking-wider">{t("timeline.title")}</span>
-          <Badge variant={isLive ? "success" : "warning"} dot>
-            {isLive ? t("timeline.live") : t("timeline.scrubbing")}
-          </Badge>
-          <span>·</span>
-          <span>{t("timeline.events", { count: total })}</span>
-        </div>
+    <div className="flex items-center gap-4 border-b border-border bg-card/40 px-6 py-1.5">
+      <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] text-muted-foreground">
+        <span className="uppercase tracking-wider">{t("timeline.title")}</span>
+        <Badge variant={isLive ? "success" : "warning"} dot>
+          {isLive ? t("timeline.live") : t("timeline.scrubbing")}
+        </Badge>
+        <span>·</span>
+        <span>{t("timeline.events", { count: total })}</span>
         {!isLive && (
           <Button
             size="sm"
             variant="outline"
-            className="h-6 px-2 text-[10px]"
+            className="ml-1 h-5 px-1.5 text-[10px]"
             onClick={exitScrubMode}
           >
             {t("timeline.back_to_live")}
@@ -102,7 +100,7 @@ export function TimelineScrubber({
         )}
       </div>
 
-      <div className="relative h-12">
+      <div className="relative h-8 flex-1">
         {/* slider — rendered FIRST so the pin layer stacks above it */}
         <input
           type="range"
@@ -111,7 +109,7 @@ export function TimelineScrubber({
           step={1}
           value={scrubCursor}
           onChange={(e) => setScrubCursor(Number(e.target.value))}
-          className="absolute inset-0 z-0 h-12 w-full cursor-pointer appearance-none bg-transparent
+          className="absolute inset-0 z-0 h-8 w-full cursor-pointer appearance-none bg-transparent
             [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4
             [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full
             [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:border
