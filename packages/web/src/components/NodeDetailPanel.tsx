@@ -14,6 +14,7 @@ import { Input } from "./ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { NodeJsonPanel, JSON_FIELDS, pretty } from "./NodeJsonPanel";
 import { NodeFormPanel } from "./NodeFormPanel";
+import { NodeEventStream } from "./NodeEventStream";
 import { cn } from "../lib/utils";
 
 function pickEditableFields(node: WorkflowNode): Partial<WorkflowNode> {
@@ -36,15 +37,27 @@ export function NodeDetailPanel({
   node,
   workflowId,
   onClose,
+  isLiveRun = false,
 }: {
   node: WorkflowNode;
   workflowId: string;
   onClose: () => void;
+  isLiveRun?: boolean;
 }) {
   const { t } = useTranslation("workflow");
   const { t: tc } = useTranslation("common");
 
-  const [activeTab, setActiveTab] = useState<"form" | "json">("form");
+  const [activeTab, setActiveTab] = useState<"form" | "json" | "events">("form");
+
+  // Switch to events tab when run starts; restore form tab when run ends
+  useEffect(() => {
+    if (isLiveRun) {
+      setActiveTab("events");
+    } else if (activeTab === "events") {
+      setActiveTab("form");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLiveRun]);
 
   // --- title state ---
   const [titleValue, setTitleValue] = useState(node.title);
@@ -106,7 +119,7 @@ export function NodeDetailPanel({
   function handleTabChange(tab: string) {
     if (activeTab === "json") {
       flushJson();
-    } else {
+    } else if (activeTab === "form") {
       // leaving form → refresh JSON overrides from draft
       const m: Record<string, string> = {};
       for (const f of JSON_FIELDS) {
@@ -115,7 +128,7 @@ export function NodeDetailPanel({
       }
       setJsonOverrides(m);
     }
-    setActiveTab(tab as "form" | "json");
+    setActiveTab(tab as "form" | "json" | "events");
   }
 
   // dirty calculation
@@ -298,41 +311,54 @@ export function NodeDetailPanel({
         className="flex min-h-0 flex-1 flex-col"
       >
         <TabsList className="w-full justify-start px-4">
-          <TabsTrigger value="form">{t("node.tab_form")}</TabsTrigger>
-          <TabsTrigger value="json">{t("node.tab_json")}</TabsTrigger>
+          {!isLiveRun && (
+            <>
+              <TabsTrigger value="form">{t("node.tab_form")}</TabsTrigger>
+              <TabsTrigger value="json">{t("node.tab_json")}</TabsTrigger>
+            </>
+          )}
+          <TabsTrigger value="events">{t("node.tab_events")}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="form" className="overflow-auto">
-          <NodeFormPanel
-            key={node.id}
-            node={{ ...node, ...draft } as WorkflowNode}
-            adapterChoices={adapterChoices}
-            onDraftChange={(partial) =>
-              setDraft((prev) => ({ ...prev, ...partial }))
-            }
-            onSwitchToJson={() => handleTabChange("json")}
-          />
-        </TabsContent>
+        {!isLiveRun && (
+          <>
+            <TabsContent value="form" className="overflow-auto">
+              <NodeFormPanel
+                key={node.id}
+                node={{ ...node, ...draft } as WorkflowNode}
+                adapterChoices={adapterChoices}
+                onDraftChange={(partial) =>
+                  setDraft((prev) => ({ ...prev, ...partial }))
+                }
+                onSwitchToJson={() => handleTabChange("json")}
+              />
+            </TabsContent>
 
-        <TabsContent value="json" className="overflow-auto">
-          <NodeJsonPanel
-            jsonValues={jsonOverrides}
-            localErrors={jsonErrors}
-            adapterChoices={adapterChoices}
-            onFieldChange={(k, v) => {
-              setJsonOverrides((prev) => ({ ...prev, [k]: v }));
-              setJsonErrors((prev) => {
-                const next = { ...prev };
-                delete next[k];
-                return next;
-              });
-            }}
-          />
+            <TabsContent value="json" className="overflow-auto">
+              <NodeJsonPanel
+                jsonValues={jsonOverrides}
+                localErrors={jsonErrors}
+                adapterChoices={adapterChoices}
+                onFieldChange={(k, v) => {
+                  setJsonOverrides((prev) => ({ ...prev, [k]: v }));
+                  setJsonErrors((prev) => {
+                    const next = { ...prev };
+                    delete next[k];
+                    return next;
+                  });
+                }}
+              />
+            </TabsContent>
+          </>
+        )}
+
+        <TabsContent value="events" className="min-h-0 flex-1 overflow-hidden p-0">
+          <NodeEventStream nodeId={node.id} />
         </TabsContent>
       </Tabs>
 
       {/* Footer */}
-      {(dirty || serverIssues || hasJsonErrors) && (
+      {!isLiveRun && (dirty || serverIssues || hasJsonErrors) && (
         <div className="border-t border-border bg-muted/40 px-4 py-2.5">
           {serverIssues && (
             <ul className="mb-2 space-y-0.5 border-l-2 border-destructive py-1 pl-3">

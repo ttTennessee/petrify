@@ -185,6 +185,7 @@ export default function WorkflowEditor() {
             node={selected}
             workflowId={workflowId}
             onClose={() => setSelectedId(null)}
+            isLiveRun={isLiveRun}
           />
         ) : (
           <EventStream />

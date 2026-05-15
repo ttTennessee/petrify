@@ -155,6 +155,7 @@
     "events": {
       "title": "Event Stream",
       "no_events": "no events yet",
+      "no_node_events": "no runtime events for this node yet — run the workflow first",
       "global": "§ global",
       "thinking": "thinking · ",
       "chars": " chars",
@@ -174,6 +175,7 @@
       "no_changes": "no changes",
       "tab_form": "Form",
       "tab_json": "JSON",
+      "tab_events": "Events",
       "fields": {
         "adapter": "Adapter",
         "inputs": "Inputs",

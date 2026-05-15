@@ -6,7 +6,7 @@ import { Badge } from "./ui/badge";
 
 type BadgeVariant = "accent" | "success" | "destructive" | "warning" | "outline" | "default";
 
-interface NodeBucket {
+export interface NodeBucket {
   nodeId: string;
   ref: string;
   title: string | null;
@@ -41,6 +41,72 @@ function typeVariant(type: string): BadgeVariant {
   }
 }
 
+export function buildBuckets(
+  events: RuntimeEvent[],
+  refByNodeId: Record<string, { ref: string; title: string }>,
+): { buckets: NodeBucket[]; globals: RuntimeEvent[] } {
+  const bMap = new Map<string, NodeBucket>();
+  const globals: RuntimeEvent[] = [];
+  for (const ev of events) {
+    const nid = ev.node_id;
+    if (!nid) {
+      globals.push(ev);
+      continue;
+    }
+    let b = bMap.get(nid);
+    if (!b) {
+      const meta = refByNodeId[nid];
+      b = {
+        nodeId: nid,
+        ref: meta?.ref ?? nid,
+        title: meta?.title ?? null,
+        firstTs: ev.timestamp,
+        lastTs: ev.timestamp,
+        status: "pending",
+        streamText: "",
+        thoughtText: "",
+        subEvents: [],
+        outputText: null,
+        failReason: null,
+      };
+      bMap.set(nid, b);
+    }
+    b.lastTs = Math.max(b.lastTs, ev.timestamp);
+    const p = ev.payload as Record<string, unknown>;
+    const kind =
+      ev.type === "ToolCalled" ? (p.kind as string | undefined) : undefined;
+    if (kind === "text_delta") {
+      b.streamText += String(p.delta ?? "");
+    } else if (kind === "thought_delta") {
+      b.thoughtText += String(p.delta ?? "");
+    } else {
+      b.subEvents.push(ev);
+    }
+    switch (ev.type) {
+      case "NodeStarted":
+        if (b.status === "pending") b.status = "running";
+        break;
+      case "NodeCompleted":
+        b.status = "completed";
+        break;
+      case "NodeFailed":
+        b.status = "failed";
+        b.failReason = (p.reason as string) ?? null;
+        break;
+      case "NodeSkipped":
+        b.status = "skipped";
+        break;
+      case "OutputGenerated": {
+        const out = (p.output as { text?: string }) ?? {};
+        if (out.text) b.outputText = out.text;
+        break;
+      }
+    }
+  }
+  const buckets = Array.from(bMap.values()).sort((a, b) => a.firstTs - b.firstTs);
+  return { buckets, globals };
+}
+
 export function EventStream() {
   const { t } = useTranslation("workflow");
   const events = useWorkflowStore((s) => s.events);
@@ -54,68 +120,10 @@ export function EventStream() {
     return m;
   }, [graph]);
 
-  const { buckets, globals } = useMemo(() => {
-    const bMap = new Map<string, NodeBucket>();
-    const g: RuntimeEvent[] = [];
-    for (const ev of events) {
-      const nid = ev.node_id;
-      if (!nid) {
-        g.push(ev);
-        continue;
-      }
-      let b = bMap.get(nid);
-      if (!b) {
-        const meta = refByNodeId[nid];
-        b = {
-          nodeId: nid,
-          ref: meta?.ref ?? nid,
-          title: meta?.title ?? null,
-          firstTs: ev.timestamp,
-          lastTs: ev.timestamp,
-          status: "pending",
-          streamText: "",
-          thoughtText: "",
-          subEvents: [],
-          outputText: null,
-          failReason: null,
-        };
-        bMap.set(nid, b);
-      }
-      b.lastTs = Math.max(b.lastTs, ev.timestamp);
-      const p = ev.payload as Record<string, unknown>;
-      const kind =
-        ev.type === "ToolCalled" ? (p.kind as string | undefined) : undefined;
-      if (kind === "text_delta") {
-        b.streamText += String(p.delta ?? "");
-      } else if (kind === "thought_delta") {
-        b.thoughtText += String(p.delta ?? "");
-      } else {
-        b.subEvents.push(ev);
-      }
-      switch (ev.type) {
-        case "NodeStarted":
-          if (b.status === "pending") b.status = "running";
-          break;
-        case "NodeCompleted":
-          b.status = "completed";
-          break;
-        case "NodeFailed":
-          b.status = "failed";
-          b.failReason = (p.reason as string) ?? null;
-          break;
-        case "NodeSkipped":
-          b.status = "skipped";
-          break;
-        case "OutputGenerated": {
-          const out = (p.output as { text?: string }) ?? {};
-          if (out.text) b.outputText = out.text;
-          break;
-        }
-      }
-    }
-    const buckets = Array.from(bMap.values()).sort((a, b) => a.firstTs - b.firstTs);
-    return { buckets, globals: g };
-  }, [events, refByNodeId]);
+  const { buckets, globals } = useMemo(
+    () => buildBuckets(events, refByNodeId),
+    [events, refByNodeId],
+  );
 
   const lastNodeCount = useRef(0);
   useEffect(() => {
@@ -193,7 +201,7 @@ function StreamHeader({ count }: { count: number }) {
   );
 }
 
-function NodeCard({
+export function NodeCard({
   bucket,
   expanded,
   onToggle,

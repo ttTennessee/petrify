@@ -155,6 +155,7 @@
     "events": {
       "title": "事件流",
       "no_events": "暂无事件",
+      "no_node_events": "该节点暂无运行时事件，请先运行工作流",
       "global": "§ 全局",
       "thinking": "思考中 · ",
       "chars": " 字符",
@@ -174,6 +175,7 @@
       "no_changes": "无变更",
       "tab_form": "表单",
       "tab_json": "JSON",
+      "tab_events": "事件",
       "fields": {
         "adapter": "适配器",
         "inputs": "输入",
