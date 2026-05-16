@@ -2,6 +2,8 @@
   "name": "petrify",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "author": "Yujie Jin <devilimp0@gmail.com>",
   "type": "module",
   "workspaces": [
     "packages/*"

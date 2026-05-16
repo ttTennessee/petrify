@@ -175,6 +175,27 @@ Open an issue first for significant changes to discuss approach.
 
 ---
 
+## Security
+
+Found a vulnerability? Please **do not** open a public issue. See [SECURITY.md](./SECURITY.md) for the private disclosure process.
+
+---
+
+## Acknowledgements
+
+Petrify stands on the shoulders of excellent open-source work. Particular thanks to:
+
+- **[React Flow](https://reactflow.dev/)** (`@xyflow/react`) — the node-based editor that powers the Workflow IDE.
+- **[shadcn/ui](https://ui.shadcn.com/)** and **[Radix UI](https://www.radix-ui.com/)** — accessible primitives behind the in-repo `components/ui/` layer.
+- **[Tailwind CSS](https://tailwindcss.com/)**, **[Zustand](https://github.com/pmndrs/zustand)**, **[TanStack Query](https://tanstack.com/query)** — the frontend stack.
+- **[better-sqlite3](https://github.com/WiseLibs/better-sqlite3)**, **[Express](https://expressjs.com/)**, **[zod](https://zod.dev/)**, **[ws](https://github.com/websockets/ws)** — the backend stack.
+- **[OpenTelemetry](https://opentelemetry.io/)** — observability that doesn't lock you into a vendor.
+- **[Agent Communication Protocol (ACP)](https://github.com/agentclientprotocol)** — the standard that makes a heterogeneous agent runtime feasible at all.
+
+Architectural inspiration is owed to the Petri-net literature and to prior workflow systems (Temporal, Inngest, LangGraph, Prefect) — Petrify takes a different stance, but each of these shaped the design questions we had to answer.
+
+---
+
 ## License
 
-[MIT](./LICENSE) © 2026 Tennessee
+[MIT](./LICENSE) © 2026 Yujie Jin &lt;devilimp0@gmail.com&gt;

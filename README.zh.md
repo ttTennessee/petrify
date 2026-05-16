@@ -175,6 +175,27 @@ petrify/
 
 ---
 
+## 安全问题
+
+发现安全漏洞？请**不要**直接开 Issue，请按 [SECURITY.md](./SECURITY.md) 的私密披露流程上报。
+
+---
+
+## 致谢
+
+Petrify 站在众多优秀开源项目的肩膀上，特别感谢：
+
+- **[React Flow](https://reactflow.dev/)**（`@xyflow/react`）— Workflow IDE 节点编辑器的底层。
+- **[shadcn/ui](https://ui.shadcn.com/)** 与 **[Radix UI](https://www.radix-ui.com/)** — 仓库内 `components/ui/` 的可访问 UI 原语。
+- **[Tailwind CSS](https://tailwindcss.com/)**、**[Zustand](https://github.com/pmndrs/zustand)**、**[TanStack Query](https://tanstack.com/query)** — 前端技术栈。
+- **[better-sqlite3](https://github.com/WiseLibs/better-sqlite3)**、**[Express](https://expressjs.com/)**、**[zod](https://zod.dev/)**、**[ws](https://github.com/websockets/ws)** — 后端技术栈。
+- **[OpenTelemetry](https://opentelemetry.io/)** — 厂商中立的可观测性方案。
+- **[Agent Communication Protocol (ACP)](https://github.com/agentclientprotocol)** — 让异构 Agent 运行时成为可能的标准。
+
+架构上同样受到 Petri 网相关文献以及 Temporal、Inngest、LangGraph、Prefect 等已有工作流系统的启发——Petrify 的取舍不同，但这些项目塑造了我们需要回答的设计问题。
+
+---
+
 ## 许可证
 
-[MIT](./LICENSE) © 2026 Tennessee
+[MIT](./LICENSE) © 2026 Yujie Jin &lt;devilimp0@gmail.com&gt;

@@ -2,6 +2,8 @@
   "name": "@petrify/server",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "author": "Yujie Jin <devilimp0@gmail.com>",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
