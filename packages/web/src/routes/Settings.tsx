@@ -60,17 +60,23 @@ export default function Settings() {
 
       <section className="space-y-4">
         <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          Permissions
+          {t("permissions_section")}
         </h2>
         <div className="flex items-start justify-between gap-6 border border-border bg-card p-5">
           <div className="min-w-0">
-            <h3 className="font-display text-base">Default policy</h3>
+            <h3 className="font-display text-base">
+              {t("permission_default.label")}
+            </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              How to handle agent permission requests on nodes that don't
-              declare their own policy. <span className="font-mono">ask</span>{" "}
-              surfaces an Allow/Deny card for each request;{" "}
-              <span className="font-mono">deny-all</span> hard-rejects them
-              without a prompt (useful for headless / unattended runs).
+              {t("permission_default.description_prefix")}
+              <span className="font-mono">
+                {t("permission_default.ask_label")}
+              </span>
+              {t("permission_default.ask_meaning")}
+              <span className="font-mono">
+                {t("permission_default.deny_label")}
+              </span>
+              {t("permission_default.deny_meaning")}
             </p>
           </div>
           <div className="flex shrink-0 border border-border">

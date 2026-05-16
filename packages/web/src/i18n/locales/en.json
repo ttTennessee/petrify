@@ -40,6 +40,15 @@
     "adapters_link": {
       "label": "Manage adapters",
       "description": "View, enable, and add agent runners (ACP and other categories)."
+    },
+    "permissions_section": "§ Permissions",
+    "permission_default": {
+      "label": "Default policy",
+      "description_prefix": "How to handle agent permission requests on nodes that don't declare their own policy. ",
+      "ask_label": "ask",
+      "ask_meaning": " surfaces an Allow/Deny card for each request; ",
+      "deny_label": "deny-all",
+      "deny_meaning": " hard-rejects them without a prompt (useful for headless / unattended runs)."
     }
   },
   "adapters": {

@@ -40,6 +40,15 @@
     "adapters_link": {
       "label": "管理适配器",
       "description": "查看、启用、新增 Agent 运行器（ACP 及其他类别）。"
+    },
+    "permissions_section": "§ 权限",
+    "permission_default": {
+      "label": "默认策略",
+      "description_prefix": "当节点未声明自己的权限策略时，如何处理 Agent 的工具权限请求。",
+      "ask_label": "ask",
+      "ask_meaning": " 会为每次请求弹出 Allow/Deny 卡片；",
+      "deny_label": "deny-all",
+      "deny_meaning": " 直接拒绝、不弹窗（适合无人值守的批量运行）。"
     }
   },
   "adapters": {
