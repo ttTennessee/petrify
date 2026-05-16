@@ -17,9 +17,9 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^0.21.1",
     "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.55.0",
-    "@opentelemetry/sdk-node": "^0.55.0",
-    "@opentelemetry/sdk-trace-base": "^1.28.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
+    "@opentelemetry/sdk-node": "^0.218.0",
+    "@opentelemetry/sdk-trace-base": "^2.7.1",
     "@petrify/shared": "*",
     "better-sqlite3": "^11.5.0",
     "cors": "^2.8.5",
