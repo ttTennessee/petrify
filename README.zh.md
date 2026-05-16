@@ -1,5 +1,6 @@
 # Petrify
 
+[![CI](https://github.com/ttTennessee/petrify/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ttTennessee/petrify/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
 
