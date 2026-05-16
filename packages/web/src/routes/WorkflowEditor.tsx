@@ -124,6 +124,7 @@ export default function WorkflowEditor() {
     lastSettledRunId.current = currentRunId;
     qc.invalidateQueries({ queryKey: ["run-events", currentRunId] });
     qc.invalidateQueries({ queryKey: ["checkpoints", currentRunId] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runMeta?.status covers the only field we read
   }, [currentRunId, runMeta?.status, qc]);
 
   const { data: verifyReport } = useVerifyWorkflow(workflowId);

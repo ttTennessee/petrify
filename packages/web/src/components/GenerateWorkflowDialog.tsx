@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAdapters } from "../api/adapters";
-import { useGenerateWorkflow, GenerateApiError } from "../api/client";
+import { useGenerateWorkflow,type GenerateApiError } from "../api/client";
 import {
   Dialog,
   DialogContent,

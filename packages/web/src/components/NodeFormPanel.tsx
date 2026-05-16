@@ -3,7 +3,6 @@ import type { WorkflowNode, ResourceClaim } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
-import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import { Checkbox } from "./ui/checkbox";
 import {
@@ -251,16 +250,6 @@ export function NodeFormPanel({
 
   function emitOutputRows(rows: KvRow[]) {
     onDraftChange({ outputs: rowsToOutputs(rows) });
-  }
-
-  function validateInputRow(row: KvRow): KvRow {
-    if (!row.value.trim()) return { ...row, error: undefined };
-    try {
-      JSON.parse(row.value);
-      return { ...row, error: undefined };
-    } catch {
-      return { ...row, error: t("node.form.kv_invalid_json") };
-    }
   }
 
   return (

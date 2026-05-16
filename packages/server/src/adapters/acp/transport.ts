@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import * as acp from "@agentclientprotocol/sdk";
-import type { Client, SessionNotification } from "@agentclientprotocol/sdk";
+import type { Client } from "@agentclientprotocol/sdk";
 
 export interface SpawnOpts {
   command: string;

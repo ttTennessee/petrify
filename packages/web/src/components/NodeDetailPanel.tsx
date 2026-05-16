@@ -89,7 +89,7 @@ export function NodeDetailPanel({
     setJsonOverrides(m);
     setJsonErrors({});
     setServerIssues(null);
-  }, [node.id, node]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [node.id, node]);
 
   // --- Flush JSON overrides → draft when leaving JSON tab ---
   const flushJson = useCallback(() => {
@@ -134,7 +134,7 @@ export function NodeDetailPanel({
   // dirty calculation
   const initialEditable = useMemo(
     () => pickEditableFields(node),
-    [node], // eslint-disable-line react-hooks/exhaustive-deps
+    [node],  
   );
 
   const dirtyKeys = useMemo(() => {
