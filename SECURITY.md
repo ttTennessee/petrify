@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-Petrify is in active pre-1.0 development. Only the latest commit on `master` receives security fixes. Once a tagged release line exists, this section will list the supported versions.
+Petrify is in active pre-1.0 development. Only the latest commit on `main` receives security fixes. Once a tagged release line exists, this section will list the supported versions.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| `master` (HEAD) | ✅ |
-| Older commits   | ❌ |
+| `main` (HEAD) | ✅ |
+| Older commits | ❌ |
 
 ## Reporting a Vulnerability
 
