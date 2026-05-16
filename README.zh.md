@@ -12,9 +12,17 @@
 
 ## 演示
 
-| 配置 Adapter | 创建项目并执行 | Time Travel 回放 |
-| :---: | :---: | :---: |
-| ![](./docs/assets/images/adapter-set.gif) | ![](./docs/assets/images/create-and-run.gif) | ![](./docs/assets/images/time-travel.gif) |
+**配置 Adapter**
+
+![Adapter 设置](./docs/assets/images/adapter-set.gif)
+
+**创建项目并执行**
+
+![创建项目并运行](./docs/assets/images/create-and-run.gif)
+
+**Time Travel 回放**
+
+![Time Travel 回放](./docs/assets/images/time-travel.gif)
 
 > **当前状态：** Petrify 正处于开发与测试阶段，**尚未发布任何二进制或 Docker 镜像**，目前唯一支持的运行方式是 **clone 仓库后 `npm run dev` 启动**（详见下文 [快速开始](#快速开始)）。结构清晰的简单工作流已可稳定运行；复杂的多分支、高并发场景仍有待打磨。欢迎反馈与贡献。
 

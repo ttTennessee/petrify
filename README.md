@@ -12,9 +12,17 @@
 
 ## Demo
 
-| Configure an adapter | Create a project and run | Time Travel replay |
-| :---: | :---: | :---: |
-| ![](./docs/assets/images/adapter-set.gif) | ![](./docs/assets/images/create-and-run.gif) | ![](./docs/assets/images/time-travel.gif) |
+**Configure an adapter**
+
+![Adapter setup](./docs/assets/images/adapter-set.gif)
+
+**Create a project and run**
+
+![Create and run](./docs/assets/images/create-and-run.gif)
+
+**Time Travel replay**
+
+![Time Travel replay](./docs/assets/images/time-travel.gif)
 
 > **Status:** Petrify is in active development and testing. There are no published binaries or Docker images yet — the only supported way to run it is **clone + `npm run dev`** (see [Getting Started](#getting-started)). Straightforward workflows work reliably; complex multi-branch / heavy-concurrency scenarios still have rough edges. Feedback and contributions are very welcome.
 
