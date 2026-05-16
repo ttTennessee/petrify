@@ -18,9 +18,7 @@ import {
   registerAdapter,
   unregisterAdapter,
 } from "../adapters/registry.js";
-import { spawn } from "node:child_process";
-import { Readable, Writable } from "node:stream";
-import * as acp from "@agentclientprotocol/sdk";
+import { probeAcp } from "../adapters/probe.js";
 
 export const adaptersRouter = Router();
 
@@ -256,89 +254,3 @@ adaptersRouter.post("/:name/disable", (req, res) => {
   res.json({ ok: true });
 });
 
-// === probe helper ===========================================================
-interface ProbeOk {
-  ok: true;
-  protocolVersion?: number;
-  capabilities?: unknown;
-  durationMs: number;
-}
-interface ProbeErr {
-  ok: false;
-  error: string;
-}
-
-async function probeAcp(opts: {
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-  cwd?: string;
-}): Promise<ProbeOk | ProbeErr> {
-  const started = Date.now();
-  let child: ReturnType<typeof spawn> | null = null;
-  const stderrChunks: string[] = [];
-  try {
-    child = spawn(opts.command, opts.args ?? [], {
-      cwd: opts.cwd,
-      env: { ...process.env, ...(opts.env ?? {}) },
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    child.stderr!.setEncoding("utf8");
-    child.stderr!.on("data", (chunk: string) => {
-      if (stderrChunks.length < 16) stderrChunks.push(chunk);
-    });
-    // Swallow EPIPE / spawn failures — they surface as a rejected handshake below.
-    child.on("error", () => {});
-    child.on("exit", () => {});
-
-    const stream = acp.ndJsonStream(
-      Writable.toWeb(child.stdin!) as WritableStream<Uint8Array>,
-      Readable.toWeb(child.stdout!) as ReadableStream<Uint8Array>,
-    );
-    // Minimal Client impl — probe only does `initialize`, so none of these
-    // should ever be called by the agent.
-    const conn = new acp.ClientSideConnection(
-      () => ({
-        async sessionUpdate() {},
-        async requestPermission() {
-          return { outcome: { outcome: "cancelled" as const } };
-        },
-      }),
-      stream,
-    );
-
-    const handshake = conn.initialize({
-      protocolVersion: acp.PROTOCOL_VERSION,
-      clientCapabilities: { fs: { readTextFile: false, writeTextFile: false } },
-    });
-    const timeoutMs = 8000;
-    const res = await Promise.race([
-      handshake,
-      new Promise<never>((_, rej) =>
-        setTimeout(
-          () => rej(new Error(`initialize timed out after ${timeoutMs}ms`)),
-          timeoutMs,
-        ),
-      ),
-    ]);
-    return {
-      ok: true,
-      protocolVersion: res.protocolVersion,
-      capabilities: res.agentCapabilities,
-      durationMs: Date.now() - started,
-    };
-  } catch (err) {
-    const stderr = stderrChunks.join("").trim();
-    const msg = (err as Error).message;
-    return {
-      ok: false,
-      error: stderr ? `${msg}\nstderr: ${stderr.slice(0, 500)}` : msg,
-    };
-  } finally {
-    try {
-      child?.kill();
-    } catch {
-      /* ignore */
-    }
-  }
-}

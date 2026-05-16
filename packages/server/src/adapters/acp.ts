@@ -7,6 +7,8 @@ import type {
 } from "@agentclientprotocol/sdk";
 import type { AdapterManifest, RuntimeEvent } from "@petrify/shared";
 import type { AgentAdapter, InvokeRequest } from "./types.js";
+import { probeAcp } from "./probe.js";
+import type { ProbeResult } from "./probe.js";
 import { createMapper } from "./acp/event-mapper.js";
 import {
   AsyncEventQueue,
@@ -65,6 +67,15 @@ export class AcpAdapter implements AgentAdapter {
       concurrency: { max: 4 },
       resources: { token_per_call_est: 0 },
     };
+  }
+
+  async probe(): Promise<ProbeResult> {
+    return probeAcp({
+      command: this.cfg.command,
+      args: this.cfg.args,
+      env: this.cfg.env,
+      cwd: this.cfg.defaultCwd,
+    });
   }
 
   async *invoke(req: InvokeRequest): AsyncIterable<RuntimeEvent> {

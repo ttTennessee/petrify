@@ -187,7 +187,10 @@
       "fork_here": "Fork from here",
       "forking": "Forking…",
       "picker_placeholder": "Pick a run…",
-      "jump_to_parent": "Jump to parent run"
+      "jump_to_parent": "Jump to parent run",
+      "preflight": {
+        "title": "Adapter preflight failed — fix and retry:"
+      }
     },
     "timeline": {
       "title": "Timeline",

@@ -11,8 +11,20 @@ import type {
   Breakpoint,
 } from "@petrify/shared";
 
+export interface PreflightFailure {
+  node_ref: string;
+  node_id: string;
+  adapter: string;
+  reason: string;
+}
+
 export class ApiError extends Error {
-  constructor(message: string, public readonly issues: string[] = []) {
+  constructor(
+    message: string,
+    public readonly issues: string[] = [],
+    public readonly status: number = 0,
+    public readonly failures: PreflightFailure[] = [],
+  ) {
     super(message);
   }
 }
@@ -26,8 +38,14 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await res.json().catch(() => ({}))) as {
       error?: string;
       issues?: string[];
+      failures?: PreflightFailure[];
     };
-    throw new ApiError(body.error ?? `HTTP ${res.status}`, body.issues ?? []);
+    throw new ApiError(
+      body.error ?? `HTTP ${res.status}`,
+      body.issues ?? [],
+      res.status,
+      body.failures ?? [],
+    );
   }
   return res.json() as Promise<T>;
 }

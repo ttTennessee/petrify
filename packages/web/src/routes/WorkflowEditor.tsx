@@ -198,8 +198,15 @@ export default function WorkflowEditor() {
       setCurrentRunId(r.id);
     } catch (err) {
       if (err instanceof ApiError) {
-        const detail = (err.issues ?? []).join(", ");
-        setNodeRunError(detail ? `${err.message}: ${detail}` : err.message);
+        if (err.failures.length > 0) {
+          const lines = err.failures.map(
+            (f) => `${f.node_ref} (${f.adapter}: ${f.reason})`,
+          );
+          setNodeRunError(`${err.message}: ${lines.join("; ")}`);
+        } else {
+          const detail = (err.issues ?? []).join(", ");
+          setNodeRunError(detail ? `${err.message}: ${detail}` : err.message);
+        }
       } else {
         setNodeRunError((err as Error).message);
       }

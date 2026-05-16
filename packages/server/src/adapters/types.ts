@@ -3,6 +3,7 @@ import type {
   RuntimeEvent,
   WorkflowNode,
 } from "@petrify/shared";
+import type { ProbeResult } from "./probe.js";
 
 export interface InvokeRequest {
   invocationId: string;
@@ -20,4 +21,8 @@ export interface AgentAdapter {
   cancel(invocationId: string): Promise<void>;
   checkpoint(invocationId: string): Promise<unknown>;
   restore(blob: unknown): Promise<string>;
+  /** Optional connectivity check. Called by run preflight; adapters without
+   *  external processes (e.g. mock) may omit this — preflight treats omission
+   *  as "no probe needed, pass". */
+  probe?(): Promise<ProbeResult>;
 }

@@ -49,13 +49,12 @@ describe("compiler", () => {
     ).toThrow(CompileError);
   });
 
-  it("rejects unknown adapter", () => {
-    expect(() =>
-      compile({
-        nodes: [nodeStub({ adapter: { name: "missing" } })],
-        edges: [],
-      }),
-    ).toThrow(/unregistered adapter/);
+  it("accepts unregistered adapter (registry checked at run preflight, not compile)", () => {
+    const plan = compile({
+      nodes: [nodeStub({ adapter: { name: "missing" } })],
+      edges: [],
+    });
+    expect(plan.order).toHaveLength(1);
   });
 
   it("rejects duplicate refs", () => {

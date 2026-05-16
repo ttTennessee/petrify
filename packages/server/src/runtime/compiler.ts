@@ -1,5 +1,4 @@
 import { WorkflowGraphSchema, type WorkflowGraph, type WorkflowNode } from "@petrify/shared";
-import { getAdapter } from "../adapters/registry.js";
 
 export interface ExecutablePlan {
   graph: WorkflowGraph;
@@ -36,16 +35,10 @@ export function compile(raw: unknown): ExecutablePlan {
     refs.add(n.ref);
   }
 
-  // 2. adapter availability
-  for (const n of graph.nodes) {
-    if (!getAdapter(n.adapter.name)) {
-      throw new CompileError(
-        `node "${n.ref}" references unregistered adapter "${n.adapter.name}"`,
-      );
-    }
-  }
-
-  // 3. build dependency graph (M1+M2 uses node.dependencies + control edges)
+  // 2. build dependency graph (M1+M2 uses node.dependencies + control edges)
+  // NOTE: adapter availability is no longer enforced here — it's validated at
+  // run time via preflight (runtime/preflight.ts) so users can author graphs
+  // referencing adapters that aren't registered yet.
   const indeg: Record<string, number> = {};
   const succ: Record<string, string[]> = {};
   const pred: Record<string, string[]> = {};

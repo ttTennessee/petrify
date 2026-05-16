@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "../db.js";
 import { permissionBroker } from "../adapters/acp/permission-broker.js";
 import { compile, CompileError } from "../runtime/compiler.js";
+import { validateAdaptersForRun } from "../runtime/preflight.js";
 import {
   executeRun,
   requestCancel,
@@ -28,7 +29,7 @@ const insertSingleNodeRun = db.prepare(
   `INSERT INTO runs (id, workflow_id, status, started_at, resumed_from, target_node_id) VALUES (?, ?, 'running', ?, ?, ?)`,
 );
 
-runsRouter.post("/workflows/:workflowId/runs", (req, res) => {
+runsRouter.post("/workflows/:workflowId/runs", async (req, res) => {
   const wf = db
     .prepare(`SELECT graph_json, last_verify_json FROM workflows WHERE id = ?`)
     .get(req.params.workflowId) as
@@ -67,6 +68,14 @@ runsRouter.post("/workflows/:workflowId/runs", (req, res) => {
     throw err;
   }
 
+  const preflight = await validateAdaptersForRun(plan);
+  if (!preflight.ok) {
+    return res.status(412).json({
+      error: "adapter preflight failed",
+      failures: preflight.failures,
+    });
+  }
+
   const stepMode =
     req.query.step === "true" || (req.body && req.body.step_mode === true);
 
@@ -80,7 +89,7 @@ runsRouter.post("/workflows/:workflowId/runs", (req, res) => {
 // Single-node run. Requires that every predecessor has been completed in the
 // latest checkpoint of the workflow's most recent run. Uses that checkpoint
 // as the seed so the target node can reference upstream outputs/variables.
-runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", (req, res) => {
+runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", async (req, res) => {
   const { workflowId, nodeId } = req.params;
   const wf = db
     .prepare(`SELECT graph_json FROM workflows WHERE id = ?`)
@@ -131,6 +140,14 @@ runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", (req, res) => {
     successors: { ...plan.successors, [nodeId]: [] as string[] },
   };
 
+  const preflight = await validateAdaptersForRun(trimmedPlan);
+  if (!preflight.ok) {
+    return res.status(412).json({
+      error: "adapter preflight failed",
+      failures: preflight.failures,
+    });
+  }
+
   const newRunId = nanoid();
   insertSingleNodeRun.run(
     newRunId,
@@ -173,7 +190,7 @@ runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", (req, res) => {
   res.status(201).json({ id: newRunId, target_node_id: nodeId });
 });
 
-runsRouter.post("/runs/:id/resume", (req, res) => {
+runsRouter.post("/runs/:id/resume", async (req, res) => {
   const original = db
     .prepare(`SELECT id, workflow_id, status FROM runs WHERE id = ?`)
     .get(req.params.id) as { id: string; workflow_id: string; status: string } | undefined;
@@ -198,6 +215,14 @@ runsRouter.post("/runs/:id/resume", (req, res) => {
       return res.status(400).json({ error: err.message, issues: err.issues });
     }
     throw err;
+  }
+
+  const preflight = await validateAdaptersForRun(plan);
+  if (!preflight.ok) {
+    return res.status(412).json({
+      error: "adapter preflight failed",
+      failures: preflight.failures,
+    });
   }
 
   const newRunId = nanoid();

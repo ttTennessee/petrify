@@ -8,6 +8,7 @@ import {
   useCheckpoints,
   useContinueBreakpoint,
   useWorkflowRuns,
+  ApiError,
 } from "../api/client";
 import { useConfig } from "../api/config";
 import { useRunEventStream } from "../api/ws";
@@ -323,16 +324,37 @@ export function RunActions({
         </span>
       )}
 
-      {startRun.error && (
-        <span className="font-mono text-[10px] text-destructive">
-          {(startRun.error as Error).message}
-        </span>
-      )}
-      {resumeRun.error && (
-        <span className="font-mono text-[10px] text-destructive">
-          {(resumeRun.error as Error).message}
-        </span>
-      )}
+      {startRun.error && <RunErrorMessage error={startRun.error} t={t} />}
+      {resumeRun.error && <RunErrorMessage error={resumeRun.error} t={t} />}
     </div>
+  );
+}
+
+function RunErrorMessage({
+  error,
+  t,
+}: {
+  error: unknown;
+  t: (key: string, opts?: Record<string, unknown>) => string;
+}) {
+  if (error instanceof ApiError && error.failures.length > 0) {
+    return (
+      <div className="flex max-w-md flex-col gap-1 font-mono text-[10px] text-destructive">
+        <span className="font-semibold">{t("run.preflight.title")}</span>
+        {error.failures.map((f) => (
+          <span key={`${f.node_id}:${f.adapter}`} title={f.reason}>
+            • {f.node_ref}{" "}
+            <span className="opacity-70">
+              ({f.adapter}: {f.reason})
+            </span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <span className="font-mono text-[10px] text-destructive">
+      {(error as Error).message}
+    </span>
   );
 }
