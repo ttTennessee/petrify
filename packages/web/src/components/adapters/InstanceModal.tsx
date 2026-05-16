@@ -219,8 +219,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function defaultNameFor(c: CatalogEntry | undefined, taken: string[]): string {
   if (!c) return "";
   const set = new Set(taken);
-  if (!set.has("acp")) return "acp";
-  const slug = `acp-${c.id}`;
+  const slug = c.id.endsWith("-acp") ? c.id : `${c.id}-acp`;
   if (!set.has(slug)) return slug;
   let i = 2;
   while (set.has(`${slug}-${i}`)) i++;

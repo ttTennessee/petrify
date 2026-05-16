@@ -12,6 +12,7 @@ export interface CatalogEntry {
   defaultCommand?: string;
   defaultArgs?: string[];
   homepage?: string;
+  icon?: string;
 }
 
 export interface AdapterInstance {

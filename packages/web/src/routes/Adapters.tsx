@@ -50,6 +50,14 @@ export default function Adapters() {
     return map;
   }, [instances]);
 
+  const iconByCatalog = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const entry of catalog ?? []) {
+      if (entry.icon) map.set(entry.id, entry.icon);
+    }
+    return map;
+  }, [catalog]);
+
   const acting = (name: string) =>
     (enable.isPending && enable.variables === name) ||
     (disable.isPending && disable.variables === name) ||
@@ -142,8 +150,20 @@ export default function Adapters() {
                 key={entry.id}
                 className="flex flex-col gap-3 border border-border bg-card p-5 transition-colors hover:border-accent/60"
               >
-                <div className="flex items-start justify-between">
-                  <div className="min-w-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {entry.icon && (
+                      <img
+                        src={entry.icon}
+                        alt=""
+                        loading="lazy"
+                        className="mt-0.5 h-8 w-8 shrink-0 rounded-sm bg-muted/30 object-contain p-1"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    )}
+                    <div className="min-w-0">
                     <h3 className="font-display text-base">{entry.label}</h3>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {entry.description}
@@ -156,6 +176,7 @@ export default function Adapters() {
                           : ""}
                       </p>
                     )}
+                    </div>
                   </div>
                   <Toggle
                     checked={!!inst?.live}
@@ -233,7 +254,22 @@ export default function Adapters() {
             )}
             {(instances ?? []).map((inst) => (
               <tr key={inst.name} className="border-b border-border last:border-b-0 hover:bg-muted/40">
-                <td className="px-4 py-3 font-mono text-xs">{inst.name}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <div className="flex items-center gap-2">
+                    {inst.catalog_id && iconByCatalog.get(inst.catalog_id) && (
+                      <img
+                        src={iconByCatalog.get(inst.catalog_id)!}
+                        alt=""
+                        loading="lazy"
+                        className="h-5 w-5 shrink-0 object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    )}
+                    <span>{inst.name}</span>
+                  </div>
+                </td>
                 <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                   {inst.read_only
                     ? inst.status_detail ?? t("builtin")
