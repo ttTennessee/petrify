@@ -14,5 +14,6 @@ packages/server/data/
 .DS_Store
 coverage/
 .claude/
+.github/
 outputs/
 prd.md
