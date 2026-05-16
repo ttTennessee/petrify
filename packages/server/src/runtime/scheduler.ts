@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import type { CheckpointBlob, RuntimeEvent, WorkflowNode } from "@petrify/shared";
 import { db } from "../db.js";
 import { getAdapter } from "../adapters/registry.js";
+import { permissionBroker } from "../adapters/acp/permission-broker.js";
 import { eventBus } from "./events.js";
 import type { ExecutablePlan } from "./compiler.js";
 import { saveCheckpoint, getLatestCheckpoint } from "./checkpoints.js";
@@ -30,6 +31,7 @@ interface RunStateInternal {
   cancelRequested: boolean;
   resourcePool: ResourcePool;
   workflowId: string;
+  projectId: string | null;
   pausedNodes: Map<string, PauseHandle>;
   stepMode: boolean;
   // Step-mode UX: the very first node should run immediately; the pause
@@ -233,6 +235,7 @@ async function runNode(
           for await (const ev of adapter.invoke({
             invocationId,
             runId,
+            projectId: state.projectId,
             node,
             inputs: resolvedInputs,
           })) {
@@ -360,6 +363,12 @@ export async function executeRun(
     .prepare(`SELECT workflow_id FROM runs WHERE id = ?`)
     .get(runId) as { workflow_id: string } | undefined;
   const workflowId = runRow?.workflow_id ?? "";
+  const wfRow = workflowId
+    ? (db
+        .prepare(`SELECT project_id FROM workflows WHERE id = ?`)
+        .get(workflowId) as { project_id: string } | undefined)
+    : undefined;
+  const projectId: string | null = wfRow?.project_id ?? null;
 
   const state: RunStateInternal = {
     completed: new Set(),
@@ -373,6 +382,7 @@ export async function executeRun(
     cancelRequested: false,
     resourcePool: new ResourcePool(plan.pools ?? {}),
     workflowId,
+    projectId,
     pausedNodes: new Map(),
     stepMode: options.stepMode === true,
     stepModeAnyStarted: false,
@@ -639,6 +649,9 @@ export function requestCancel(runId: string): boolean {
   s.cancelRequested = true;
   // Wake any paused nodes so they fall through to the cancel/abort path.
   for (const handle of s.pausedNodes.values()) handle.cancel();
+  // Release any pending agent permission prompts — otherwise their Promise
+  // would hang forever and the adapter cancel() couldn't progress.
+  permissionBroker.cancelAllForRun(runId);
   return true;
 }
 

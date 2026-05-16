@@ -11,6 +11,7 @@ export default function Settings() {
   const patch = usePatchConfig();
 
   const autoRun = config?.auto_run ?? true;
+  const permissionPolicy = config?.permission_default_policy ?? "ask";
 
   return (
     <div className="mx-auto max-w-3xl overflow-y-auto h-full px-8 py-10 space-y-10">
@@ -54,6 +55,44 @@ export default function Settings() {
             disabled={isLoading || patch.isPending}
             onClick={() => patch.mutate({ auto_run: !autoRun })}
           />
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Permissions
+        </h2>
+        <div className="flex items-start justify-between gap-6 border border-border bg-card p-5">
+          <div className="min-w-0">
+            <h3 className="font-display text-base">Default policy</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              How to handle agent permission requests on nodes that don't
+              declare their own policy. <span className="font-mono">ask</span>{" "}
+              surfaces an Allow/Deny card for each request;{" "}
+              <span className="font-mono">deny-all</span> hard-rejects them
+              without a prompt (useful for headless / unattended runs).
+            </p>
+          </div>
+          <div className="flex shrink-0 border border-border">
+            {(["ask", "deny-all"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                disabled={isLoading || patch.isPending}
+                onClick={() =>
+                  patch.mutate({ permission_default_policy: opt })
+                }
+                className={cn(
+                  "font-mono text-[11px] uppercase tracking-wider px-3 py-1.5 transition-colors",
+                  permissionPolicy === opt
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-card text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

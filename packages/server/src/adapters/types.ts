@@ -7,6 +7,9 @@ import type {
 export interface InvokeRequest {
   invocationId: string;
   runId: string;
+  /** Project ID that owns this workflow — used by adapters for scoped state
+   *  like permission grants. Null when the run is detached from a project. */
+  projectId: string | null;
   node: WorkflowNode;
   inputs: Record<string, unknown>;
 }

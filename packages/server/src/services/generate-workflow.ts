@@ -133,6 +133,7 @@ async function invokeForText(
   const req = {
     invocationId: nanoid(),
     runId: nanoid(),
+    projectId: null,
     node,
     inputs: {},
   };

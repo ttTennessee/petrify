@@ -3,6 +3,7 @@ import { ApiError } from "./client";
 
 export interface GlobalConfig {
   auto_run: boolean;
+  permission_default_policy: "ask" | "deny-all";
 }
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {

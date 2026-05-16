@@ -1,6 +1,7 @@
 import { db } from "../db.js";
 import { registerAdapter, unregisterAdapter } from "./registry.js";
 import { AcpAdapter } from "./acp.js";
+import { permissionBroker } from "./acp/permission-broker.js";
 
 export type AdapterKind = "spawn" | "connect";
 export type AdapterStatus = "ok" | "error" | "unknown";
@@ -179,6 +180,7 @@ export function buildAdapterFromRow(row: AdapterInstanceRow): AcpAdapter {
     args: row.args,
     env: row.env,
     defaultCwd: row.default_cwd ?? undefined,
+    onPermission: (ctx) => permissionBroker.request(ctx),
   });
 }
 

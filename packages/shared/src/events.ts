@@ -14,6 +14,8 @@ export const RuntimeEventTypeSchema = z.enum([
   "NodeCompleted",
   "NodeFailed",
   "NodeSkipped",
+  "PermissionRequested",
+  "PermissionResolved",
 ]);
 export type RuntimeEventType = z.infer<typeof RuntimeEventTypeSchema>;
 

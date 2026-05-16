@@ -6,6 +6,10 @@ export const configRouter = Router();
 
 const DEFAULTS = {
   auto_run: true,
+  // Default policy applied when a node has no `permission_policy` field.
+  // "ask" surfaces a UI prompt for every agent permission request; "deny-all"
+  // hard-denies everything (the pre-broker behavior, useful for headless runs).
+  permission_default_policy: "ask" as "ask" | "deny-all",
 };
 
 export type GlobalConfig = typeof DEFAULTS;
@@ -13,6 +17,7 @@ export type GlobalConfig = typeof DEFAULTS;
 const ConfigPatchSchema = z
   .object({
     auto_run: z.boolean().optional(),
+    permission_default_policy: z.enum(["ask", "deny-all"]).optional(),
   })
   .strict();
 

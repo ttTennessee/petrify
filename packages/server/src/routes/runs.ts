@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 import { db } from "../db.js";
+import { permissionBroker } from "../adapters/acp/permission-broker.js";
 import { compile, CompileError } from "../runtime/compiler.js";
 import {
   executeRun,
@@ -223,6 +225,41 @@ runsRouter.post("/runs/:id/resume", (req, res) => {
   });
   res.status(201).json({ id: newRunId, resumed_from: original.id });
 });
+
+const PermissionRespondSchema = z.object({
+  decision: z.enum([
+    "allow_once",
+    "allow_always",
+    "reject_once",
+    "reject_always",
+    "cancelled",
+  ]),
+});
+
+runsRouter.post(
+  "/runs/:id/permissions/:requestId/respond",
+  (req, res) => {
+    const parsed = PermissionRespondSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: "invalid input",
+        issues: parsed.error.issues.map(
+          (i) => `${i.path.join(".")}: ${i.message}`,
+        ),
+      });
+    }
+    const ok = permissionBroker.resolve(
+      req.params.requestId,
+      parsed.data.decision,
+    );
+    if (!ok) {
+      return res
+        .status(404)
+        .json({ error: "permission request not found or already resolved" });
+    }
+    res.json({ ok: true });
+  },
+);
 
 runsRouter.post("/runs/:id/breakpoints/:nodeId/continue", (req, res) => {
   if (!isRunActive(req.params.id)) {

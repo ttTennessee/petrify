@@ -126,6 +126,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_adapter_instances_enabled ON adapter_instances(enabled);
 `);
 
+// Permission grants — cached "Allow always" / "Reject always" decisions scoped
+// to (project, node, tool_kind). Looked up by PermissionBroker before asking
+// the user. Composite PK avoids duplicates; rows are insert-or-replace.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS permission_grants (
+    project_id TEXT NOT NULL,
+    node_id    TEXT NOT NULL,
+    tool_kind  TEXT NOT NULL,
+    decision   TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (project_id, node_id, tool_kind)
+  );
+`);
+
 // M4: breakpoints — per-(workflow, node) pause markers, persist across runs.
 db.exec(`
   CREATE TABLE IF NOT EXISTS breakpoints (

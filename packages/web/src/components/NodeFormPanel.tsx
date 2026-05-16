@@ -147,6 +147,10 @@ export function NodeFormPanel({
     node.on_failure?.compensate_ref ?? "",
   );
 
+  const [permissionPolicy, setPermissionPolicy] = useState<
+    "inherit" | "ask" | "allow-all" | "deny-all"
+  >(node.permission_policy ?? "inherit");
+
   const [condition, setCondition] = useState(node.condition ?? "");
 
   const [loopMax, setLoopMax] = useState(
@@ -486,6 +490,41 @@ export function NodeFormPanel({
             />
           </div>
         )}
+      </Section>
+
+      {/* Permission policy */}
+      <Section label="permission">
+        <div>
+          <Label className="mb-1 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            policy
+          </Label>
+          <Select
+            value={permissionPolicy}
+            onValueChange={(v) => {
+              const next = v as typeof permissionPolicy;
+              setPermissionPolicy(next);
+              onDraftChange({
+                permission_policy: next === "inherit" ? undefined : next,
+              });
+            }}
+          >
+            <SelectTrigger className="h-7 font-mono text-[11px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(
+                ["inherit", "ask", "allow-all", "deny-all"] as const
+              ).map((s) => (
+                <SelectItem key={s} value={s} className="font-mono text-[11px]">
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+            inherit = use the global default from Settings.
+          </p>
+        </div>
       </Section>
 
       {/* Condition (M3) */}

@@ -83,6 +83,8 @@ export const WorkflowNodeSchema = z.object({
     .optional(),
   on_failure: OnFailureSchema.default({ strategy: "abort" }),
   status: NodeStatusSchema.default("idle"),
+  // Permission policy for agent tool requests. Defaults to global setting when absent.
+  permission_policy: z.enum(["ask", "allow-all", "deny-all"]).optional(),
 });
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
 

@@ -344,6 +344,31 @@ export function useContinueBreakpoint() {
   });
 }
 
+export type PermissionDecision =
+  | "allow_once"
+  | "allow_always"
+  | "reject_once"
+  | "reject_always"
+  | "cancelled";
+
+export function useRespondPermission() {
+  return useMutation({
+    mutationFn: ({
+      runId,
+      requestId,
+      decision,
+    }: {
+      runId: string;
+      requestId: string;
+      decision: PermissionDecision;
+    }) =>
+      http<{ ok: true }>(
+        `/api/runs/${runId}/permissions/${requestId}/respond`,
+        { method: "POST", body: JSON.stringify({ decision }) },
+      ),
+  });
+}
+
 export function useVerifyWorkflow(workflowId: string | undefined) {
   return useQuery({
     enabled: !!workflowId,

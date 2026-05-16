@@ -3,6 +3,7 @@ import type { RuntimeEvent } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
 import { useWorkflowStore } from "../store/workflow";
 import { Badge } from "./ui/badge";
+import { PermissionPrompt } from "./PermissionPrompt";
 
 type BadgeVariant = "accent" | "success" | "destructive" | "warning" | "outline" | "default";
 
@@ -400,6 +401,12 @@ function EventBody({
           {t("events.checkpoint_prefix")}{(p.checkpoint_id as string)?.slice(0, 8) ?? ""}
         </p>
       );
+    case "PermissionRequested":
+      return <PermissionPrompt event={ev} />;
+    case "PermissionResolved":
+      // The PermissionPrompt card itself displays the resolution; we only
+      // surface the badge for the resolved event as an audit row.
+      return null;
     default:
       return null;
   }
