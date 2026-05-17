@@ -16,7 +16,7 @@ import {
   spawnAndInit,
   type OpenSession,
 } from "./acp/transport.js";
-import { createClient } from "./acp/client-impl.js";
+import { createClient, type ClientRouter } from "./acp/client-impl.js";
 import { buildPromptText } from "./acp/prompt.js";
 import type { AcpCheckpointBlob } from "./acp/checkpoint.js";
 
@@ -44,11 +44,22 @@ export interface PermissionContext {
   req: RequestPermissionRequest;
 }
 
+/** Per-session permission context (no req — filled in at request time). */
+interface SessionPermCtx {
+  runId: string;
+  nodeId: string;
+  projectId: string | null;
+  nodePolicy: "ask" | "allow-all" | "deny-all" | undefined;
+}
+
 interface ActiveInvocation {
-  session: OpenSession;
   sessionId: string;
-  setQueue: (q: AsyncEventQueue<SessionNotification> | null) => void;
   cancelled: boolean;
+}
+
+interface SharedConnection {
+  session: OpenSession;
+  router: ClientRouter<SessionPermCtx>;
 }
 
 const PROTOCOL_VERSION_DEFAULT = acp.PROTOCOL_VERSION;
@@ -56,6 +67,12 @@ const PROTOCOL_VERSION_DEFAULT = acp.PROTOCOL_VERSION;
 export class AcpAdapter implements AgentAdapter {
   private active = new Map<string, ActiveInvocation>();
   private lastBlobByNode = new Map<string, AcpCheckpointBlob>();
+
+  /** Shared, lazily-spawned ACP server connection. Lives for the lifetime of
+   *  the adapter instance; recreated only after a crash. */
+  private shared: SharedConnection | null = null;
+  /** De-duplicates concurrent spawn attempts. */
+  private starting: Promise<SharedConnection> | null = null;
 
   constructor(private cfg: AcpAdapterConfig) {}
 
@@ -78,6 +95,56 @@ export class AcpAdapter implements AgentAdapter {
     });
   }
 
+  /** Get the shared ACP server connection, spawning it on first use. */
+  private async ensureStarted(): Promise<SharedConnection> {
+    if (this.shared) return this.shared;
+    if (this.starting) return this.starting;
+
+    const cfgOnPermission = this.cfg.onPermission;
+    const router = createClient<SessionPermCtx>({
+      onPermission: cfgOnPermission
+        ? (permCtx, pReq) =>
+            cfgOnPermission({
+              runId: permCtx.runId,
+              nodeId: permCtx.nodeId,
+              projectId: permCtx.projectId,
+              nodePolicy: permCtx.nodePolicy,
+              req: pReq,
+            })
+        : undefined,
+    });
+
+    this.starting = (async () => {
+      const session = await spawnAndInit({
+        command: this.cfg.command,
+        args: this.cfg.args,
+        env: this.cfg.env,
+        cwd: this.resolvedCwd(),
+        protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
+        client: router.client,
+      });
+      const shared: SharedConnection = { session, router };
+      // When the child dies, fail every in-flight session and clear state so
+      // the next invoke spawns a fresh process.
+      const onDie = (label: string) => () => {
+        if (this.shared !== shared) return;
+        for (const a of this.active.values()) a.cancelled = true;
+        router.failAll(label);
+        this.shared = null;
+      };
+      session.child.on("exit", onDie("ACP server exited"));
+      session.child.on("error", onDie("ACP server error"));
+      this.shared = shared;
+      return shared;
+    })();
+
+    try {
+      return await this.starting;
+    } finally {
+      this.starting = null;
+    }
+  }
+
   async *invoke(req: InvokeRequest): AsyncIterable<RuntimeEvent> {
     const base = { run_id: req.runId, node_id: req.node.id };
     yield {
@@ -90,34 +157,11 @@ export class AcpAdapter implements AgentAdapter {
 
     const promptText = buildPromptText(req);
 
-    // Build a Client wired to the broker (or the legacy deny). The
-    // permission context is bound to *this* invocation so the broker can
-    // attribute the request to a node/run/project.
-    const { client, setQueue } = createClient({
-      onPermission: this.cfg.onPermission
-        ? (pReq) =>
-            this.cfg.onPermission!({
-              runId: req.runId,
-              nodeId: req.node.id,
-              projectId: req.projectId,
-              nodePolicy: req.node.permission_policy,
-              req: pReq,
-            })
-        : undefined,
-    });
-
-    let session: OpenSession;
+    let shared: SharedConnection;
     let sessionId: string;
     try {
-      session = await spawnAndInit({
-        command: this.cfg.command,
-        args: this.cfg.args,
-        env: this.cfg.env,
-        cwd: this.resolvedCwd(),
-        protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
-        client,
-      });
-      const newSess = await session.conn.newSession({
+      shared = await this.ensureStarted();
+      const newSess = await shared.session.conn.newSession({
         cwd: this.resolvedCwd(),
         mcpServers: [],
       });
@@ -135,19 +179,23 @@ export class AcpAdapter implements AgentAdapter {
       return;
     }
 
-    const active: ActiveInvocation = {
-      session,
-      sessionId,
-      setQueue,
-      cancelled: false,
-    };
+    const queue = new AsyncEventQueue<SessionNotification>();
+    shared.router.register(sessionId, {
+      queue,
+      permCtx: {
+        runId: req.runId,
+        nodeId: req.node.id,
+        projectId: req.projectId,
+        nodePolicy: req.node.permission_policy,
+      },
+    });
+
+    const active: ActiveInvocation = { sessionId, cancelled: false };
     this.active.set(req.invocationId, active);
 
     const mapper = createMapper({ runId: req.runId, nodeId: req.node.id });
-    const queue = new AsyncEventQueue<SessionNotification>();
-    setQueue(queue);
 
-    const promptPromise = session.conn
+    const promptPromise = shared.session.conn
       .prompt({
         sessionId,
         prompt: [{ type: "text", text: promptText }],
@@ -161,6 +209,8 @@ export class AcpAdapter implements AgentAdapter {
     try {
       for await (const note of queue) {
         if (active.cancelled) break;
+        // Router already demuxes by sessionId; keep this as a defensive
+        // second filter in case a stray notification slips through.
         if (note.sessionId !== sessionId) continue;
         const evs = mapper.map(note);
         for (const ev of evs) yield ev;
@@ -181,7 +231,7 @@ export class AcpAdapter implements AgentAdapter {
         for (const ev of mapper.fail(result.err.message)) yield ev;
       }
     } finally {
-      setQueue(null);
+      shared.router.unregister(sessionId);
       this.lastBlobByNode.set(`${req.runId}:${req.node.id}`, {
         sessionId,
         protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
@@ -191,7 +241,6 @@ export class AcpAdapter implements AgentAdapter {
         args: this.cfg.args,
       });
       this.active.delete(req.invocationId);
-      closeSession(session);
     }
   }
 
@@ -199,8 +248,10 @@ export class AcpAdapter implements AgentAdapter {
     const a = this.active.get(invocationId);
     if (!a) return;
     a.cancelled = true;
+    const shared = this.shared;
+    if (!shared) return;
     try {
-      await a.session.conn.cancel({ sessionId: a.sessionId });
+      await shared.session.conn.cancel({ sessionId: a.sessionId });
     } catch {
       /* ignore */
     }
@@ -226,27 +277,31 @@ export class AcpAdapter implements AgentAdapter {
     if (!b || !b.sessionId) {
       throw new Error("invalid ACP checkpoint blob");
     }
-    const { client, setQueue } = createClient({});
-    const session = await spawnAndInit({
-      command: b.command ?? this.cfg.command,
-      args: b.args ?? this.cfg.args,
-      env: this.cfg.env,
-      cwd: this.resolvedCwd(),
-      protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
-      client,
-    });
-    const newSess = await session.conn.newSession({
+    // The ACP protocol doesn't expose a portable session/load, so restore
+    // still creates a brand-new session — but now on the shared connection
+    // instead of spawning a fresh subprocess.
+    const shared = await this.ensureStarted();
+    const newSess = await shared.session.conn.newSession({
       cwd: this.resolvedCwd(),
       mcpServers: [],
     });
     const invocationId = nanoid();
     this.active.set(invocationId, {
-      session,
       sessionId: newSess.sessionId,
-      setQueue,
       cancelled: false,
     });
     return invocationId;
+  }
+
+  /** Tear down the shared connection. Intended for tests / graceful shutdown.
+   *  Production relies on the child dying alongside the parent process. */
+  async dispose(): Promise<void> {
+    const shared = this.shared;
+    this.shared = null;
+    if (shared) {
+      shared.router.failAll("adapter disposed");
+      closeSession(shared.session);
+    }
   }
 
   private resolvedCwd(): string {

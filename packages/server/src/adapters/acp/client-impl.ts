@@ -10,30 +10,52 @@ import type {
 } from "@agentclientprotocol/sdk";
 import type { AsyncEventQueue } from "./transport.js";
 
-export interface ClientImplDeps {
+/** Per-session routing state. Each in-flight invoke registers one of these
+ *  against its sessionId so the shared ACP connection can demux notifications
+ *  and permission requests back to the correct caller. */
+export interface SessionRoute<PermCtx> {
+  queue: AsyncEventQueue<SessionNotification>;
+  permCtx: PermCtx;
+}
+
+export interface ClientImplDeps<PermCtx> {
   /** Pluggable permission handler. Defaults to denying everything (the
    *  pre-broker behavior). The adapter wires this to a PermissionBroker. */
   onPermission?: (
+    permCtx: PermCtx,
     req: RequestPermissionRequest,
   ) => Promise<RequestPermissionResponse>;
 }
 
-export interface BuiltClient {
+export interface ClientRouter<PermCtx> {
   client: Client;
-  setQueue: (q: AsyncEventQueue<SessionNotification> | null) => void;
+  register: (sessionId: string, route: SessionRoute<PermCtx>) => void;
+  unregister: (sessionId: string) => void;
+  /** Fail every still-registered session — used when the underlying child
+   *  process dies. The queue is closed; callers detect the close and emit
+   *  their own NodeFailed. */
+  failAll: (reason: string) => void;
+  /** Number of currently registered sessions. */
+  size: () => number;
 }
 
-export function createClient(deps: ClientImplDeps): BuiltClient {
-  let queueRef: AsyncEventQueue<SessionNotification> | null = null;
+export function createClient<PermCtx>(
+  deps: ClientImplDeps<PermCtx>,
+): ClientRouter<PermCtx> {
+  const routes = new Map<string, SessionRoute<PermCtx>>();
+
   const client: Client = {
     async sessionUpdate(params: SessionNotification): Promise<void> {
-      queueRef?.push(params);
+      routes.get(params.sessionId)?.queue.push(params);
     },
     async requestPermission(
       params: RequestPermissionRequest,
     ): Promise<RequestPermissionResponse> {
-      if (deps.onPermission) return deps.onPermission(params);
-      return { outcome: { outcome: "cancelled" } };
+      const route = routes.get(params.sessionId);
+      if (!route || !deps.onPermission) {
+        return { outcome: { outcome: "cancelled" } };
+      }
+      return deps.onPermission(route.permCtx, params);
     },
     async readTextFile(
       _params: ReadTextFileRequest,
@@ -46,10 +68,21 @@ export function createClient(deps: ClientImplDeps): BuiltClient {
       throw new Error("fs.writeTextFile not supported by Petrify ACP client");
     },
   };
+
   return {
     client,
-    setQueue: (q) => {
-      queueRef = q;
+    register: (sessionId, route) => {
+      routes.set(sessionId, route);
     },
+    unregister: (sessionId) => {
+      routes.delete(sessionId);
+    },
+    failAll: (_reason) => {
+      for (const route of routes.values()) {
+        route.queue.close();
+      }
+      routes.clear();
+    },
+    size: () => routes.size,
   };
 }
