@@ -5,20 +5,17 @@
   "license": "MIT",
   "author": "Yujie Jin <devilimp0@gmail.com>",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "dev": "npm-run-all --parallel dev:server dev:web",
-    "dev:server": "npm --workspace @petrify/server run dev",
-    "dev:web": "npm --workspace @petrify/web run dev",
+    "dev:server": "pnpm --filter @petrify/server run dev",
+    "dev:web": "pnpm --filter @petrify/web run dev",
     "build": "npm-run-all --serial build:server build:web",
-    "build:server": "npm --workspace @petrify/server run build",
-    "build:web": "npm --workspace @petrify/web run build",
+    "build:server": "pnpm --filter @petrify/server run build",
+    "build:web": "pnpm --filter @petrify/web run build",
     "typecheck": "npm-run-all --parallel typecheck:*",
-    "typecheck:shared": "npm --workspace @petrify/shared run typecheck",
-    "typecheck:server": "npm --workspace @petrify/server run typecheck",
-    "typecheck:web": "npm --workspace @petrify/web run typecheck",
+    "typecheck:shared": "pnpm --filter @petrify/shared run typecheck",
+    "typecheck:server": "pnpm --filter @petrify/server run typecheck",
+    "typecheck:web": "pnpm --filter @petrify/web run typecheck",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -33,6 +30,8 @@
     "typescript-eslint": "^8.15.0"
   },
   "engines": {
-    "node": ">=20"
-  }
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.12.3"
 }

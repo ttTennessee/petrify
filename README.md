@@ -24,7 +24,7 @@
 
 ![Time Travel replay](./docs/assets/images/time-travel.gif)
 
-> **Status:** Petrify is in active development and testing. There are no published binaries or Docker images yet — the only supported way to run it is **clone + `npm run dev`** (see [Getting Started](#getting-started)). Straightforward workflows work reliably; complex multi-branch / heavy-concurrency scenarios still have rough edges. Feedback and contributions are very welcome.
+> **Status:** Petrify is in active development and testing. There are no published binaries or Docker images yet — the only supported way to run it is **clone + `pnpm run dev`** (see [Getting Started](#getting-started)). Straightforward workflows work reliably; complex multi-branch / heavy-concurrency scenarios still have rough edges. Feedback and contributions are very welcome.
 
 ---
 
@@ -50,13 +50,13 @@ Petrify is **import-first and model-agnostic** — it does not embed LLM inferen
 
 ## Getting Started
 
-> Requires Node.js 20+ and npm 10+.
+> Requires Node.js 20+ and pnpm 9+.
 
 ```bash
 git clone https://github.com/<your-org>/petrify.git
 cd petrify
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 - Frontend: `http://localhost:5173`
@@ -73,7 +73,7 @@ Then:
 Configure it via the UI (**Settings → Adapters → Add Adapter**), or boot with an env var:
 
 ```bash
-PETRIFY_ACP_CMD=opencode npm run dev
+PETRIFY_ACP_CMD="opencode acp" pnpm run dev
 ```
 
 ---
@@ -117,10 +117,10 @@ petrify/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start all packages in watch mode |
-| `npm run build` | Production build |
-| `npm run typecheck` | Type-check all packages |
-| `npm --workspace @petrify/server run test` | Backend unit tests |
+| `pnpm run dev` | Start all packages in watch mode |
+| `pnpm run build` | Production build |
+| `pnpm run typecheck` | Type-check all packages |
+| `pnpm --filter @petrify/server run test` | Backend unit tests |
 
 TypeScript strict mode is enabled across all packages.
 

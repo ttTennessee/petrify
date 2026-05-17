@@ -24,7 +24,7 @@
 
 ![Time Travel 回放](./docs/assets/images/time-travel.gif)
 
-> **当前状态：** Petrify 正处于开发与测试阶段，**尚未发布任何二进制或 Docker 镜像**，目前唯一支持的运行方式是 **clone 仓库后 `npm run dev` 启动**（详见下文 [快速开始](#快速开始)）。结构清晰的简单工作流已可稳定运行；复杂的多分支、高并发场景仍有待打磨。欢迎反馈与贡献。
+> **当前状态：** Petrify 正处于开发与测试阶段，**尚未发布任何二进制或 Docker 镜像**，目前唯一支持的运行方式是 **clone 仓库后 `pnpm run dev` 启动**（详见下文 [快速开始](#快速开始)）。结构清晰的简单工作流已可稳定运行；复杂的多分支、高并发场景仍有待打磨。欢迎反馈与贡献。
 
 ---
 
@@ -50,13 +50,13 @@ Petrify **以导入为先、与模型无关**——不内嵌 LLM 推理。蓝图
 
 ## 快速开始
 
-> 需要 Node.js 20+ 与 npm 10+。
+> 需要 Node.js 20+ 与 pnpm 9+。
 
 ```bash
 git clone https://github.com/<your-org>/petrify.git
 cd petrify
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 - 前端：`http://localhost:5173`
@@ -73,7 +73,7 @@ npm run dev
 可在 UI 中配置（**Settings → Adapters → Add Adapter**），也可通过环境变量启动：
 
 ```bash
-PETRIFY_ACP_CMD=opencode npm run dev
+PETRIFY_ACP_CMD="opencode acp" pnpm run dev
 ```
 
 ---
@@ -117,10 +117,10 @@ petrify/
 
 | 命令 | 说明 |
 |------|------|
-| `npm run dev` | 所有包以 watch 模式启动 |
-| `npm run build` | 生产构建 |
-| `npm run typecheck` | 类型检查 |
-| `npm --workspace @petrify/server run test` | 后端单元测试 |
+| `pnpm run dev` | 所有包以 watch 模式启动 |
+| `pnpm run build` | 生产构建 |
+| `pnpm run typecheck` | 类型检查 |
+| `pnpm --filter @petrify/server run test` | 后端单元测试 |
 
 所有包均启用 TypeScript strict 模式。
 

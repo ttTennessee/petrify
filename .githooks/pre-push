@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -e
-echo "→ pre-push: npm run typecheck"
-npm run typecheck
+echo "→ pre-push: pnpm run typecheck"
+pnpm run typecheck

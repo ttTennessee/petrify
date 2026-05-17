@@ -20,7 +20,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.55.0",
     "@opentelemetry/sdk-node": "^0.55.0",
     "@opentelemetry/sdk-trace-base": "^1.28.0",
-    "@petrify/shared": "*",
+    "@petrify/shared": "workspace:*",
     "better-sqlite3": "^11.5.0",
     "cors": "^2.8.5",
     "express": "^4.21.1",
