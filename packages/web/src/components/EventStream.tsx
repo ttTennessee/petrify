@@ -202,25 +202,42 @@ function StreamHeader({ count }: { count: number }) {
   );
 }
 
+export type NodeCardView = "full" | "events" | "ai";
+
+const AI_EVENT_TYPES = new Set([
+  "PermissionRequested",
+  "PermissionResolved",
+  "OutputGenerated",
+]);
+
 export function NodeCard({
   bucket,
   expanded,
   onToggle,
+  view = "full",
 }: {
   bucket: NodeBucket;
   expanded: boolean;
   onToggle: () => void;
+  view?: NodeCardView;
 }) {
   const { t } = useTranslation("workflow");
   const elapsed =
     bucket.status !== "pending" && bucket.status !== "running"
       ? `${((bucket.lastTs - bucket.firstTs) / 1000).toFixed(1)}s`
       : null;
+  const showAi = view !== "events";
+  const visibleSubEvents =
+    view === "ai"
+      ? bucket.subEvents.filter((ev) => ev.type === "PermissionRequested")
+      : view === "events"
+      ? bucket.subEvents.filter((ev) => !AI_EVENT_TYPES.has(ev.type))
+      : bucket.subEvents;
   const summary =
     bucket.failReason ??
-    (bucket.streamText
+    (showAi && bucket.streamText
       ? firstLine(bucket.streamText)
-      : bucket.outputText
+      : showAi && bucket.outputText
       ? firstLine(bucket.outputText)
       : null);
 
@@ -259,10 +276,10 @@ export function NodeCard({
       )}
       {expanded && (
         <div className="space-y-1.5 px-3 py-2">
-          {bucket.subEvents.map((ev) => (
+          {visibleSubEvents.map((ev) => (
             <EventRow key={ev.event_id} ev={ev} nodeRef={bucket.ref} hideOutputText />
           ))}
-          {bucket.thoughtText && (
+          {showAi && bucket.thoughtText && (
             <details className="border-l-2 border-l-muted-foreground/40 pl-3 py-1">
               <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-muted-foreground select-none">
                 {t("events.thinking")}{bucket.thoughtText.length}{t("events.chars")}
@@ -272,7 +289,7 @@ export function NodeCard({
               </pre>
             </details>
           )}
-          {bucket.streamText && (
+          {showAi && bucket.streamText && (
             <div className="border-l-2 border-l-accent pl-3 py-1">
               <div className="mb-0.5 flex justify-between font-mono text-[10px] text-accent">
                 <span>{t("events.agent_text")}</span>
@@ -285,7 +302,7 @@ export function NodeCard({
               </pre>
             </div>
           )}
-          {!bucket.streamText && bucket.outputText && (
+          {showAi && !bucket.streamText && bucket.outputText && (
             <div className="border-l-2 border-l-success pl-3 py-1">
               <pre className="whitespace-pre-wrap break-words font-mono text-[11px] text-foreground/90">
                 {bucket.outputText}

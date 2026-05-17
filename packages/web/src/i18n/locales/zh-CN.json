@@ -216,7 +216,9 @@
       "attempt": "第 # 次",
       "failed": "失败",
       "checkpoint_prefix": "ckpt ",
-      "agent_text": "agent · 文本"
+      "agent_text": "agent · 文本",
+      "no_ai_content": "暂无 AI 输出",
+      "no_runtime_events": "暂无运行时事件"
     },
     "node": {
       "id_prefix": "id ",
@@ -229,6 +231,7 @@
       "tab_form": "表单",
       "tab_json": "JSON",
       "tab_events": "事件",
+      "tab_ai": "AI 交互",
       "fields": {
         "adapter": "适配器",
         "inputs": "输入",

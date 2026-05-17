@@ -15,7 +15,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { NodeJsonPanel, JSON_FIELDS, pretty } from "./NodeJsonPanel";
 import { NodeFormPanel } from "./NodeFormPanel";
 import { NodeEventStream } from "./NodeEventStream";
+import { NodeAiStream } from "./NodeAiStream";
 import { cn } from "../lib/utils";
+
+type DetailTab = "form" | "json" | "events" | "ai";
 
 function pickEditableFields(node: WorkflowNode): Partial<WorkflowNode> {
   const out: Partial<WorkflowNode> = {};
@@ -47,16 +50,14 @@ export function NodeDetailPanel({
   const { t } = useTranslation("workflow");
   const { t: tc } = useTranslation("common");
 
-  const [activeTab, setActiveTab] = useState<"form" | "json" | "events">("form");
+  const [activeTab, setActiveTab] = useState<DetailTab>("form");
 
-  // Switch to events tab when run starts; restore form tab when run ends
+  // When a run starts, focus the AI tab so streaming output and permission
+  // prompts are immediately visible. After the run ends we intentionally stay
+  // on whichever tab the user is on — typically still "ai" — so the final
+  // agent output and stop_reason remain in view.
   useEffect(() => {
-    if (isLiveRun) {
-      setActiveTab("events");
-    } else if (activeTab === "events") {
-      setActiveTab("form");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isLiveRun) setActiveTab("ai");
   }, [isLiveRun]);
 
   // --- title state ---
@@ -128,7 +129,7 @@ export function NodeDetailPanel({
       }
       setJsonOverrides(m);
     }
-    setActiveTab(tab as "form" | "json" | "events");
+    setActiveTab(tab as DetailTab);
   }
 
   // dirty calculation
@@ -317,6 +318,7 @@ export function NodeDetailPanel({
               <TabsTrigger value="json">{t("node.tab_json")}</TabsTrigger>
             </>
           )}
+          <TabsTrigger value="ai">{t("node.tab_ai")}</TabsTrigger>
           <TabsTrigger value="events">{t("node.tab_events")}</TabsTrigger>
         </TabsList>
 
@@ -351,6 +353,10 @@ export function NodeDetailPanel({
             </TabsContent>
           </>
         )}
+
+        <TabsContent value="ai" className="min-h-0 flex-1 overflow-hidden p-0">
+          <NodeAiStream nodeId={node.id} />
+        </TabsContent>
 
         <TabsContent value="events" className="min-h-0 flex-1 overflow-hidden p-0">
           <NodeEventStream nodeId={node.id} />

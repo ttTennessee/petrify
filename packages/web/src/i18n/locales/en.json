@@ -216,7 +216,9 @@
       "attempt": "attempt #",
       "failed": "failed",
       "checkpoint_prefix": "ckpt ",
-      "agent_text": "agent · text"
+      "agent_text": "agent · text",
+      "no_ai_content": "no AI output yet",
+      "no_runtime_events": "no runtime events yet"
     },
     "node": {
       "id_prefix": "id ",
@@ -229,6 +231,7 @@
       "tab_form": "Form",
       "tab_json": "JSON",
       "tab_events": "Events",
+      "tab_ai": "AI",
       "fields": {
         "adapter": "Adapter",
         "inputs": "Inputs",
