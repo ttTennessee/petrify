@@ -301,6 +301,7 @@ export default function WorkflowEditor() {
       <div className="min-h-0">
         {selected ? (
           <NodeDetailPanel
+            key={selected.id}
             node={selected}
             workflowId={workflowId}
             onClose={() => setSelectedId(null)}
