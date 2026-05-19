@@ -15,7 +15,7 @@ import { configRouter } from "./routes/config.js";
 import { eventBus } from "./runtime/events.js";
 import { registerAdapter, listAdapterEntries } from "./adapters/registry.js";
 import { MockAdapter } from "./adapters/mock.js";
-import { AcpAdapter } from "./adapters/acp.js";
+import { AcpAdapter } from "./adapters/acp/index.js";
 import { permissionBroker } from "./adapters/acp/permission-broker.js";
 import { restoreEnabledAdapters } from "./adapters/persistence.js";
 import { seedExampleTemplates } from "./templates/seed.js";

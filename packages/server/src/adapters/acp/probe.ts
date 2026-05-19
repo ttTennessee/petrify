@@ -1,20 +1,7 @@
 import { spawn } from "node:child_process";
 import { Readable, Writable } from "node:stream";
 import * as acp from "@agentclientprotocol/sdk";
-
-export interface ProbeOk {
-  ok: true;
-  protocolVersion?: number;
-  capabilities?: unknown;
-  durationMs: number;
-}
-
-export interface ProbeErr {
-  ok: false;
-  error: string;
-}
-
-export type ProbeResult = ProbeOk | ProbeErr;
+import type { ProbeResult } from "../types.js";
 
 export interface ProbeOpts {
   command: string;

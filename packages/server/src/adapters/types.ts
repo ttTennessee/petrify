@@ -3,7 +3,23 @@ import type {
   RuntimeEvent,
   WorkflowNode,
 } from "@petrify/shared";
-import type { ProbeResult } from "./probe.js";
+
+/** Generic preflight/connectivity check result. Adapters that talk to an
+ *  external process surface their handshake outcome here; in-process adapters
+ *  (e.g. mock) omit `probe()` entirely. */
+export interface ProbeOk {
+  ok: true;
+  protocolVersion?: number;
+  capabilities?: unknown;
+  durationMs: number;
+}
+
+export interface ProbeErr {
+  ok: false;
+  error: string;
+}
+
+export type ProbeResult = ProbeOk | ProbeErr;
 
 export interface InvokeRequest {
   invocationId: string;

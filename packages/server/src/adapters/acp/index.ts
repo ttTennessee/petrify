@@ -6,19 +6,22 @@ import type {
   SessionNotification,
 } from "@agentclientprotocol/sdk";
 import type { AdapterManifest, RuntimeEvent } from "@petrify/shared";
-import type { AgentAdapter, InvokeRequest } from "./types.js";
+import type {
+  AgentAdapter,
+  InvokeRequest,
+  ProbeResult,
+} from "../types.js";
 import { probeAcp } from "./probe.js";
-import type { ProbeResult } from "./probe.js";
-import { createMapper } from "./acp/event-mapper.js";
+import { createMapper } from "./event-mapper.js";
 import {
   AsyncEventQueue,
   closeSession,
   spawnAndInit,
   type OpenSession,
-} from "./acp/transport.js";
-import { createClient, type ClientRouter } from "./acp/client-impl.js";
-import { buildPromptText } from "./acp/prompt.js";
-import type { AcpCheckpointBlob } from "./acp/checkpoint.js";
+} from "./transport.js";
+import { createClient, type ClientRouter } from "./client-impl.js";
+import { buildPromptText } from "./prompt.js";
+import type { AcpCheckpointBlob } from "./checkpoint.js";
 
 export interface AcpAdapterConfig {
   command: string;

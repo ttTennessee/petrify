@@ -18,7 +18,7 @@ import {
   registerAdapter,
   unregisterAdapter,
 } from "../adapters/registry.js";
-import { probeAcp } from "../adapters/probe.js";
+import { probeAcp } from "../adapters/acp/probe.js";
 
 export const adaptersRouter = Router();
 

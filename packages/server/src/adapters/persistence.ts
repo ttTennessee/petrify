@@ -1,6 +1,6 @@
 import { db } from "../db.js";
 import { registerAdapter, unregisterAdapter } from "./registry.js";
-import { AcpAdapter } from "./acp.js";
+import { AcpAdapter } from "./acp/index.js";
 import { permissionBroker } from "./acp/permission-broker.js";
 import type { AgentAdapter } from "./types.js";
 
