@@ -1,8 +1,11 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 
-const DB_PATH = process.env.PETRIFY_DB ?? "./data/petrify.sqlite";
+// Resolve to an absolute path so it doesn't depend on the parent process's
+// cwd — important under Tauri sidecar where cwd may be the app bundle dir.
+const RAW_DB_PATH = process.env.PETRIFY_DB ?? "./data/petrify.sqlite";
+const DB_PATH = RAW_DB_PATH === ":memory:" ? ":memory:" : resolve(RAW_DB_PATH);
 
 if (DB_PATH !== ":memory:") {
   mkdirSync(dirname(DB_PATH), { recursive: true });
@@ -11,6 +14,14 @@ if (DB_PATH !== ":memory:") {
 export const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
+
+export function closeDb(): void {
+  try {
+    db.close();
+  } catch {
+    /* ignore double-close */
+  }
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS projects (
@@ -64,7 +75,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_checkpoints_run ON checkpoints(run_id, created_at DESC);
 `);
 
-// Lightweight idempotent column add for runs.resumed_from when upgrading from M1.
 try {
   const cols = db.prepare(`PRAGMA table_info(runs)`).all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "resumed_from")) {
@@ -74,8 +84,6 @@ try {
   /* ignore */
 }
 
-// Single-node run: runs.target_node_id stores the node id when a run was
-// triggered for a specific node only (vs whole-graph).
 try {
   const cols = db.prepare(`PRAGMA table_info(runs)`).all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "target_node_id")) {
@@ -85,8 +93,6 @@ try {
   /* ignore */
 }
 
-// Global key-value config — small singleton store for app-wide settings such
-// as the auto_run toggle.
 db.exec(`
   CREATE TABLE IF NOT EXISTS global_config (
     key TEXT PRIMARY KEY,
@@ -95,7 +101,6 @@ db.exec(`
   );
 `);
 
-// M3: workflows.last_verify_json holds the most recent VerificationReport.
 try {
   const cols = db.prepare(`PRAGMA table_info(workflows)`).all() as Array<{ name: string }>;
   if (!cols.some((c) => c.name === "last_verify_json")) {
@@ -105,7 +110,6 @@ try {
   /* ignore */
 }
 
-// M5: adapter instances — runtime-managed ACP / custom adapter registry.
 db.exec(`
   CREATE TABLE IF NOT EXISTS adapter_instances (
     name           TEXT PRIMARY KEY,
@@ -126,9 +130,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_adapter_instances_enabled ON adapter_instances(enabled);
 `);
 
-// Permission grants — cached "Allow always" / "Reject always" decisions scoped
-// to (project, node, tool_kind). Looked up by PermissionBroker before asking
-// the user. Composite PK avoids duplicates; rows are insert-or-replace.
 db.exec(`
   CREATE TABLE IF NOT EXISTS permission_grants (
     project_id TEXT NOT NULL,
@@ -140,7 +141,6 @@ db.exec(`
   );
 `);
 
-// M4: breakpoints — per-(workflow, node) pause markers, persist across runs.
 db.exec(`
   CREATE TABLE IF NOT EXISTS breakpoints (
     id          TEXT PRIMARY KEY,
@@ -153,7 +153,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_breakpoints_wf ON breakpoints(workflow_id);
 `);
 
-// M5: workflow templates — local SQLite market, JSON import/export.
 db.exec(`
   CREATE TABLE IF NOT EXISTS templates (
     id TEXT PRIMARY KEY,

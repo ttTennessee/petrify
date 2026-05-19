@@ -1,25 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "./client";
+import type { GlobalConfig } from "@petrify/shared";
+import { http } from "./http";
 
-export interface GlobalConfig {
-  auto_run: boolean;
-  permission_default_policy: "ask" | "deny-all";
-}
-
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as {
-      error?: string;
-      issues?: string[];
-    };
-    throw new ApiError(body.error ?? `HTTP ${res.status}`, body.issues ?? []);
-  }
-  return res.json() as Promise<T>;
-}
+export type { GlobalConfig };
 
 export function useConfig() {
   return useQuery({

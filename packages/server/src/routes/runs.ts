@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
 import { z } from "zod";
+import { RunDetailSchema, RunSummarySchema } from "@petrify/shared";
 import { db } from "../db.js";
 import { permissionBroker } from "../adapters/acp/permission-broker.js";
 import { compile, CompileError } from "../runtime/compiler.js";
@@ -308,9 +309,18 @@ runsRouter.post("/runs/:id/cancel", (req, res) => {
 });
 
 runsRouter.get("/runs/:id", (req, res) => {
-  const row = db.prepare(`SELECT * FROM runs WHERE id = ?`).get(req.params.id);
+  const row = db
+    .prepare(
+      `SELECT r.id, r.workflow_id, r.status, r.started_at, r.finished_at,
+              r.error, r.resumed_from, r.target_node_id,
+              (SELECT c.id FROM checkpoints c
+                 WHERE c.run_id = r.id
+                 ORDER BY c.created_at DESC LIMIT 1) AS last_checkpoint_id
+         FROM runs r WHERE r.id = ?`,
+    )
+    .get(req.params.id);
   if (!row) return res.status(404).json({ error: "not found" });
-  res.json(row);
+  res.json(RunDetailSchema.parse(row));
 });
 
 runsRouter.get("/runs/:id/events", (req, res) => {
@@ -325,9 +335,14 @@ runsRouter.get("/runs/:id/checkpoints", (req, res) => {
 runsRouter.get("/workflows/:workflowId/runs", (req, res) => {
   const rows = db
     .prepare(
-      `SELECT id, status, started_at, finished_at, error, resumed_from, target_node_id
-       FROM runs WHERE workflow_id = ? ORDER BY started_at DESC LIMIT 50`,
+      `SELECT r.id, r.status, r.started_at, r.finished_at, r.error,
+              r.resumed_from, r.target_node_id,
+              (SELECT c.id FROM checkpoints c
+                 WHERE c.run_id = r.id
+                 ORDER BY c.created_at DESC LIMIT 1) AS last_checkpoint_id
+         FROM runs r WHERE r.workflow_id = ?
+         ORDER BY r.started_at DESC LIMIT 50`,
     )
     .all(req.params.workflowId);
-  res.json(rows);
+  res.json(z.array(RunSummarySchema).parse(rows));
 });

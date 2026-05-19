@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { RuntimeEvent } from "@petrify/shared";
+import { getWsBase } from "./transport";
 
 export function useRunEventStream(
   runId: string | undefined,
@@ -7,8 +8,7 @@ export function useRunEventStream(
 ) {
   useEffect(() => {
     if (!runId) return;
-    const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${proto}://${window.location.host}/ws/runs/${runId}`);
+    const ws = new WebSocket(`${getWsBase()}/ws/runs/${runId}`);
     ws.onmessage = (msg) => {
       try {
         const ev = JSON.parse(msg.data) as RuntimeEvent;

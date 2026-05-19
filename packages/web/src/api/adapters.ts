@@ -1,62 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "./client";
+import type {
+  AdapterInput,
+  AdapterInstance,
+  CatalogCategory,
+  CatalogEntry,
+  ProbeResult,
+} from "@petrify/shared";
+import { http } from "./http";
 
-export type CatalogCategory = "acp" | "other";
-
-export interface CatalogEntry {
-  id: string;
-  label: string;
-  description: string;
-  category: CatalogCategory;
-  defaultKind: "spawn" | "connect";
-  defaultCommand?: string;
-  defaultArgs?: string[];
-  homepage?: string;
-  icon?: string;
-}
-
-export interface AdapterInstance {
-  name: string;
-  catalog_id: string | null;
-  kind: "spawn" | "connect" | "builtin";
-  enabled: 0 | 1;
-  command: string | null;
-  args: string[];
-  env: Record<string, string>;
-  default_cwd: string | null;
-  endpoint: string | null;
-  status: "ok" | "error" | "unknown";
-  status_detail: string | null;
-  last_probed_at: number | null;
-  created_at: number;
-  updated_at: number;
-  live: boolean;
-  read_only?: boolean;
-}
-
-export interface ProbeResult {
-  ok: boolean;
-  protocolVersion?: number;
-  capabilities?: unknown;
-  durationMs?: number;
-  error?: string;
-}
-
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as {
-      error?: string;
-      issues?: string[];
-    };
-    throw new ApiError(body.error ?? `HTTP ${res.status}`, body.issues ?? []);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
+export type { AdapterInput, AdapterInstance, CatalogCategory, CatalogEntry, ProbeResult };
 
 export function useAdapterCatalog() {
   return useQuery({
@@ -71,17 +23,6 @@ export function useAdapters() {
     queryKey: ["adapters"],
     queryFn: () => http<AdapterInstance[]>("/api/adapters"),
   });
-}
-
-export interface AdapterInput {
-  name: string;
-  catalog_id?: string | null;
-  kind: "spawn" | "connect";
-  command?: string | null;
-  args?: string[];
-  env?: Record<string, string>;
-  default_cwd?: string | null;
-  endpoint?: string | null;
 }
 
 export function useCreateAdapter() {

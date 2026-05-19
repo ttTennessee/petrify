@@ -7,3 +7,4 @@ export * from "./expression.js";
 export * from "./petri.js";
 export * from "./template.js";
 export * from "./breakpoint.js";
+export * from "./api.js";
