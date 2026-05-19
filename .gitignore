@@ -17,3 +17,4 @@ coverage/
 .github/
 outputs/
 prd.md
+.mcp.json
