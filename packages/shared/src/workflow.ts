@@ -57,6 +57,49 @@ export const PromptSpecSchema = z.object({
   task_prompt: z.string(),
 });
 
+// MCP server config (mirrors ACP SDK's McpServer union without depending on it).
+// Adapters convert to the SDK shape at the boundary; the DB/UI uses this form.
+export const McpEnvVarSpecSchema = z.object({
+  name: z.string().min(1),
+  value: z.string(),
+});
+
+export const McpHttpHeaderSpecSchema = z.object({
+  name: z.string().min(1),
+  value: z.string(),
+});
+
+export const McpServerStdioSpecSchema = z.object({
+  transport: z.literal("stdio"),
+  name: z.string().min(1),
+  command: z.string().min(1),
+  args: z.array(z.string()).default([]),
+  env: z.array(McpEnvVarSpecSchema).default([]),
+});
+
+export const McpServerHttpSpecSchema = z.object({
+  transport: z.literal("http"),
+  name: z.string().min(1),
+  url: z.string().url(),
+  headers: z.array(McpHttpHeaderSpecSchema).default([]),
+});
+
+export const McpServerSseSpecSchema = z.object({
+  transport: z.literal("sse"),
+  name: z.string().min(1),
+  url: z.string().url(),
+  headers: z.array(McpHttpHeaderSpecSchema).default([]),
+});
+
+export const McpServerSpecSchema = z.discriminatedUnion("transport", [
+  McpServerStdioSpecSchema,
+  McpServerHttpSpecSchema,
+  McpServerSseSpecSchema,
+]);
+export type McpServerSpec = z.infer<typeof McpServerSpecSchema>;
+export type McpEnvVarSpec = z.infer<typeof McpEnvVarSpecSchema>;
+export type McpHttpHeaderSpec = z.infer<typeof McpHttpHeaderSpecSchema>;
+
 // PRD §6.3 — node schema is complete; M1 only consumes dependencies/inputs/outputs.
 // condition/loop/resources fields are validated but NOT interpreted by the scheduler.
 export const WorkflowNodeSchema = z.object({
@@ -85,6 +128,9 @@ export const WorkflowNodeSchema = z.object({
   status: NodeStatusSchema.default("idle"),
   // Permission policy for agent tool requests. Defaults to global setting when absent.
   permission_policy: z.enum(["ask", "allow-all", "deny-all"]).optional(),
+  // Names of MCP servers (from the global mcp_servers pool) to enable for this
+  // node's session. Resolved to full McpServerSpec at run time.
+  mcp_servers: z.array(z.string()).default([]),
 });
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
 

@@ -30,6 +30,8 @@ const EDITABLE_NODE_FIELDS = new Set([
   "prompt",
   "schema",
   "on_failure",
+  "mcp_servers",
+  "permission_policy",
 ]);
 
 workflowsRouter.post("/projects/:projectId/workflow", (req, res) => {

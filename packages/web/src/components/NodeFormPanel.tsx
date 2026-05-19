@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { WorkflowNode, ResourceClaim } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
+import { useMcpServers } from "../api/mcp";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Label } from "./ui/label";
@@ -164,6 +165,19 @@ export function NodeFormPanel({
   >(
     (node.resources ?? []).map((r) => ({ ...r, _id: nextId() })),
   );
+
+  const [mcpServers, setMcpServers] = useState<string[]>(
+    node.mcp_servers ?? [],
+  );
+  const { data: mcpServerRows } = useMcpServers();
+
+  function toggleMcpServer(name: string) {
+    const next = mcpServers.includes(name)
+      ? mcpServers.filter((n) => n !== name)
+      : [...mcpServers, name];
+    setMcpServers(next);
+    onDraftChange({ mcp_servers: next });
+  }
 
   const [inputRows, setInputRows] = useState<KvRow[]>(() =>
     recordToRows(node.inputs ?? {}),
@@ -564,6 +578,51 @@ export function NodeFormPanel({
             />
           </div>
         </div>
+      </Section>
+
+      {/* MCP Servers — global pool, per-node opt-in */}
+      <Section label="MCP Servers" note="勾选的 server 会在节点会话开启时下发">
+        {(mcpServerRows ?? []).length === 0 ? (
+          <span className="font-mono text-[11px] text-muted-foreground">
+            暂无 MCP server，去
+            <a
+              href="/settings/mcp-servers"
+              className="ml-1 underline-offset-2 hover:underline"
+            >
+              设置
+            </a>
+            添加
+          </span>
+        ) : (
+          <div className="space-y-1">
+            {(mcpServerRows ?? []).map((row) => {
+              const checked = mcpServers.includes(row.name);
+              const id = `mcp-${row.name}`;
+              return (
+                <div key={row.name} className="flex items-center gap-1.5">
+                  <Checkbox
+                    id={id}
+                    checked={checked}
+                    disabled={!row.enabled}
+                    onCheckedChange={() => toggleMcpServer(row.name)}
+                  />
+                  <Label
+                    htmlFor={id}
+                    className={cn(
+                      "font-mono text-[11px]",
+                      !row.enabled && "text-muted-foreground line-through",
+                    )}
+                  >
+                    {row.name}
+                    <span className="ml-1.5 normal-case italic opacity-60">
+                      ({row.transport})
+                    </span>
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Section>
 
       {/* Resources (M1 declared-only) */}

@@ -1,5 +1,6 @@
 import type {
   AdapterManifest,
+  McpServerSpec,
   RuntimeEvent,
   WorkflowNode,
 } from "@petrify/shared";
@@ -29,6 +30,11 @@ export interface InvokeRequest {
   projectId: string | null;
   node: WorkflowNode;
   inputs: Record<string, unknown>;
+  /** Resolved MCP server specs to attach to this invocation's session. The
+   *  scheduler resolves the names stored on `node.mcp_servers` (which refer
+   *  to entries in the global mcp_servers pool) before calling `invoke()`.
+   *  Adapters that don't speak ACP can ignore this. */
+  mcpServers?: McpServerSpec[];
 }
 
 export interface AgentAdapter {

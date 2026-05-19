@@ -154,6 +154,22 @@ db.exec(`
 `);
 
 db.exec(`
+  CREATE TABLE IF NOT EXISTS mcp_servers (
+    name         TEXT PRIMARY KEY,
+    transport    TEXT NOT NULL,
+    command      TEXT,
+    args_json    TEXT,
+    env_json     TEXT,
+    url          TEXT,
+    headers_json TEXT,
+    enabled      INTEGER NOT NULL DEFAULT 0,
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_mcp_servers_enabled ON mcp_servers(enabled);
+`);
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS templates (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

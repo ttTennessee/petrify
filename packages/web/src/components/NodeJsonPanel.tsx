@@ -19,6 +19,7 @@ export const JSON_FIELDS: JsonField[] = [
   { key: "resources", labelKey: "resources", noteKey: "resources" },
   { key: "condition", labelKey: "condition", noteKey: "condition" },
   { key: "loop", labelKey: "loop", noteKey: "loop" },
+  { key: "mcp_servers", labelKey: "mcp_servers" },
   { key: "schema", labelKey: "schema" },
 ];
 

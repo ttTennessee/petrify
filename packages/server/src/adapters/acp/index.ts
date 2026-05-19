@@ -5,12 +5,38 @@ import type {
   RequestPermissionResponse,
   SessionNotification,
 } from "@agentclientprotocol/sdk";
-import type { AdapterManifest, RuntimeEvent } from "@petrify/shared";
+import type {
+  AdapterManifest,
+  McpServerSpec,
+  RuntimeEvent,
+} from "@petrify/shared";
 import type {
   AgentAdapter,
   InvokeRequest,
   ProbeResult,
 } from "../types.js";
+
+/** Translate Petrify's wire-format MCP spec into the SDK's tagged-union shape.
+ *  stdio servers are bare on the SDK side; http/sse carry a `type` discriminant. */
+function toAcpMcpServers(specs: McpServerSpec[] | undefined): acp.McpServer[] {
+  if (!specs || specs.length === 0) return [];
+  return specs.map((s) => {
+    if (s.transport === "stdio") {
+      return {
+        name: s.name,
+        command: s.command,
+        args: s.args,
+        env: s.env,
+      };
+    }
+    return {
+      type: s.transport,
+      name: s.name,
+      url: s.url,
+      headers: s.headers,
+    };
+  });
+}
 import { probeAcp } from "./probe.js";
 import { createMapper } from "./event-mapper.js";
 import {
@@ -75,6 +101,7 @@ interface InflightSnapshot {
   promptText: string;
   inputs: Record<string, unknown>;
   startedAt: number;
+  mcpServers: McpServerSpec[];
 }
 
 export class AcpAdapter implements AgentAdapter {
@@ -179,7 +206,7 @@ export class AcpAdapter implements AgentAdapter {
       shared = await this.ensureStarted();
       const newSess = await shared.session.conn.newSession({
         cwd: this.resolvedCwd(),
-        mcpServers: [],
+        mcpServers: toAcpMcpServers(req.mcpServers),
       });
       sessionId = newSess.sessionId;
     } catch (err) {
@@ -212,6 +239,7 @@ export class AcpAdapter implements AgentAdapter {
       promptText,
       inputs: req.inputs,
       startedAt: Date.now(),
+      mcpServers: req.mcpServers ?? [],
     });
 
     const mapper = createMapper({ runId: req.runId, nodeId: req.node.id });
@@ -260,6 +288,7 @@ export class AcpAdapter implements AgentAdapter {
         inputsSnapshot: req.inputs,
         command: this.cfg.command,
         args: this.cfg.args,
+        mcpServers: req.mcpServers ?? [],
       });
       this.active.delete(req.invocationId);
       this.inflight.delete(req.invocationId);
@@ -296,6 +325,7 @@ export class AcpAdapter implements AgentAdapter {
         inputsSnapshot: snap?.inputs ?? {},
         command: this.cfg.command,
         args: this.cfg.args,
+        mcpServers: snap?.mcpServers ?? [],
       } satisfies AcpCheckpointBlob;
     }
     return null;
@@ -312,7 +342,7 @@ export class AcpAdapter implements AgentAdapter {
     const shared = await this.ensureStarted();
     const newSess = await shared.session.conn.newSession({
       cwd: this.resolvedCwd(),
-      mcpServers: [],
+      mcpServers: toAcpMcpServers(b.mcpServers ?? []),
     });
     const invocationId = nanoid();
     this.active.set(invocationId, {

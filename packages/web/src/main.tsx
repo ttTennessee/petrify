@@ -11,6 +11,7 @@ import WorkflowEditor from "./routes/WorkflowEditor";
 import Templates from "./routes/Templates";
 import Adapters from "./routes/Adapters";
 import Settings from "./routes/Settings";
+import McpServers from "./routes/McpServers";
 import { ThemeProvider } from "./components/theme-provider";
 import "./index.css";
 
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
       { path: "templates", element: <Templates /> },
       { path: "adapters", element: <Adapters /> },
       { path: "settings", element: <Settings /> },
+      { path: "settings/mcp-servers", element: <McpServers /> },
     ],
   },
 ]);

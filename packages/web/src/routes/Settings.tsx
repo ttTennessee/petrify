@@ -118,6 +118,18 @@ export default function Settings() {
           </div>
           <span className="font-mono text-xs text-accent">→</span>
         </Link>
+        <Link
+          to="/settings/mcp-servers"
+          className="flex items-center justify-between gap-4 border border-border bg-card p-5 transition-colors hover:border-accent/60"
+        >
+          <div className="min-w-0">
+            <h3 className="font-display text-base">MCP Servers</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              管理可在节点会话中启用的全局 MCP 服务器池（stdio / http / sse）。
+            </p>
+          </div>
+          <span className="font-mono text-xs text-accent">→</span>
+        </Link>
       </section>
     </div>
   );

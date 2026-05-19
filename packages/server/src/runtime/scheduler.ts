@@ -3,6 +3,7 @@ import type { CheckpointBlob, RuntimeEvent, WorkflowNode } from "@petrify/shared
 import { db } from "../db.js";
 import { getAdapter } from "../adapters/registry.js";
 import { permissionBroker } from "../adapters/acp/permission-broker.js";
+import { resolveServers } from "../services/mcp-servers.js";
 import { eventBus } from "./events.js";
 import type { ExecutablePlan } from "./compiler.js";
 import { saveCheckpoint, getLatestCheckpoint } from "./checkpoints.js";
@@ -238,6 +239,7 @@ async function runNode(
             projectId: state.projectId,
             node,
             inputs: resolvedInputs,
+            mcpServers: resolveServers(node.mcp_servers ?? []),
           })) {
             span.addEvent(ev.type);
             publishEvent(ev);

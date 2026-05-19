@@ -12,6 +12,7 @@ import { verificationRouter } from "./routes/verification.js";
 import { templatesRouter } from "./routes/templates.js";
 import { adaptersRouter } from "./routes/adapters.js";
 import { configRouter } from "./routes/config.js";
+import { mcpRouter } from "./routes/mcp.js";
 import { eventBus } from "./runtime/events.js";
 import { registerAdapter, listAdapterEntries } from "./adapters/registry.js";
 import { MockAdapter } from "./adapters/mock.js";
@@ -66,6 +67,7 @@ app.use("/api", verificationRouter);
 app.use("/api/templates", templatesRouter);
 app.use("/api/adapters", adaptersRouter);
 app.use("/api/config", configRouter);
+app.use("/api/mcp-servers", mcpRouter);
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });

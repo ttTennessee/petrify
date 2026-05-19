@@ -128,6 +128,7 @@ async function invokeForText(
     prompt: { task_prompt: promptText },
     on_failure: { strategy: "abort" },
     status: "idle",
+    mcp_servers: [],
   };
 
   const req = {
