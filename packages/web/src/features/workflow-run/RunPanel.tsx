@@ -9,19 +9,19 @@ import {
   useContinueBreakpoint,
   useWorkflowRuns,
   ApiError,
-} from "../api/client";
-import { useConfig } from "../api/config";
-import { useRunEventStream } from "../api/ws";
-import { useWorkflowStore } from "../store/workflow";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+} from "../../api/client";
+import { useConfig } from "../../api/config";
+import { useRunEventStream } from "../../api/ws";
+import { useWorkflowStore } from "../../store/workflow";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "../../components/ui/select";
 
 type BadgeVariant = "accent" | "success" | "destructive" | "outline" | "warning";
 

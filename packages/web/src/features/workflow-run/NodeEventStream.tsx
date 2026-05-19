@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useWorkflowStore } from "../store/workflow";
+import { useWorkflowStore } from "../../store/workflow";
 import { buildBuckets, NodeCard } from "./EventStream";
 
-export function NodeAiStream({ nodeId }: { nodeId: string }) {
+export function NodeEventStream({ nodeId }: { nodeId: string }) {
   const { t } = useTranslation("workflow");
   const events = useWorkflowStore((s) => s.events);
   const graph = useWorkflowStore((s) => s.graph);
@@ -21,18 +21,29 @@ export function NodeAiStream({ nodeId }: { nodeId: string }) {
 
   const bucket = buckets.find((b) => b.nodeId === nodeId) ?? null;
 
-  const hasAiContent =
-    !!bucket &&
-    (!!bucket.streamText ||
-      !!bucket.thoughtText ||
-      !!bucket.outputText ||
-      bucket.subEvents.some((ev) => ev.type === "PermissionRequested"));
+  const AI_TYPES = new Set([
+    "PermissionRequested",
+    "PermissionResolved",
+    "OutputGenerated",
+  ]);
+  const hasRuntimeEvents =
+    !!bucket && bucket.subEvents.some((ev) => !AI_TYPES.has(ev.type));
 
-  if (!bucket || !hasAiContent) {
+  if (!bucket) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
         <span className="font-mono text-[10px] text-muted-foreground">
-          {t("events.no_ai_content")}
+          {t("events.no_node_events")}
+        </span>
+      </div>
+    );
+  }
+
+  if (!hasRuntimeEvents) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {t("events.no_runtime_events")}
         </span>
       </div>
     );
@@ -40,7 +51,7 @@ export function NodeAiStream({ nodeId }: { nodeId: string }) {
 
   return (
     <div className="h-full overflow-auto px-4 py-3">
-      <NodeCard bucket={bucket} expanded={true} onToggle={() => {}} view="ai" />
+      <NodeCard bucket={bucket} expanded={true} onToggle={() => {}} view="events" />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useAdapters } from "../api/adapters";
-import { useGenerateWorkflow,type GenerateApiError } from "../api/client";
+import { useAdapters } from "../../api/adapters";
+import { useGenerateWorkflow,type GenerateApiError } from "../../api/client";
 import {
   Dialog,
   DialogContent,
@@ -10,16 +10,16 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
+} from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "./ui/select";
-import { Label } from "./ui/label";
+} from "../../components/ui/select";
+import { Label } from "../../components/ui/label";
 
 interface Props {
   projectId: string;

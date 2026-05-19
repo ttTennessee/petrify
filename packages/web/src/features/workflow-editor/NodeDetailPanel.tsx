@@ -7,16 +7,16 @@ import {
   useBreakpoints,
   useSetBreakpoint,
   useDeleteBreakpoint,
-} from "../api/client";
-import { useAdapters } from "../api/adapters";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
+} from "../../api/client";
+import { useAdapters } from "../../api/adapters";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 import { NodeJsonPanel, JSON_FIELDS, pretty } from "./NodeJsonPanel";
 import { NodeFormPanel } from "./NodeFormPanel";
-import { NodeEventStream } from "./NodeEventStream";
-import { NodeAiStream } from "./NodeAiStream";
-import { cn } from "../lib/utils";
+import { NodeEventStream } from "../workflow-run/NodeEventStream";
+import { NodeAiStream } from "../workflow-run/NodeAiStream";
+import { cn } from "../../lib/utils";
 
 type DetailTab = "form" | "json" | "events" | "ai";
 

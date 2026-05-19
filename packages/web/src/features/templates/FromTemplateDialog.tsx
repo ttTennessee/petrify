@@ -2,17 +2,17 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useTemplates, useInstantiateTemplate } from "../api/client";
+import { useTemplates, useInstantiateTemplate } from "../../api/client";
 import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { cn } from "../lib/utils";
+} from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { cn } from "../../lib/utils";
 
 interface Props {
   projectId: string;

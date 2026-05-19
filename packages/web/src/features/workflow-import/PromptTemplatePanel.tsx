@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { usePromptTemplate } from "../api/client";
-import { Button } from "./ui/button";
+import { usePromptTemplate } from "../../api/client";
+import { Button } from "../../components/ui/button";
 
 export function PromptTemplatePanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation("templates");

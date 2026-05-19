@@ -2,9 +2,9 @@ import { useState } from "react";
 import type { DryRunReport, VerificationReport } from "@petrify/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useRunVerify, useRunDryRun, useVerifyWorkflow } from "../api/client";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
+import { useRunVerify, useRunDryRun, useVerifyWorkflow } from "../../api/client";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
 
 type BadgeVariant = "success" | "warning" | "destructive" | "outline";
 

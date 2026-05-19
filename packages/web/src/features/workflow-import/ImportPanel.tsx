@@ -2,9 +2,9 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { WorkflowGraphSchema } from "@petrify/shared";
-import { useImportWorkflow } from "../api/client";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
+import { useImportWorkflow } from "../../api/client";
+import { Button } from "../../components/ui/button";
+import { Textarea } from "../../components/ui/textarea";
 
 export function ImportPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation("workflow");

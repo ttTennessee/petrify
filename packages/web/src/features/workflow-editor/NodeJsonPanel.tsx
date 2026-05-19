@@ -1,7 +1,7 @@
 import type { WorkflowNode } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
-import { Textarea } from "./ui/textarea";
-import { cn } from "../lib/utils";
+import { Textarea } from "../../components/ui/textarea";
+import { cn } from "../../lib/utils";
 
 interface JsonField {
   key: keyof WorkflowNode;

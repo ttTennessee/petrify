@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useProject, useProjectWorkflows } from "../api/client";
-import { ImportPanel } from "../components/ImportPanel";
-import { PromptTemplatePanel } from "../components/PromptTemplatePanel";
-import { FromTemplateDialog } from "../components/FromTemplateDialog";
-import { GenerateWorkflowDialog } from "../components/GenerateWorkflowDialog";
+import { ImportPanel } from "../features/workflow-import/ImportPanel";
+import { PromptTemplatePanel } from "../features/workflow-import/PromptTemplatePanel";
+import { FromTemplateDialog } from "../features/templates/FromTemplateDialog";
+import { GenerateWorkflowDialog } from "../features/workflow-import/GenerateWorkflowDialog";
 import { Button } from "../components/ui/button";
 import { Section } from "../components/section";
 

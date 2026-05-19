@@ -1,19 +1,19 @@
 import { useState } from "react";
 import type { WorkflowNode, ResourceClaim } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
-import { useMcpServers } from "../api/mcp";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Label } from "./ui/label";
-import { Checkbox } from "./ui/checkbox";
+import { useMcpServers } from "../../api/mcp";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
+import { Label } from "../../components/ui/label";
+import { Checkbox } from "../../components/ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
-import { cn } from "../lib/utils";
+} from "../../components/ui/select";
+import { cn } from "../../lib/utils";
 
 type OnFailureStrategy = "retry" | "skip" | "abort" | "compensate";
 

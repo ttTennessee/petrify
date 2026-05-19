@@ -11,7 +11,7 @@ import {
 import dagre from "@dagrejs/dagre";
 import type { WorkflowGraph, NodeStatus, WorkflowNode } from "@petrify/shared";
 import { NodeCard, type NodeCardData } from "./NodeCard";
-import { useTheme } from "./theme-provider";
+import { useTheme } from "../../components/theme-provider";
 
 const nodeTypes = { petrify: NodeCard };
 

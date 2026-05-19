@@ -9,7 +9,7 @@ import {
   useDisableMcpServer,
   type McpServerRow,
 } from "../api/mcp";
-import { ServerModal } from "../components/mcp/ServerModal";
+import { ServerModal } from "../features/mcp/ServerModal";
 import { Section } from "../components/section";
 import { Button } from "../components/ui/button";
 import { cn } from "../lib/utils";

@@ -15,18 +15,18 @@ import {
   ApiError,
 } from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
-import { DagCanvas } from "../components/DagCanvas";
-import { RunActions, RunPausedBanner, useRunPanelData } from "../components/RunPanel";
-import { EventStream } from "../components/EventStream";
-import { TimelineScrubber } from "../components/TimelineScrubber";
-import { NodeDetailPanel } from "../components/NodeDetailPanel";
+import { DagCanvas } from "../features/workflow-editor/DagCanvas";
+import { RunActions, RunPausedBanner, useRunPanelData } from "../features/workflow-run/RunPanel";
+import { EventStream } from "../features/workflow-run/EventStream";
+import { TimelineScrubber } from "../features/workflow-run/TimelineScrubber";
+import { NodeDetailPanel } from "../features/workflow-editor/NodeDetailPanel";
 import {
   VerifyActions,
   VerifyDetails,
   deriveIssueByNodeRef,
   useVerifyController,
-} from "../components/VerifyPanel";
-import { SaveAsTemplateDialog } from "../components/SaveAsTemplateDialog";
+} from "../features/workflow-verify/VerifyPanel";
+import { SaveAsTemplateDialog } from "../features/templates/SaveAsTemplateDialog";
 import { Button } from "../components/ui/button";
 import { Separator } from "../components/ui/separator";
 

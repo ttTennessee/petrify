@@ -15,8 +15,8 @@ import {
   type CatalogCategory,
   type CatalogEntry,
 } from "../api/adapters";
-import { ProbeBadge, useRelTime } from "../components/adapters/ProbeBadge";
-import { InstanceModal } from "../components/adapters/InstanceModal";
+import { ProbeBadge, useRelTime } from "../features/adapters/ProbeBadge";
+import { InstanceModal } from "../features/adapters/InstanceModal";
 import { Button } from "../components/ui/button";
 import { Section } from "../components/section";
 import { cn } from "../lib/utils";

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RuntimeEvent } from "@petrify/shared";
 import { useTranslation } from "react-i18next";
-import { useWorkflowStore } from "../store/workflow";
-import { Badge } from "./ui/badge";
+import { useWorkflowStore } from "../../store/workflow";
+import { Badge } from "../../components/ui/badge";
 import { PermissionPrompt } from "./PermissionPrompt";
 
 type BadgeVariant = "accent" | "success" | "destructive" | "warning" | "outline" | "default";

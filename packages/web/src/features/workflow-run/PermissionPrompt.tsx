@@ -3,9 +3,9 @@ import type { RuntimeEvent } from "@petrify/shared";
 import {
   useRespondPermission,
   type PermissionDecision,
-} from "../api/client";
-import { Button } from "./ui/button";
-import { cn } from "../lib/utils";
+} from "../../api/client";
+import { Button } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
 
 interface OptionShape {
   id: string;

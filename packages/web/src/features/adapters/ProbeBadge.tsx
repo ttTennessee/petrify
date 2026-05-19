@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { AdapterInstance } from "../../api/adapters";
-import { Badge } from "../ui/badge";
+import { Badge } from "../../components/ui/badge";
 
 type BadgeVariant = "success" | "destructive" | "outline";
 

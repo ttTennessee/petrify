@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useWorkflowStore } from "../store/workflow";
-import { useCheckpoints, useResumeRun, type CheckpointSummary } from "../api/client";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { cn } from "../lib/utils";
+import { useWorkflowStore } from "../../store/workflow";
+import { useCheckpoints, useResumeRun, type CheckpointSummary } from "../../api/client";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { cn } from "../../lib/utils";
 
 interface CheckpointEntry {
   index: number; // event index right after this checkpoint
