@@ -222,7 +222,7 @@
     },
     "node": {
       "id_prefix": "id ",
-      "dependencies": "Dependencies (immutable in M1)",
+      "dependencies": "Dependencies",
       "root": "(root)",
       "title_required": "title cannot be empty",
       "changed_one": "{{count}} field changed",
@@ -245,9 +245,9 @@
         "schema": "Schema"
       },
       "field_notes": {
-        "resources": "M1 declared-only",
-        "condition": "M3",
-        "loop": "M3"
+        "resources": "declared-only",
+        "condition": "",
+        "loop": ""
       },
       "form": {
         "adapter_version": "Version (optional)",
@@ -285,7 +285,7 @@
     },
     "canvas": {
       "control_prereqs": "control prerequisites",
-      "resource_claim": "resource claim (M1: declared, not enforced)"
+      "resource_claim": "resource claim (declared, not enforced)"
     }
   },
   "projects": {

@@ -222,7 +222,7 @@
     },
     "node": {
       "id_prefix": "id ",
-      "dependencies": "依赖（M1 中不可修改）",
+      "dependencies": "依赖",
       "root": "（根节点）",
       "title_required": "标题不能为空",
       "changed_one": "已修改 {{count}} 个字段",
@@ -245,9 +245,9 @@
         "schema": "Schema"
       },
       "field_notes": {
-        "resources": "M1 仅声明",
-        "condition": "M3",
-        "loop": "M3"
+        "resources": "仅声明",
+        "condition": "",
+        "loop": ""
       },
       "form": {
         "adapter_version": "版本（可选）",
@@ -285,7 +285,7 @@
     },
     "canvas": {
       "control_prereqs": "控制前置条件",
-      "resource_claim": "资源声明（M1：仅声明，不强制）"
+      "resource_claim": "资源声明（仅声明，不强制）"
     }
   },
   "projects": {

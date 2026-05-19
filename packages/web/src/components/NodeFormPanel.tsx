@@ -530,7 +530,7 @@ export function NodeFormPanel({
         </div>
       </Section>
 
-      {/* Condition (M3) */}
+      {/* Condition */}
       <Section
         label={t("node.fields.condition")}
         note={t("node.field_notes.condition")}
@@ -546,7 +546,7 @@ export function NodeFormPanel({
         />
       </Section>
 
-      {/* Loop (M3) */}
+      {/* Loop */}
       <Section label={t("node.fields.loop")} note={t("node.field_notes.loop")}>
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -625,7 +625,7 @@ export function NodeFormPanel({
         )}
       </Section>
 
-      {/* Resources (M1 declared-only) */}
+      {/* Resources */}
       <Section
         label={t("node.fields.resources")}
         note={t("node.field_notes.resources")}
