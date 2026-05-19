@@ -2,6 +2,20 @@ import { db } from "../db.js";
 import { registerAdapter, unregisterAdapter } from "./registry.js";
 import { AcpAdapter } from "./acp.js";
 import { permissionBroker } from "./acp/permission-broker.js";
+import type { AgentAdapter } from "./types.js";
+
+/** Factory table: protocol-keyed builders. Default `"acp"` builds AcpAdapter;
+ *  additional protocols (openai-tools, http, ...) register their own factory
+ *  via {@link registerAdapterFactory} without changing this file's callers. */
+type AdapterFactory = (row: AdapterInstanceRow) => AgentAdapter;
+const adapterFactories = new Map<string, AdapterFactory>();
+
+export function registerAdapterFactory(
+  protocol: string,
+  factory: AdapterFactory,
+): void {
+  adapterFactories.set(protocol, factory);
+}
 
 export type AdapterKind = "spawn" | "connect";
 export type AdapterStatus = "ok" | "error" | "unknown";
@@ -168,10 +182,7 @@ export function setStatus(
   ).run(status, detail, Date.now(), Date.now(), name);
 }
 
-export function buildAdapterFromRow(row: AdapterInstanceRow): AcpAdapter {
-  if (row.kind === "connect") {
-    throw new Error("connect mode is not implemented yet");
-  }
+function defaultAcpFactory(row: AdapterInstanceRow): AgentAdapter {
   if (!row.command) {
     throw new Error(`adapter '${row.name}' has no command configured`);
   }
@@ -180,8 +191,30 @@ export function buildAdapterFromRow(row: AdapterInstanceRow): AcpAdapter {
     args: row.args,
     env: row.env,
     defaultCwd: row.default_cwd ?? undefined,
+    instanceName: row.name,
     onPermission: (ctx) => permissionBroker.request(ctx),
   });
+}
+adapterFactories.set("acp", defaultAcpFactory);
+
+/** Pick a protocol key for a row. Today catalog entries are all ACP; the
+ *  catalog_id is used as the lookup so future entries can carry distinct
+ *  protocols without schema change. */
+function protocolOf(row: AdapterInstanceRow): string {
+  // For now every persisted instance is ACP-based. Future: catalog entries
+  // will declare an explicit `protocol` field.
+  return "acp";
+}
+
+export function buildAdapterFromRow(row: AdapterInstanceRow): AgentAdapter {
+  if (row.kind === "connect") {
+    throw new Error("connect mode is not implemented yet");
+  }
+  const factory = adapterFactories.get(protocolOf(row));
+  if (!factory) {
+    throw new Error(`no adapter factory registered for protocol '${protocolOf(row)}'`);
+  }
+  return factory(row);
 }
 
 export function restoreEnabledAdapters(): void {

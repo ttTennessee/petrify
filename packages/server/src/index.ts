@@ -30,6 +30,7 @@ if (acpCmd && acpCmd.trim().length > 0) {
   registerAdapter("acp", new AcpAdapter({
     command: command!,
     args,
+    instanceName: "acp",
     onPermission: (ctx) => permissionBroker.request(ctx),
   }), {
     source: "env",

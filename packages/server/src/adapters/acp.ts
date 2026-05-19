@@ -27,6 +27,10 @@ export interface AcpAdapterConfig {
   protocolVersion?: number;
   /** Absolute path passed as session/new.cwd. Defaults to process.cwd(). */
   defaultCwd?: string;
+  /** Registry/instance name. Surfaced through manifest().name so telemetry can
+   *  distinguish multiple ACP instances (claude-code, codex, gemini, ...) that
+   *  all share this adapter class. */
+  instanceName?: string;
   /** Pluggable permission handler (PermissionBroker.request). When omitted
    *  the adapter denies all permission requests — the legacy behavior. */
   onPermission?: (
@@ -64,21 +68,30 @@ interface SharedConnection {
 
 const PROTOCOL_VERSION_DEFAULT = acp.PROTOCOL_VERSION;
 
+interface InflightSnapshot {
+  promptText: string;
+  inputs: Record<string, unknown>;
+  startedAt: number;
+}
+
 export class AcpAdapter implements AgentAdapter {
-  private active = new Map<string, ActiveInvocation>();
-  private lastBlobByNode = new Map<string, AcpCheckpointBlob>();
+  protected active = new Map<string, ActiveInvocation>();
+  protected lastBlobByNode = new Map<string, AcpCheckpointBlob>();
+  /** Per-invocation snapshot of the running prompt, used to fill checkpoint()
+   *  while the prompt is still in flight (checkpoint:soft semantics). */
+  protected inflight = new Map<string, InflightSnapshot>();
 
   /** Shared, lazily-spawned ACP server connection. Lives for the lifetime of
    *  the adapter instance; recreated only after a crash. */
-  private shared: SharedConnection | null = null;
+  protected shared: SharedConnection | null = null;
   /** De-duplicates concurrent spawn attempts. */
-  private starting: Promise<SharedConnection> | null = null;
+  protected starting: Promise<SharedConnection> | null = null;
 
-  constructor(private cfg: AcpAdapterConfig) {}
+  constructor(protected cfg: AcpAdapterConfig) {}
 
   manifest(): AdapterManifest {
     return {
-      name: "acp",
+      name: this.cfg.instanceName ?? "acp",
       version: "0.1.0",
       capabilities: ["streaming", "tool_use", "checkpoint:soft"],
       concurrency: { max: 4 },
@@ -192,6 +205,11 @@ export class AcpAdapter implements AgentAdapter {
 
     const active: ActiveInvocation = { sessionId, cancelled: false };
     this.active.set(req.invocationId, active);
+    this.inflight.set(req.invocationId, {
+      promptText,
+      inputs: req.inputs,
+      startedAt: Date.now(),
+    });
 
     const mapper = createMapper({ runId: req.runId, nodeId: req.node.id });
 
@@ -241,6 +259,7 @@ export class AcpAdapter implements AgentAdapter {
         args: this.cfg.args,
       });
       this.active.delete(req.invocationId);
+      this.inflight.delete(req.invocationId);
     }
   }
 
@@ -260,11 +279,18 @@ export class AcpAdapter implements AgentAdapter {
   async checkpoint(invocationId: string): Promise<unknown> {
     const a = this.active.get(invocationId);
     if (a) {
+      // checkpoint:soft — capture the *intent* (prompt + inputs) of the in-flight
+      // invocation. ACP itself has no portable session/save, so restore() will
+      // open a fresh session; the blob's role is to let the runtime re-issue an
+      // equivalent prompt rather than truly resume mid-stream.
+      const snap = this.inflight.get(invocationId);
       return {
         sessionId: a.sessionId,
         protocolVersion: this.cfg.protocolVersion ?? PROTOCOL_VERSION_DEFAULT,
-        promptHistory: [],
-        inputsSnapshot: {},
+        promptHistory: snap
+          ? [{ role: "user", text: snap.promptText }]
+          : [],
+        inputsSnapshot: snap?.inputs ?? {},
         command: this.cfg.command,
         args: this.cfg.args,
       } satisfies AcpCheckpointBlob;
