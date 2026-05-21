@@ -1,19 +1,10 @@
 import { Router } from "express";
 import { nanoid } from "nanoid";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import { compile, CompileError } from "../runtime/compiler.js";
 import type { WorkflowGraph } from "@petrify/shared";
 
 export const workflowsRouter = Router();
-
-const insertWorkflow = db.prepare(
-  `INSERT INTO workflows (id, project_id, graph_json, created_at)
-   VALUES (@id, @project_id, @graph_json, @created_at)`,
-);
-
-const updateWorkflowGraph = db.prepare(
-  `UPDATE workflows SET graph_json = @graph_json WHERE id = @id`,
-);
 
 // Fields a user can edit on an existing node. id/ref/dependencies/status
 // affect the workflow topology and dataflow references, so changing them
@@ -34,16 +25,15 @@ const EDITABLE_NODE_FIELDS = new Set([
   "permission_policy",
 ]);
 
-workflowsRouter.post("/projects/:projectId/workflow", (req, res) => {
-  const project = db
-    .prepare(`SELECT id FROM projects WHERE id = ?`)
-    .get(req.params.projectId);
-  if (!project) return res.status(404).json({ error: "project not found" });
+workflowsRouter.post("/projects/:projectId/workflow", async (req, res) => {
+  if (!dbContext.projects.existsById(req.params.projectId)) {
+    return res.status(404).json({ error: "project not found" });
+  }
 
   try {
     const plan = compile(req.body);
     const id = nanoid();
-    insertWorkflow.run({
+    await dbContext.workflows.insert({
       id,
       project_id: req.params.projectId,
       graph_json: JSON.stringify(plan.graph),
@@ -59,18 +49,12 @@ workflowsRouter.post("/projects/:projectId/workflow", (req, res) => {
 });
 
 workflowsRouter.get("/projects/:projectId/workflows", (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT id, created_at FROM workflows WHERE project_id = ? ORDER BY created_at DESC`,
-    )
-    .all(req.params.projectId);
+  const rows = dbContext.workflows.listByProject(req.params.projectId);
   res.json(rows);
 });
 
 workflowsRouter.get("/workflows/:id", (req, res) => {
-  const row = db.prepare(`SELECT * FROM workflows WHERE id = ?`).get(req.params.id) as
-    | { id: string; project_id: string; graph_json: string; created_at: number }
-    | undefined;
+  const row = dbContext.workflows.getById(req.params.id);
   if (!row) return res.status(404).json({ error: "not found" });
   res.json({
     id: row.id,
@@ -80,10 +64,8 @@ workflowsRouter.get("/workflows/:id", (req, res) => {
   });
 });
 
-workflowsRouter.patch("/workflows/:id/nodes/:nodeId", (req, res) => {
-  const row = db
-    .prepare(`SELECT id, graph_json FROM workflows WHERE id = ?`)
-    .get(req.params.id) as { id: string; graph_json: string } | undefined;
+workflowsRouter.patch("/workflows/:id/nodes/:nodeId", async (req, res) => {
+  const row = dbContext.workflows.getGraphById(req.params.id);
   if (!row) return res.status(404).json({ error: "workflow not found" });
 
   const patch = req.body as Record<string, unknown> | null | undefined;
@@ -109,7 +91,7 @@ workflowsRouter.patch("/workflows/:id/nodes/:nodeId", (req, res) => {
 
   try {
     const plan = compile(nextGraph);
-    updateWorkflowGraph.run({ id: row.id, graph_json: JSON.stringify(plan.graph) });
+    await dbContext.workflows.updateGraph(row.id, JSON.stringify(plan.graph));
     return res.json({ id: row.id, graph: plan.graph });
   } catch (err) {
     if (err instanceof CompileError) {

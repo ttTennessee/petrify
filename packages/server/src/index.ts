@@ -21,7 +21,10 @@ import { permissionBroker } from "./adapters/acp/permission-broker.js";
 import { restoreEnabledAdapters } from "./adapters/persistence.js";
 import { seedExampleTemplates } from "./templates/seed.js";
 import { closeDb } from "./db.js";
+import { dbContext, dbBackend } from "./db-context.js";
 import { shutdownTelemetry } from "./telemetry.js";
+
+console.log(`[petrify] db backend: ${dbBackend}`);
 
 registerAdapter("mock", new MockAdapter(), { source: "builtin", kind: "builtin" });
 
@@ -112,6 +115,11 @@ async function shutdown(signal: string): Promise<void> {
   }
   await new Promise<void>((r) => wss.close(() => r()));
   closeDb();
+  try {
+    dbContext.close();
+  } catch {
+    /* ignore */
+  }
   await shutdownTelemetry();
   process.exit(0);
 }
