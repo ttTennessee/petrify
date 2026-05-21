@@ -1,4 +1,4 @@
-// Pearl 客户端门面:commit / get / match / traverse / history / at。
+// Pearl 客户端门面:commit / get / match / traverse / history / at / execute。
 
 import { join } from "node:path";
 
@@ -10,10 +10,18 @@ import type {
   HistoryOptions,
   MatchWhere,
   TraverseOptions,
+  Value,
 } from "../types.js";
 import { EventLog, type LogOptions } from "../store/log.js";
 import { Indexes } from "../store/indexes.js";
 import { Writer } from "../engine/writer.js";
+import { execute as executeIntent, type ReadIntent, type ReadResult } from "./intent.js";
+import { decode as binaryDecode, encode as binaryEncode } from "../codec/binary.js";
+import {
+  generateTypes,
+  writeTypes,
+  type GenTypesOptions,
+} from "../tools/gen-types.js";
 
 export type PearlOptions = {
   /** 数据目录,events.log/meta.json/snapshot.bin 都放这里。 */
@@ -35,7 +43,6 @@ export class Pearl {
     log.open();
 
     const indexes = new Indexes();
-    // 回放:基于 IntentCommitted 边界回滚未完成的意图。
     let maxSeq = 0;
     let buffer: Event[] = [];
     for (const ev of log.readAll()) {
@@ -46,7 +53,6 @@ export class Pearl {
         buffer = [];
       }
     }
-    // EOF 时残留的 buffer = 未完成意图,丢弃但 seq 已"烧掉"(下次从 maxSeq+1 继续)
 
     const writer = new Writer(log, indexes, maxSeq);
     return new Pearl(log, indexes, writer);
@@ -56,10 +62,12 @@ export class Pearl {
     this.log.close();
   }
 
+  // ---- 写 ----
   commit(intent: CommitIntent): Promise<CommitReceipt> {
     return this.writer.commit(intent);
   }
 
+  // ---- 读(命令式) ----
   get(id: string): Entity | undefined {
     return this.indexes.get(id);
   }
@@ -80,18 +88,44 @@ export class Pearl {
     return this.indexes.at(entityId, asOfSeq);
   }
 
-  /** 内部:当前 seq 上限。 */
+  // ---- 读(声明式意图) ----
+  execute(intent: ReadIntent): ReadResult {
+    return executeIntent(this.indexes, intent);
+  }
+
+  // ---- 二进制 IR ----
+  // 静态方法:与具体实例无关,但放在 Pearl 上方便发现。
+  static toBinary(value: Value): Buffer {
+    return binaryEncode(value);
+  }
+
+  static fromBinary(buf: Buffer): Value {
+    return binaryDecode(buf);
+  }
+
+  // ---- 类型生成 ----
+  generateTypes(opts?: GenTypesOptions): string {
+    return generateTypes(this.indexes.shapes, opts);
+  }
+
+  writeTypes(outputPath: string, opts?: GenTypesOptions): void {
+    writeTypes(this.indexes.shapes, outputPath, opts);
+  }
+
+  // ---- 内部 / 调试 ----
   _lastSeq(): number {
     return this.indexes.lastSeq;
   }
 
-  /** 内部:供调试。 */
   _eventsFor(entityId: string) {
     return this.indexes.eventsFor(entityId);
   }
 
-  /** 内部:暴露 shape registry 给调试/测试。 */
   _shapeOf(entityType: string) {
     return this.indexes.shapes.shapeOf(entityType);
+  }
+
+  _entityTypes(): string[] {
+    return this.indexes.shapes.entityTypes();
   }
 }

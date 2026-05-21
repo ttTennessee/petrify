@@ -47,6 +47,10 @@ export class ShapeRegistry {
     return this.shapes.get(entityType) ?? EMPTY_SHAPE;
   }
 
+  entityTypes(): string[] {
+    return [...this.shapes.keys()];
+  }
+
   /**
    * 检查一组 attrs 是否与已沉淀的 shape 相容。
    * - 完全相容(含 null 占位):drift 为空
