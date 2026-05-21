@@ -6,7 +6,7 @@
   "author": "Yujie Jin <devilimp0@gmail.com>",
   "type": "module",
   "scripts": {
-    "demo": "tsx src/index.ts",
+    "demo1": "tsx src/demo1/index.ts",
     "tail": "tsx src/tail.ts",
     "inspect": "tsx src/inspect.ts",
     "clean": "rm -rf data",
