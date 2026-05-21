@@ -1,5 +1,4 @@
-// Pearl 客户端门面:db.commit / db.get / db.match。
-// 后续 W2+ 会加 traverse / history / at。
+// Pearl 客户端门面:commit / get / match / traverse / history / at。
 
 import { join } from "node:path";
 
@@ -7,7 +6,10 @@ import type {
   CommitIntent,
   CommitReceipt,
   Entity,
+  Event,
+  HistoryOptions,
   MatchWhere,
+  TraverseOptions,
 } from "../types.js";
 import { EventLog, type LogOptions } from "../store/log.js";
 import { Indexes } from "../store/indexes.js";
@@ -33,12 +35,20 @@ export class Pearl {
     log.open();
 
     const indexes = new Indexes();
-    // 回放:重建内存视图。W2 加 IntentStarted/Committed 边界过滤。
+    // 回放:基于 IntentCommitted 边界回滚未完成的意图。
+    let maxSeq = 0;
+    let buffer: Event[] = [];
     for (const ev of log.readAll()) {
-      indexes.apply(ev);
+      if (ev.seq > maxSeq) maxSeq = ev.seq;
+      buffer.push(ev);
+      if (ev.type === "IntentCommitted") {
+        for (const b of buffer) indexes.apply(b);
+        buffer = [];
+      }
     }
+    // EOF 时残留的 buffer = 未完成意图,丢弃但 seq 已"烧掉"(下次从 maxSeq+1 继续)
 
-    const writer = new Writer(log, indexes, indexes.lastSeq);
+    const writer = new Writer(log, indexes, maxSeq);
     return new Pearl(log, indexes, writer);
   }
 
@@ -58,13 +68,30 @@ export class Pearl {
     return this.indexes.match(type, where);
   }
 
-  /** 内部:供调试 / 后续 history() 用。 */
-  _eventsFor(entityId: string) {
-    return this.indexes.eventsFor(entityId);
+  traverse(fromId: string, opts: TraverseOptions = {}): Entity[] {
+    return this.indexes.traverse(fromId, opts);
+  }
+
+  history(entityId: string, opts: HistoryOptions = {}): Event[] {
+    return this.indexes.history(entityId, opts);
+  }
+
+  at(entityId: string, asOfSeq: number): Entity | undefined {
+    return this.indexes.at(entityId, asOfSeq);
   }
 
   /** 内部:当前 seq 上限。 */
   _lastSeq(): number {
     return this.indexes.lastSeq;
+  }
+
+  /** 内部:供调试。 */
+  _eventsFor(entityId: string) {
+    return this.indexes.eventsFor(entityId);
+  }
+
+  /** 内部:暴露 shape registry 给调试/测试。 */
+  _shapeOf(entityType: string) {
+    return this.indexes.shapes.shapeOf(entityType);
   }
 }
