@@ -1,36 +1,106 @@
-import type { Pearl } from "@petrify/pearl";
-import type { ProjectsRepo } from "@petrify/db-core";
+// projects 实体在 pearl 里:
+//   entity type = "project"
+//   attrs       = {
+//     goal, description, constraints_json, preferred_tools_json,
+//     runtime_policy_json, status, created_at
+//   }
+//
+// 无外向 edge —— project 是聚合根;workflow 通过 belongs_to_project 反指它。
 
-/**
- * 注:projects 表完整 CRUD 还在 server/routes/projects.ts 里(旧 sqlite db)。
- * 当 server 以 pearl 作为 backend 运行时,projects 实体不会自动出现在 pearl,
- * 所以这里的 existsById 只能查 pearl 自己。冒烟测试需手动 seed 一条
- * type:"project" 实体。完整迁移 projects.ts 后此问题消失。
- */
+import type { Pearl, Entity } from "@petrify/pearl";
+import type { ProjectRow, ProjectsRepo } from "@petrify/db-core";
+
+const TYPE = "project";
+
 export function createProjectsRepo(pearl: Pearl): ProjectsRepo {
   return {
     existsById(id) {
       const ent = pearl.get(id);
-      return ent !== undefined && ent.type === "project" && !ent.deleted;
+      return ent !== undefined && ent.type === TYPE && !ent.deleted;
     },
 
-    // 以下方法本轮不为 pearl 实现 —— throw-stub 满足类型契约。
-    insert: () => {
-      throw new Error("db-pearl: ProjectsRepo.insert not implemented");
+    insert(row) {
+      pearl.commit({
+        events: [
+          {
+            entityId: row.id,
+            type: "Created",
+            payload: {
+              entityType: TYPE,
+              attrs: {
+                goal: row.goal,
+                description: row.description,
+                constraints_json: row.constraints_json,
+                preferred_tools_json: row.preferred_tools_json,
+                runtime_policy_json: row.runtime_policy_json,
+                status: row.status,
+                created_at: row.created_at,
+              },
+            },
+          },
+        ],
+      });
     },
-    list: () => {
-      throw new Error("db-pearl: ProjectsRepo.list not implemented");
+
+    list() {
+      return pearl
+        .match(TYPE)
+        .filter((e) => !e.deleted)
+        .map((e) => ({
+          id: e.id,
+          goal: String(e.attrs["goal"] ?? ""),
+          description:
+            e.attrs["description"] == null
+              ? null
+              : String(e.attrs["description"]),
+          status: String(e.attrs["status"] ?? ""),
+          created_at: Number(e.attrs["created_at"] ?? 0),
+        }))
+        .sort((a, b) => b.created_at - a.created_at);
     },
-    getById: () => {
-      throw new Error("db-pearl: ProjectsRepo.getById not implemented");
+
+    getById(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return entityToRow(id, ent);
     },
-    getGoalAndDescription: () => {
-      throw new Error(
-        "db-pearl: ProjectsRepo.getGoalAndDescription not implemented",
-      );
+
+    getGoalAndDescription(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return {
+        goal: String(ent.attrs["goal"] ?? ""),
+        description:
+          ent.attrs["description"] == null
+            ? null
+            : String(ent.attrs["description"]),
+      };
     },
-    getRuntimePolicy: () => {
-      throw new Error("db-pearl: ProjectsRepo.getRuntimePolicy not implemented");
+
+    getRuntimePolicy(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return {
+        runtime_policy_json:
+          ent.attrs["runtime_policy_json"] == null
+            ? null
+            : String(ent.attrs["runtime_policy_json"]),
+      };
     },
+  };
+}
+
+function entityToRow(id: string, ent: Entity): ProjectRow {
+  const nullable = (k: string): string | null =>
+    ent.attrs[k] == null ? null : String(ent.attrs[k]);
+  return {
+    id,
+    goal: String(ent.attrs["goal"] ?? ""),
+    description: nullable("description"),
+    constraints_json: nullable("constraints_json"),
+    preferred_tools_json: nullable("preferred_tools_json"),
+    runtime_policy_json: nullable("runtime_policy_json"),
+    status: String(ent.attrs["status"] ?? ""),
+    created_at: Number(ent.attrs["created_at"] ?? 0),
   };
 }

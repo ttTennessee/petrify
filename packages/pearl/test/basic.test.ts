@@ -213,19 +213,17 @@ describe("Pearl - 写后读", () => {
     expect(intents.size).toBe(1);
   });
 
-  it("空 intent 应抛错", async () => {
-    await expect(db.commit({ events: [] })).rejects.toThrow(
-      /at least one event/,
-    );
-    await expect(db.commit({})).rejects.toThrow(/at least one event/);
+  it("空 intent 应抛错", () => {
+    expect(() => db.commit({ events: [] })).toThrow(/at least one event/);
+    expect(() => db.commit({})).toThrow(/at least one event/);
   });
 
-  it("Created 缺少 entityType 应抛 IntentRejected", async () => {
-    await expect(
+  it("Created 缺少 entityType 应抛 IntentRejected", () => {
+    expect(() =>
       db.commit({
         events: [{ entityId: "x", type: "Created", payload: {} }],
       }),
-    ).rejects.toThrow(IntentRejected);
+    ).toThrow(IntentRejected);
   });
 });
 
@@ -504,7 +502,7 @@ describe("Pearl - Shape registry", () => {
         },
       ],
     });
-    await expect(
+    expect(() =>
       db.commit({
         events: [
           {
@@ -514,7 +512,7 @@ describe("Pearl - Shape registry", () => {
           },
         ],
       }),
-    ).rejects.toThrow(IntentRejected);
+    ).toThrow(IntentRejected);
 
     expect(db.get("r-2")).toBeUndefined();
     expect(db.match("run").map((e) => e.id)).toEqual(["r-1"]);
@@ -557,8 +555,8 @@ describe("Pearl - Shape registry", () => {
     expect(db._shapeOf("run").get("maybeNull")).toBe("string");
   });
 
-  it("expectedShape 硬约束:未声明的字段被拒", async () => {
-    await expect(
+  it("expectedShape 硬约束:未声明的字段被拒", () => {
+    expect(() =>
       db.commit({
         events: [
           {
@@ -572,7 +570,7 @@ describe("Pearl - Shape registry", () => {
         ],
         expectedShape: { run: { status: "string" } },
       }),
-    ).rejects.toThrow(/shape-not-allowed/);
+    ).toThrow(/shape-not-allowed/);
   });
 
   it("Shape 跨重启持久化(由 ShapeExtended 事件重建)", async () => {
@@ -590,7 +588,7 @@ describe("Pearl - Shape registry", () => {
     try {
       expect(db2._shapeOf("run").get("status")).toBe("string");
       // 再写类型冲突,仍应被拒
-      await expect(
+      expect(() =>
         db2.commit({
           events: [
             {
@@ -600,7 +598,7 @@ describe("Pearl - Shape registry", () => {
             },
           ],
         }),
-      ).rejects.toThrow(IntentRejected);
+      ).toThrow(IntentRejected);
     } finally {
       db2.close();
     }

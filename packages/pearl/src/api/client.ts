@@ -63,7 +63,7 @@ export class Pearl {
   }
 
   // ---- 写 ----
-  commit(intent: CommitIntent): Promise<CommitReceipt> {
+  commit(intent: CommitIntent): CommitReceipt {
     return this.writer.commit(intent);
   }
 

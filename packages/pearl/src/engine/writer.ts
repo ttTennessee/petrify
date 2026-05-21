@@ -28,7 +28,6 @@ type RawEvent = {
 };
 
 export class Writer {
-  private tail: Promise<unknown> = Promise.resolve();
   private nextSeq: number;
 
   constructor(
@@ -39,14 +38,12 @@ export class Writer {
     this.nextSeq = startSeq + 1;
   }
 
-  commit(intent: CommitIntent): Promise<CommitReceipt> {
-    const task = (): Promise<CommitReceipt> => this.runOne(intent);
-    const next = this.tail.then(task, task);
-    this.tail = next.catch(() => undefined);
-    return next;
+  // 全链路同步:log.append / indexes.apply 都是同步,JS 单线程天然串行。
+  commit(intent: CommitIntent): CommitReceipt {
+    return this.runOne(intent);
   }
 
-  private async runOne(intent: CommitIntent): Promise<CommitReceipt> {
+  private runOne(intent: CommitIntent): CommitReceipt {
     const userEvents = this.translate(intent);
     if (userEvents.length === 0) {
       throw new Error("commit: intent must contain at least one event or edge");
