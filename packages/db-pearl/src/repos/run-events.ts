@@ -58,5 +58,11 @@ export function createRunEventsRepo(pearl: Pearl): RunEventsRepo {
         }))
         .sort((a, b) => a.id - b.id);
     },
+
+    listTypesAndNodes: () => {
+      throw new Error(
+        "db-pearl: RunEventsRepo.listTypesAndNodes not implemented",
+      );
+    },
   };
 }

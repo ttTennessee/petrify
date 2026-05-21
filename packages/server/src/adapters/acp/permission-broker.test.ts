@@ -4,7 +4,7 @@ import type {
   RequestPermissionRequest,
 } from "@agentclientprotocol/sdk";
 import type { RuntimeEvent } from "@petrify/shared";
-import { db } from "../../db.js";
+import { dbContext } from "../../db-context.js";
 import { eventBus } from "../../runtime/events.js";
 import { ensureWorkflow, createRun } from "../../runtime/test-helpers.js";
 import { permissionBroker } from "./permission-broker.js";
@@ -40,11 +40,12 @@ let PROJ = "";
 
 beforeEach(() => {
   permissionBroker._reset();
-  db.exec(`DELETE FROM permission_grants`);
-  db.exec(`DELETE FROM global_config WHERE key = 'permission_default_policy'`);
+  dbContext.permissionGrants.deleteAll();
+  dbContext.globalConfig.deleteByKey("permission_default_policy");
   // run_events has a FK to runs(id); we need a real run row to publish events.
   const wfId = ensureWorkflow({ nodes: [], edges: [] });
-  PROJ = (db.prepare(`SELECT project_id FROM workflows WHERE id = ?`).get(wfId) as { project_id: string }).project_id;
+  const wf = dbContext.workflows.getProjectId(wfId);
+  PROJ = wf!.project_id;
   RUN = createRun(wfId);
 });
 
@@ -200,10 +201,11 @@ describe("PermissionBroker", () => {
 
   it("global deny-all default applies when node has no policy", async () => {
     // Simulate Settings = deny-all by writing global_config directly.
-    db.prepare(
-      `INSERT INTO global_config (key, value_json, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json`,
-    ).run("permission_default_policy", JSON.stringify("deny-all"), Date.now());
+    dbContext.globalConfig.upsert(
+      "permission_default_policy",
+      JSON.stringify("deny-all"),
+      Date.now(),
+    );
 
     const r = await permissionBroker.request({
       runId: RUN,

@@ -6,7 +6,7 @@ import {
   listPausedNodes,
   requestCancel,
 } from "../runtime/scheduler.js";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import { nanoid } from "nanoid";
 import { registerAdapter, getAdapter } from "../adapters/registry.js";
 import { MockAdapter, _resetMockState } from "../adapters/mock.js";
@@ -262,10 +262,13 @@ describe("scheduler", () => {
   // ---------- M4: breakpoints ----------
 
   function setBreakpoint(workflowId: string, nodeId: string) {
-    db.prepare(
-      `INSERT INTO breakpoints (id, workflow_id, node_id, enabled, created_at)
-       VALUES (?, ?, ?, 1, ?)`,
-    ).run(nanoid(), workflowId, nodeId, Date.now());
+    dbContext.breakpoints.insert({
+      id: nanoid(),
+      workflow_id: workflowId,
+      node_id: nodeId,
+      enabled: 1,
+      created_at: Date.now(),
+    });
   }
 
   it("pauses at a breakpoint, emits BreakpointHit, and resumes on signalContinue", async () => {

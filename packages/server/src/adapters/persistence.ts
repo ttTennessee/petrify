@@ -1,4 +1,4 @@
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import { registerAdapter, unregisterAdapter } from "./registry.js";
 import { AcpAdapter } from "./acp/index.js";
 import { permissionBroker } from "./acp/permission-broker.js";
@@ -74,16 +74,11 @@ function mapRow(r: RawRow): AdapterInstanceRow {
 }
 
 export function listInstances(): AdapterInstanceRow[] {
-  const rows = db
-    .prepare(`SELECT * FROM adapter_instances ORDER BY created_at ASC`)
-    .all() as RawRow[];
-  return rows.map(mapRow);
+  return dbContext.adapterInstances.list().map((r) => mapRow(r as RawRow));
 }
 
 export function getInstance(name: string): AdapterInstanceRow | null {
-  const r = db
-    .prepare(`SELECT * FROM adapter_instances WHERE name = ?`)
-    .get(name) as RawRow | undefined;
+  const r = dbContext.adapterInstances.getByName(name) as RawRow | undefined;
   return r ? mapRow(r) : null;
 }
 
@@ -100,19 +95,19 @@ export interface UpsertInput {
 
 export function createInstance(input: UpsertInput): AdapterInstanceRow {
   const now = Date.now();
-  db.prepare(
-    `INSERT INTO adapter_instances
-      (name, catalog_id, kind, enabled, command, args_json, env_json, default_cwd, endpoint, status, status_detail, last_probed_at, created_at, updated_at)
-     VALUES (@name, @catalog_id, @kind, 0, @command, @args_json, @env_json, @default_cwd, @endpoint, 'unknown', NULL, NULL, @created_at, @updated_at)`,
-  ).run({
+  dbContext.adapterInstances.insert({
     name: input.name,
     catalog_id: input.catalog_id ?? null,
     kind: input.kind,
+    enabled: 0,
     command: input.command ?? null,
     args_json: JSON.stringify(input.args ?? []),
     env_json: JSON.stringify(input.env ?? {}),
     default_cwd: input.default_cwd ?? null,
     endpoint: input.endpoint ?? null,
+    status: "unknown",
+    status_detail: null,
+    last_probed_at: null,
     created_at: now,
     updated_at: now,
   });
@@ -134,16 +129,7 @@ export function patchInstance(
     default_cwd: patch.default_cwd !== undefined ? patch.default_cwd : row.default_cwd,
     endpoint: patch.endpoint !== undefined ? patch.endpoint : row.endpoint,
   };
-  db.prepare(
-    `UPDATE adapter_instances
-       SET catalog_id=@catalog_id, kind=@kind, command=@command,
-           args_json=@args_json, env_json=@env_json, default_cwd=@default_cwd,
-           endpoint=@endpoint, enabled=0,
-           status='unknown', status_detail=NULL, last_probed_at=NULL,
-           updated_at=@updated_at
-     WHERE name=@name`,
-  ).run({
-    name,
+  dbContext.adapterInstances.patch(name, {
     catalog_id: next.catalog_id,
     kind: next.kind,
     command: next.command,
@@ -160,14 +146,12 @@ export function patchInstance(
 
 export function deleteInstance(name: string): boolean {
   unregisterAdapter(name);
-  const info = db.prepare(`DELETE FROM adapter_instances WHERE name = ?`).run(name);
+  const info = dbContext.adapterInstances.deleteByName(name);
   return info.changes > 0;
 }
 
 export function setEnabled(name: string, enabled: boolean): void {
-  db.prepare(
-    `UPDATE adapter_instances SET enabled = ?, updated_at = ? WHERE name = ?`,
-  ).run(enabled ? 1 : 0, Date.now(), name);
+  dbContext.adapterInstances.setEnabled(name, enabled ? 1 : 0, Date.now());
 }
 
 export function setStatus(
@@ -175,11 +159,13 @@ export function setStatus(
   status: AdapterStatus,
   detail: string | null,
 ): void {
-  db.prepare(
-    `UPDATE adapter_instances
-       SET status = ?, status_detail = ?, last_probed_at = ?, updated_at = ?
-     WHERE name = ?`,
-  ).run(status, detail, Date.now(), Date.now(), name);
+  const now = Date.now();
+  dbContext.adapterInstances.setStatus(name, {
+    status,
+    status_detail: detail,
+    last_probed_at: now,
+    updated_at: now,
+  });
 }
 
 function defaultAcpFactory(row: AdapterInstanceRow): AgentAdapter {

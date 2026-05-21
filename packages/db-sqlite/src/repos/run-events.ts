@@ -1,34 +1,47 @@
-// 收编 server/src/runtime/events.ts 中针对 run_events 表的 inline SQL。
+// RunEvents Repo —— Drizzle 实现。
+//
+// 收编 server/src/runtime/events.ts、runtime/test-helpers.ts 中针对 run_events
+// 表的 SQL。
 
-import type Database from "better-sqlite3";
+import { and, asc, eq, gt } from "drizzle-orm";
 import type { RunEventRow, RunEventsRepo } from "@petrify/db-core";
 
-export function createRunEventsRepo(db: Database.Database): RunEventsRepo {
-  const appendStmt = db.prepare(
-    `INSERT INTO run_events (event_id, run_id, node_id, type, payload_json, ts)
-     VALUES (@event_id, @run_id, @node_id, @type, @payload_json, @ts)`,
-  );
+import type { DrizzleDb } from "../db.js";
+import { runEvents } from "../schema.js";
 
-  const listSinceStmt = db.prepare(
-    `SELECT id, event_id, run_id, node_id, type, payload_json, ts
-     FROM run_events WHERE run_id = ? AND id > ? ORDER BY id ASC`,
-  );
-
+export function createRunEventsRepo(d: DrizzleDb): RunEventsRepo {
   return {
     async append(row) {
-      appendStmt.run({
-        event_id: row.event_id,
-        run_id: row.run_id,
-        node_id: row.node_id,
-        type: row.type,
-        payload_json: row.payload_json,
-        ts: row.ts,
-      });
+      d.insert(runEvents)
+        .values({
+          event_id: row.event_id,
+          run_id: row.run_id,
+          node_id: row.node_id,
+          type: row.type,
+          payload_json: row.payload_json,
+          ts: row.ts,
+        })
+        .run();
     },
+
     listSince(runId, sinceId = 0) {
-      return listSinceStmt.all(runId, sinceId) as Array<
-        RunEventRow & { id: number }
-      >;
+      const rows = d
+        .select()
+        .from(runEvents)
+        .where(and(eq(runEvents.run_id, runId), gt(runEvents.id, sinceId)))
+        .orderBy(asc(runEvents.id))
+        .all();
+      // drizzle 推断 id 为 number(autoincrement),不会是 null。
+      return rows as Array<RunEventRow & { id: number }>;
+    },
+
+    listTypesAndNodes(runId) {
+      return d
+        .select({ type: runEvents.type, node_id: runEvents.node_id })
+        .from(runEvents)
+        .where(eq(runEvents.run_id, runId))
+        .orderBy(asc(runEvents.id))
+        .all();
     },
   };
 }

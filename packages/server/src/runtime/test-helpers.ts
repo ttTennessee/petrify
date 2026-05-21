@@ -1,35 +1,48 @@
 import { nanoid } from "nanoid";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 
 export function ensureWorkflow(graph: unknown): string {
   const projectId = nanoid();
   const workflowId = nanoid();
-  db.prepare(
-    `INSERT INTO projects (id, goal, created_at) VALUES (?, ?, ?)`,
-  ).run(projectId, "test", Date.now());
-  db.prepare(
-    `INSERT INTO workflows (id, project_id, graph_json, created_at) VALUES (?, ?, ?, ?)`,
-  ).run(workflowId, projectId, JSON.stringify(graph), Date.now());
+  dbContext.projects.insert({
+    id: projectId,
+    goal: "test",
+    description: null,
+    constraints_json: null,
+    preferred_tools_json: null,
+    runtime_policy_json: null,
+    status: "draft",
+    created_at: Date.now(),
+  });
+  // workflows.insert 接口签名是 Promise<void>(为兼容 pearl 异步),但
+  // sqlite/drizzle 实现内部完全同步。这里 fire-and-forget 是安全的:
+  // 后续 SELECT 在同一连接上必能看到。
+  void dbContext.workflows.insert({
+    id: workflowId,
+    project_id: projectId,
+    graph_json: JSON.stringify(graph),
+    created_at: Date.now(),
+  });
   return workflowId;
 }
 
 export function createRun(workflowId: string): string {
   const runId = nanoid();
-  db.prepare(
-    `INSERT INTO runs (id, workflow_id, status, started_at) VALUES (?, ?, 'running', ?)`,
-  ).run(runId, workflowId, Date.now());
+  dbContext.runs.insertMinimal({
+    id: runId,
+    workflow_id: workflowId,
+    status: "running",
+    started_at: Date.now(),
+  });
   return runId;
 }
 
 export function getRunStatus(runId: string): string {
-  const row = db.prepare(`SELECT status FROM runs WHERE id = ?`).get(runId) as
-    | { status: string }
-    | undefined;
-  return row?.status ?? "missing";
+  return dbContext.runs.getStatus(runId) ?? "missing";
 }
 
-export function listRunEvents(runId: string): Array<{ type: string; node_id: string | null }> {
-  return db
-    .prepare(`SELECT type, node_id FROM run_events WHERE run_id = ? ORDER BY id ASC`)
-    .all(runId) as Array<{ type: string; node_id: string | null }>;
+export function listRunEvents(
+  runId: string,
+): Array<{ type: string; node_id: string | null }> {
+  return dbContext.runEvents.listTypesAndNodes(runId);
 }

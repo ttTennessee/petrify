@@ -13,5 +13,24 @@ export function createProjectsRepo(pearl: Pearl): ProjectsRepo {
       const ent = pearl.get(id);
       return ent !== undefined && ent.type === "project" && !ent.deleted;
     },
+
+    // 以下方法本轮不为 pearl 实现 —— throw-stub 满足类型契约。
+    insert: () => {
+      throw new Error("db-pearl: ProjectsRepo.insert not implemented");
+    },
+    list: () => {
+      throw new Error("db-pearl: ProjectsRepo.list not implemented");
+    },
+    getById: () => {
+      throw new Error("db-pearl: ProjectsRepo.getById not implemented");
+    },
+    getGoalAndDescription: () => {
+      throw new Error(
+        "db-pearl: ProjectsRepo.getGoalAndDescription not implemented",
+      );
+    },
+    getRuntimePolicy: () => {
+      throw new Error("db-pearl: ProjectsRepo.getRuntimePolicy not implemented");
+    },
   };
 }

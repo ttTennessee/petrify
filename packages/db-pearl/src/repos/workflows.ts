@@ -88,6 +88,22 @@ export function createWorkflowsRepo(pearl: Pearl): WorkflowsRepo {
         ],
       });
     },
+
+    // 以下 4 个方法本轮不为 pearl 实现 —— 仅 throw-stub 满足类型契约。
+    // 现状 server 默认走 sqlite backend;PETRIFY_DB_BACKEND=pearl 跑到这里会爆,
+    // 等后续 PR 把 pearl 侧也实现。
+    getProjectId: () => {
+      throw new Error("db-pearl: WorkflowsRepo.getProjectId not implemented");
+    },
+    getGraphAndVerify: () => {
+      throw new Error("db-pearl: WorkflowsRepo.getGraphAndVerify not implemented");
+    },
+    getLastVerify: () => {
+      throw new Error("db-pearl: WorkflowsRepo.getLastVerify not implemented");
+    },
+    getForTemplate: () => {
+      throw new Error("db-pearl: WorkflowsRepo.getForTemplate not implemented");
+    },
   };
 }
 

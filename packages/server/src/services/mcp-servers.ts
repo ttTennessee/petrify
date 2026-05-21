@@ -1,4 +1,4 @@
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import type {
   McpEnvVarSpec,
   McpHttpHeaderSpec,
@@ -51,16 +51,11 @@ function mapRow(r: RawRow): McpServerRow {
 }
 
 export function listServers(): McpServerRow[] {
-  const rows = db
-    .prepare(`SELECT * FROM mcp_servers ORDER BY created_at ASC`)
-    .all() as RawRow[];
-  return rows.map(mapRow);
+  return dbContext.mcpServers.list().map((r) => mapRow(r as RawRow));
 }
 
 export function getServer(name: string): McpServerRow | null {
-  const r = db
-    .prepare(`SELECT * FROM mcp_servers WHERE name = ?`)
-    .get(name) as RawRow | undefined;
+  const r = dbContext.mcpServers.getByName(name) as RawRow | undefined;
   return r ? mapRow(r) : null;
 }
 
@@ -76,13 +71,7 @@ export interface McpUpsertInput {
 
 export function createServer(input: McpUpsertInput): McpServerRow {
   const now = Date.now();
-  db.prepare(
-    `INSERT INTO mcp_servers
-      (name, transport, command, args_json, env_json, url, headers_json,
-       enabled, created_at, updated_at)
-     VALUES (@name, @transport, @command, @args_json, @env_json, @url,
-             @headers_json, 1, @created_at, @updated_at)`,
-  ).run({
+  dbContext.mcpServers.insert({
     name: input.name,
     transport: input.transport,
     command: input.command ?? null,
@@ -90,6 +79,7 @@ export function createServer(input: McpUpsertInput): McpServerRow {
     env_json: JSON.stringify(input.env ?? []),
     url: input.url ?? null,
     headers_json: JSON.stringify(input.headers ?? []),
+    enabled: 1,
     created_at: now,
     updated_at: now,
   });
@@ -110,15 +100,7 @@ export function patchServer(
     url: patch.url !== undefined ? patch.url : row.url,
     headers: patch.headers ?? row.headers,
   };
-  db.prepare(
-    `UPDATE mcp_servers
-       SET transport=@transport, command=@command,
-           args_json=@args_json, env_json=@env_json,
-           url=@url, headers_json=@headers_json,
-           updated_at=@updated_at
-     WHERE name=@name`,
-  ).run({
-    name,
+  dbContext.mcpServers.patch(name, {
     transport: next.transport,
     command: next.command,
     args_json: JSON.stringify(next.args),
@@ -131,14 +113,12 @@ export function patchServer(
 }
 
 export function deleteServer(name: string): boolean {
-  const info = db.prepare(`DELETE FROM mcp_servers WHERE name = ?`).run(name);
+  const info = dbContext.mcpServers.deleteByName(name);
   return info.changes > 0;
 }
 
 export function setEnabled(name: string, enabled: boolean): void {
-  db.prepare(
-    `UPDATE mcp_servers SET enabled = ?, updated_at = ? WHERE name = ?`,
-  ).run(enabled ? 1 : 0, Date.now(), name);
+  dbContext.mcpServers.setEnabled(name, enabled ? 1 : 0, Date.now());
 }
 
 /** Convert a stored row to the wire-format spec consumed by adapters.

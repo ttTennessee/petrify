@@ -2,7 +2,7 @@ import { Router } from "express";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { RunDetailSchema, RunSummarySchema } from "@petrify/shared";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import { permissionBroker } from "../adapters/acp/permission-broker.js";
 import { compile, CompileError } from "../runtime/compiler.js";
 import { validateAdaptersForRun } from "../runtime/preflight.js";
@@ -22,20 +22,8 @@ import {
 
 export const runsRouter = Router();
 
-const insertRun = db.prepare(
-  `INSERT INTO runs (id, workflow_id, status, started_at, resumed_from) VALUES (?, ?, 'running', ?, ?)`,
-);
-
-const insertSingleNodeRun = db.prepare(
-  `INSERT INTO runs (id, workflow_id, status, started_at, resumed_from, target_node_id) VALUES (?, ?, 'running', ?, ?, ?)`,
-);
-
 runsRouter.post("/workflows/:workflowId/runs", async (req, res) => {
-  const wf = db
-    .prepare(`SELECT graph_json, last_verify_json FROM workflows WHERE id = ?`)
-    .get(req.params.workflowId) as
-    | { graph_json: string; last_verify_json: string | null }
-    | undefined;
+  const wf = dbContext.workflows.getGraphAndVerify(req.params.workflowId);
   if (!wf) return res.status(404).json({ error: "workflow not found" });
 
   // M3: require a passing verify (or explicit force) before running.
@@ -81,7 +69,13 @@ runsRouter.post("/workflows/:workflowId/runs", async (req, res) => {
     req.query.step === "true" || (req.body && req.body.step_mode === true);
 
   const runId = nanoid();
-  insertRun.run(runId, req.params.workflowId, Date.now(), null);
+  dbContext.runs.insert({
+    id: runId,
+    workflow_id: req.params.workflowId,
+    status: "running",
+    started_at: Date.now(),
+    resumed_from: null,
+  });
   void executeRun(runId, plan, { stepMode });
   res.status(201).json({ id: runId });
 });
@@ -92,9 +86,7 @@ runsRouter.post("/workflows/:workflowId/runs", async (req, res) => {
 // as the seed so the target node can reference upstream outputs/variables.
 runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", async (req, res) => {
   const { workflowId, nodeId } = req.params;
-  const wf = db
-    .prepare(`SELECT graph_json FROM workflows WHERE id = ?`)
-    .get(workflowId) as { graph_json: string } | undefined;
+  const wf = dbContext.workflows.getGraphById(workflowId);
   if (!wf) return res.status(404).json({ error: "workflow not found" });
 
   let plan;
@@ -113,11 +105,7 @@ runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", async (req, res) => 
   const preds = plan.predecessors[nodeId] ?? [];
 
   // Find the latest run for this workflow + its latest checkpoint, if any.
-  const latestRun = db
-    .prepare(
-      `SELECT id FROM runs WHERE workflow_id = ? ORDER BY started_at DESC LIMIT 1`,
-    )
-    .get(workflowId) as { id: string } | undefined;
+  const latestRun = dbContext.runs.getLatestByWorkflow(workflowId);
   const seedCp = latestRun ? getLatestCheckpoint(latestRun.id) : null;
   const completedIds = new Set<string>(seedCp?.blob.completed_node_ids ?? []);
 
@@ -150,27 +138,25 @@ runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", async (req, res) => 
   }
 
   const newRunId = nanoid();
-  insertSingleNodeRun.run(
-    newRunId,
-    workflowId,
-    Date.now(),
-    seedCp ? latestRun!.id : null,
-    nodeId,
-  );
+  dbContext.runs.insertSingleNode({
+    id: newRunId,
+    workflow_id: workflowId,
+    status: "running",
+    started_at: Date.now(),
+    resumed_from: seedCp ? latestRun!.id : null,
+    target_node_id: nodeId,
+  });
 
   // Seed the new run with the predecessors' outputs by cloning the latest
   // checkpoint blob under the new run id. Mirrors the resume logic above.
   let resumeCpId: string | undefined;
   if (seedCp) {
-    const insertCp = db.prepare(
-      `INSERT INTO checkpoints (id, run_id, label, blob_json, created_at) VALUES (?, ?, ?, ?, ?)`,
-    );
     const newCpId = nanoid();
-    insertCp.run(
-      newCpId,
-      newRunId,
-      `single_node_seed:${target.ref}`,
-      JSON.stringify({
+    dbContext.checkpoints.insert({
+      id: newCpId,
+      run_id: newRunId,
+      label: `single_node_seed:${target.ref}`,
+      blob_json: JSON.stringify({
         ...seedCp.blob,
         run_id: newRunId,
         // Don't pre-mark the target as completed even if it was previously.
@@ -178,12 +164,9 @@ runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", async (req, res) => 
           (id) => id !== nodeId,
         ),
       }),
-      Date.now(),
-    );
-    db.prepare(`UPDATE runs SET last_checkpoint_id = ? WHERE id = ?`).run(
-      newCpId,
-      newRunId,
-    );
+      created_at: Date.now(),
+    });
+    dbContext.runs.updateLastCheckpoint(newRunId, newCpId);
     resumeCpId = newCpId;
   }
 
@@ -192,16 +175,12 @@ runsRouter.post("/workflows/:workflowId/nodes/:nodeId/run", async (req, res) => 
 });
 
 runsRouter.post("/runs/:id/resume", async (req, res) => {
-  const original = db
-    .prepare(`SELECT id, workflow_id, status FROM runs WHERE id = ?`)
-    .get(req.params.id) as { id: string; workflow_id: string; status: string } | undefined;
+  const original = dbContext.runs.getCore(req.params.id);
   if (!original) return res.status(404).json({ error: "run not found" });
   if (original.status === "running") {
     return res.status(409).json({ error: "run is still running; cancel first" });
   }
-  const wf = db
-    .prepare(`SELECT graph_json FROM workflows WHERE id = ?`)
-    .get(original.workflow_id) as { graph_json: string } | undefined;
+  const wf = dbContext.workflows.getGraphById(original.workflow_id);
   if (!wf) return res.status(404).json({ error: "parent workflow missing" });
 
   const checkpointId = (req.body?.checkpoint_id as string | undefined) ?? null;
@@ -227,22 +206,25 @@ runsRouter.post("/runs/:id/resume", async (req, res) => {
   }
 
   const newRunId = nanoid();
-  insertRun.run(newRunId, original.workflow_id, Date.now(), original.id);
+  dbContext.runs.insert({
+    id: newRunId,
+    workflow_id: original.workflow_id,
+    status: "running",
+    started_at: Date.now(),
+    resumed_from: original.id,
+  });
 
   // The new run inherits the checkpoint blob as its starting state. We copy the
   // checkpoint row over so getLatestCheckpoint() on the resumed run works too.
-  const insertCp = db.prepare(
-    `INSERT INTO checkpoints (id, run_id, label, blob_json, created_at) VALUES (?, ?, ?, ?, ?)`,
-  );
   const newCpId = nanoid();
-  insertCp.run(
-    newCpId,
-    newRunId,
-    `resumed_from:${original.id}`,
-    JSON.stringify({ ...cp.blob, run_id: newRunId }),
-    Date.now(),
-  );
-  db.prepare(`UPDATE runs SET last_checkpoint_id = ? WHERE id = ?`).run(newCpId, newRunId);
+  dbContext.checkpoints.insert({
+    id: newCpId,
+    run_id: newRunId,
+    label: `resumed_from:${original.id}`,
+    blob_json: JSON.stringify({ ...cp.blob, run_id: newRunId }),
+    created_at: Date.now(),
+  });
+  dbContext.runs.updateLastCheckpoint(newRunId, newCpId);
 
   const stepMode = req.body?.step_mode === true;
   void executeRun(newRunId, plan, {
@@ -309,16 +291,7 @@ runsRouter.post("/runs/:id/cancel", (req, res) => {
 });
 
 runsRouter.get("/runs/:id", (req, res) => {
-  const row = db
-    .prepare(
-      `SELECT r.id, r.workflow_id, r.status, r.started_at, r.finished_at,
-              r.error, r.resumed_from, r.target_node_id,
-              (SELECT c.id FROM checkpoints c
-                 WHERE c.run_id = r.id
-                 ORDER BY c.created_at DESC LIMIT 1) AS last_checkpoint_id
-         FROM runs r WHERE r.id = ?`,
-    )
-    .get(req.params.id);
+  const row = dbContext.runs.getById(req.params.id);
   if (!row) return res.status(404).json({ error: "not found" });
   res.json(RunDetailSchema.parse(row));
 });
@@ -333,16 +306,6 @@ runsRouter.get("/runs/:id/checkpoints", (req, res) => {
 });
 
 runsRouter.get("/workflows/:workflowId/runs", (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT r.id, r.status, r.started_at, r.finished_at, r.error,
-              r.resumed_from, r.target_node_id,
-              (SELECT c.id FROM checkpoints c
-                 WHERE c.run_id = r.id
-                 ORDER BY c.created_at DESC LIMIT 1) AS last_checkpoint_id
-         FROM runs r WHERE r.workflow_id = ?
-         ORDER BY r.started_at DESC LIMIT 50`,
-    )
-    .all(req.params.workflowId);
+  const rows = dbContext.runs.listByWorkflow(req.params.workflowId, 50);
   res.json(z.array(RunSummarySchema).parse(rows));
 });

@@ -20,7 +20,6 @@ import { AcpAdapter } from "./adapters/acp/index.js";
 import { permissionBroker } from "./adapters/acp/permission-broker.js";
 import { restoreEnabledAdapters } from "./adapters/persistence.js";
 import { seedExampleTemplates } from "./templates/seed.js";
-import { closeDb } from "./db.js";
 import { dbContext, dbBackend } from "./db-context.js";
 import { shutdownTelemetry } from "./telemetry.js";
 
@@ -114,7 +113,6 @@ async function shutdown(signal: string): Promise<void> {
     try { client.terminate(); } catch { /* ignore */ }
   }
   await new Promise<void>((r) => wss.close(() => r()));
-  closeDb();
   try {
     dbContext.close();
   } catch {
