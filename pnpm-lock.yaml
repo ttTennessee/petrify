@@ -33,6 +33,22 @@ importers:
         specifier: ^8.15.0
         version: 8.59.3(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
 
+  packages/pearl:
+    dependencies:
+      nanoid:
+        specifier: ^5.0.8
+        version: 5.1.11
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.6
+        version: 20.19.41
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@20.19.41)(jsdom@25.0.1)
+
   packages/server:
     dependencies:
       '@agentclientprotocol/sdk':
