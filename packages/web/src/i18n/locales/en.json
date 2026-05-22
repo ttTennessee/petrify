@@ -129,6 +129,37 @@
     "not_found": "workflow not found",
     "save_as_template": "Save as Template",
     "breadcrumb": "workflow",
+    "view_dag": "DAG View",
+    "view_office": "🏢 Office",
+    "office": {
+      "status_running": "working",
+      "status_pending": "waiting",
+      "status_blocked": "blocked",
+      "status_completed": "done",
+      "status_failed": "crashed",
+      "footer": "{{count}} desks · synced live from Runtime",
+      "desk_label": "Desk {{n}}",
+      "cafe_label": "☕ Café",
+      "watercooler_label": "💧 Watercooler",
+      "treadmill_label": "🏃 Treadmill",
+      "toilet_label": "🚽 Restroom",
+      "exit_label": "🚪 Exit",
+      "nag_lines": [
+        "Hurry up!",
+        "I'm falling asleep here…",
+        "Are we working late?",
+        "Did you crash?",
+        "Where's the progress?",
+        "Step aside, I'll do it",
+        "Bathroom break for me"
+      ],
+      "blocked_lines": [
+        "Stuck — grabbing coffee",
+        "Waiting on resources…",
+        "Can't acquire the lock :("
+      ],
+      "cry_lines": ["Boohoo…", "I messed up", "Stack overflow"]
+    },
     "import": {
       "title": "§ Import Blueprint",
       "placeholder": "{\"nodes\":[...],\"edges\":[...]}",

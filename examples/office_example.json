@@ -1,0 +1,66 @@
+{
+  "nodes": [
+    {
+      "id": "sleep",
+      "ref": "sleep",
+      "title": "睡觉",
+      "adapter": { "name": "claude-code-acp" },
+      "dependencies": [],
+      "inputs": {},
+      "outputs": {},
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你正运行在一个 ACP agent runner 内部。",
+        "task_prompt": "执行sleep休眠10秒然后返回SUCCESS"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "a",
+      "ref": "a",
+      "title": "任务A",
+      "adapter": { "name": "claude-code-acp" },
+      "dependencies": ["sleep"],
+      "inputs": {},
+      "outputs": {},
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你正运行在一个 ACP agent runner 内部。",
+        "task_prompt": "执行 echo SUCCESS 然后返回SUCCESS"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "b",
+      "ref": "b",
+      "title": "任务B",
+      "adapter": { "name": "claude-code-acp" },
+      "dependencies": ["sleep"],
+      "inputs": {},
+      "outputs": {},
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你正运行在一个 ACP agent runner 内部。",
+        "task_prompt": "执行 sleep 5秒 然后返回SUCCESS"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    },
+    {
+      "id": "c",
+      "ref": "c",
+      "title": "任务C",
+      "adapter": { "name": "claude-code-acp" },
+      "dependencies": ["b"],
+      "inputs": {},
+      "outputs": {},
+      "runtime": { "timeout": 120, "retries": 0, "checkpoint": true },
+      "prompt": {
+        "system_prompt": "你正运行在一个 ACP agent runner 内部。",
+        "task_prompt": "执行 echo SUCCESS 然后返回SUCCESS"
+      },
+      "on_failure": { "strategy": "retry", "max_attempts": 2, "backoff_ms": 1500 }
+    }
+  ],
+  "edges": [
+  ]
+}

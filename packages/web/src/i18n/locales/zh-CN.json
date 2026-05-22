@@ -129,6 +129,33 @@
     "not_found": "未找到工作流",
     "save_as_template": "保存为模板",
     "breadcrumb": "工作流",
+    "view_dag": "DAG 视图",
+    "view_office": "🏢 办公室",
+    "office": {
+      "status_running": "干活中",
+      "status_pending": "等待中",
+      "status_blocked": "卡住",
+      "status_completed": "完工",
+      "status_failed": "崩溃",
+      "footer": "{{count}} 个工位 · 状态实时同步自 Runtime",
+      "desk_label": "工位 {{n}}",
+      "cafe_label": "☕ 咖啡角",
+      "watercooler_label": "💧 饮水机",
+      "treadmill_label": "🏃 跑步机",
+      "toilet_label": "🚽 厕所",
+      "exit_label": "🚪 出口",
+      "nag_lines": [
+        "快点啊！",
+        "我都等到睡着了…",
+        "今晚加班吗？",
+        "你不会卡死了吧",
+        "进度条呢？",
+        "学不会就让我来",
+        "我先去趟厕所"
+      ],
+      "blocked_lines": ["被堵住了，喝口咖啡先", "等资源呢…", "锁拿不到 :("],
+      "cry_lines": ["呜呜呜…", "我错了", "栈溢出了"]
+    },
     "import": {
       "title": "§ 导入蓝图",
       "placeholder": "{\"nodes\":[...],\"edges\":[...]}",
