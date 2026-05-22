@@ -3,7 +3,7 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { nanoid } from "nanoid";
 import { WorkflowGraphSchema, type WorkflowGraph } from "@petrify/shared";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 
 const SEED_PREFIX = "example: ";
 
@@ -38,29 +38,16 @@ export function seedExampleTemplates(): { inserted: number; skipped: number } {
     }
   }
 
-  const findByName = db.prepare(`SELECT id FROM templates WHERE name = ?`);
-  const insert = db.prepare(
-    `INSERT INTO templates (
-       id, name, description, tags_json, graph_json,
-       runtime_policy_json, adapter_bindings_json,
-       source_workflow_id, origin, created_at, updated_at
-     ) VALUES (
-       @id, @name, @description, @tags_json, @graph_json,
-       @runtime_policy_json, @adapter_bindings_json,
-       @source_workflow_id, @origin, @created_at, @updated_at
-     )`,
-  );
-
   let inserted = 0;
   let skipped = 0;
   const now = Date.now();
   for (const { fileName, graph } of files) {
     const name = SEED_PREFIX + fileName.replace(/\.json$/, "");
-    if (findByName.get(name)) {
+    if (dbContext.templates.findByName(name)) {
       skipped++;
       continue;
     }
-    insert.run({
+    dbContext.templates.insert({
       id: nanoid(),
       name,
       description: `Bundled example loaded from examples/${fileName}`,

@@ -128,6 +128,7 @@ export const AdapterInstanceSchema = z.object({
   status: z.enum(["ok", "error", "unknown"]),
   status_detail: z.string().nullable(),
   last_probed_at: z.number().int().nullable(),
+  keep_alive: z.union([z.literal(0), z.literal(1)]),
   created_at: z.number().int(),
   updated_at: z.number().int(),
   live: z.boolean(),

@@ -1,4 +1,4 @@
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import { registerAdapter, unregisterAdapter } from "./registry.js";
 import { AcpAdapter } from "./acp/index.js";
 import { permissionBroker } from "./acp/permission-broker.js";
@@ -33,6 +33,7 @@ export interface AdapterInstanceRow {
   status: AdapterStatus;
   status_detail: string | null;
   last_probed_at: number | null;
+  keep_alive: 0 | 1;
   created_at: number;
   updated_at: number;
 }
@@ -50,6 +51,7 @@ interface RawRow {
   status: string;
   status_detail: string | null;
   last_probed_at: number | null;
+  keep_alive: number;
   created_at: number;
   updated_at: number;
 }
@@ -68,22 +70,18 @@ function mapRow(r: RawRow): AdapterInstanceRow {
     status: (r.status as AdapterStatus) ?? "unknown",
     status_detail: r.status_detail,
     last_probed_at: r.last_probed_at,
+    keep_alive: r.keep_alive ? 1 : 0,
     created_at: r.created_at,
     updated_at: r.updated_at,
   };
 }
 
 export function listInstances(): AdapterInstanceRow[] {
-  const rows = db
-    .prepare(`SELECT * FROM adapter_instances ORDER BY created_at ASC`)
-    .all() as RawRow[];
-  return rows.map(mapRow);
+  return dbContext.adapterInstances.list().map((r) => mapRow(r as RawRow));
 }
 
 export function getInstance(name: string): AdapterInstanceRow | null {
-  const r = db
-    .prepare(`SELECT * FROM adapter_instances WHERE name = ?`)
-    .get(name) as RawRow | undefined;
+  const r = dbContext.adapterInstances.getByName(name) as RawRow | undefined;
   return r ? mapRow(r) : null;
 }
 
@@ -100,19 +98,20 @@ export interface UpsertInput {
 
 export function createInstance(input: UpsertInput): AdapterInstanceRow {
   const now = Date.now();
-  db.prepare(
-    `INSERT INTO adapter_instances
-      (name, catalog_id, kind, enabled, command, args_json, env_json, default_cwd, endpoint, status, status_detail, last_probed_at, created_at, updated_at)
-     VALUES (@name, @catalog_id, @kind, 0, @command, @args_json, @env_json, @default_cwd, @endpoint, 'unknown', NULL, NULL, @created_at, @updated_at)`,
-  ).run({
+  dbContext.adapterInstances.insert({
     name: input.name,
     catalog_id: input.catalog_id ?? null,
     kind: input.kind,
+    enabled: 0,
     command: input.command ?? null,
     args_json: JSON.stringify(input.args ?? []),
     env_json: JSON.stringify(input.env ?? {}),
     default_cwd: input.default_cwd ?? null,
     endpoint: input.endpoint ?? null,
+    status: "unknown",
+    status_detail: null,
+    last_probed_at: null,
+    keep_alive: 0,
     created_at: now,
     updated_at: now,
   });
@@ -134,16 +133,7 @@ export function patchInstance(
     default_cwd: patch.default_cwd !== undefined ? patch.default_cwd : row.default_cwd,
     endpoint: patch.endpoint !== undefined ? patch.endpoint : row.endpoint,
   };
-  db.prepare(
-    `UPDATE adapter_instances
-       SET catalog_id=@catalog_id, kind=@kind, command=@command,
-           args_json=@args_json, env_json=@env_json, default_cwd=@default_cwd,
-           endpoint=@endpoint, enabled=0,
-           status='unknown', status_detail=NULL, last_probed_at=NULL,
-           updated_at=@updated_at
-     WHERE name=@name`,
-  ).run({
-    name,
+  dbContext.adapterInstances.patch(name, {
     catalog_id: next.catalog_id,
     kind: next.kind,
     command: next.command,
@@ -151,6 +141,8 @@ export function patchInstance(
     env_json: JSON.stringify(next.env),
     default_cwd: next.default_cwd,
     endpoint: next.endpoint,
+    // 编辑配置不应丢失保活意图 —— 透传当前值。
+    keep_alive: row.keep_alive,
     updated_at: Date.now(),
   });
   // Editing implies disabling — drop from runtime registry.
@@ -160,14 +152,16 @@ export function patchInstance(
 
 export function deleteInstance(name: string): boolean {
   unregisterAdapter(name);
-  const info = db.prepare(`DELETE FROM adapter_instances WHERE name = ?`).run(name);
+  const info = dbContext.adapterInstances.deleteByName(name);
   return info.changes > 0;
 }
 
 export function setEnabled(name: string, enabled: boolean): void {
-  db.prepare(
-    `UPDATE adapter_instances SET enabled = ?, updated_at = ? WHERE name = ?`,
-  ).run(enabled ? 1 : 0, Date.now(), name);
+  dbContext.adapterInstances.setEnabled(name, enabled ? 1 : 0, Date.now());
+}
+
+export function setKeepAlive(name: string, keepAlive: boolean): void {
+  dbContext.adapterInstances.setKeepAlive(name, keepAlive ? 1 : 0, Date.now());
 }
 
 export function setStatus(
@@ -175,11 +169,13 @@ export function setStatus(
   status: AdapterStatus,
   detail: string | null,
 ): void {
-  db.prepare(
-    `UPDATE adapter_instances
-       SET status = ?, status_detail = ?, last_probed_at = ?, updated_at = ?
-     WHERE name = ?`,
-  ).run(status, detail, Date.now(), Date.now(), name);
+  const now = Date.now();
+  dbContext.adapterInstances.setStatus(name, {
+    status,
+    status_detail: detail,
+    last_probed_at: now,
+    updated_at: now,
+  });
 }
 
 function defaultAcpFactory(row: AdapterInstanceRow): AgentAdapter {
@@ -192,6 +188,7 @@ function defaultAcpFactory(row: AdapterInstanceRow): AgentAdapter {
     env: row.env,
     defaultCwd: row.default_cwd ?? undefined,
     instanceName: row.name,
+    keepAlive: row.keep_alive === 1,
     onPermission: (ctx) => permissionBroker.request(ctx),
   });
 }
@@ -228,6 +225,19 @@ export function restoreEnabledAdapters(): void {
         catalog_id: row.catalog_id ?? undefined,
       });
       console.log(`[petrify] restored adapter '${row.name}' (${row.kind})`);
+      if (row.keep_alive === 1 && adapter instanceof AcpAdapter) {
+        adapter.prewarm().then(
+          () =>
+            console.log(`[petrify] prewarmed adapter '${row.name}'`),
+          (err) => {
+            const msg = (err as Error).message;
+            console.warn(
+              `[petrify] prewarm failed for '${row.name}': ${msg}`,
+            );
+            setStatus(row.name, "error", msg);
+          },
+        );
+      }
     } catch (err) {
       console.warn(
         `[petrify] failed to restore adapter '${row.name}': ${(err as Error).message}`,

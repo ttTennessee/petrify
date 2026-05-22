@@ -60,6 +60,11 @@ export interface AcpAdapterConfig {
    *  distinguish multiple ACP instances (claude-code, codex, gemini, ...) that
    *  all share this adapter class. */
   instanceName?: string;
+  /** If true, the server pre-spawns the persistent ACP child at enable/boot
+   *  time via {@link AcpAdapter.prewarm} so the first invoke has no cold-start
+   *  cost. The flag itself doesn't change runtime behavior — it's metadata the
+   *  caller may inspect; the actual prewarm is driven by the route layer. */
+  keepAlive?: boolean;
   /** Pluggable permission handler (PermissionBroker.request). When omitted
    *  the adapter denies all permission requests — the legacy behavior. */
   onPermission?: (
@@ -127,6 +132,18 @@ export class AcpAdapter implements AgentAdapter {
       concurrency: { max: 4 },
       resources: { token_per_call_est: 0 },
     };
+  }
+
+  /** Eagerly bring up the shared ACP child so the first invoke is hot.
+   *  Idempotent — delegates to ensureStarted's dedupe + lifecycle handling. */
+  async prewarm(): Promise<void> {
+    await this.ensureStarted();
+  }
+
+  /** Whether the shared ACP child is currently up. Used by the route layer
+   *  to decide if disabling keep-alive needs an explicit dispose. */
+  hasShared(): boolean {
+    return this.shared !== null;
   }
 
   async probe(): Promise<ProbeResult> {

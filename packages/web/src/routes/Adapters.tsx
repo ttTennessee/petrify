@@ -10,6 +10,7 @@ import {
   useEnableAdapter,
   usePatchAdapter,
   useProbeAdapter,
+  useSetKeepAlive,
   type AdapterInput,
   type AdapterInstance,
   type CatalogCategory,
@@ -33,6 +34,7 @@ export default function Adapters() {
   const enable = useEnableAdapter();
   const disable = useDisableAdapter();
   const probe = useProbeAdapter();
+  const setKeepAlive = useSetKeepAlive();
   const del = useDeleteAdapter();
 
   const [modal, setModal] = useState<
@@ -62,6 +64,7 @@ export default function Adapters() {
     (enable.isPending && enable.variables === name) ||
     (disable.isPending && disable.variables === name) ||
     (probe.isPending && probe.variables === name) ||
+    (setKeepAlive.isPending && setKeepAlive.variables?.name === name) ||
     (del.isPending && del.variables === name);
 
   async function onToggle(inst: AdapterInstance) {
@@ -236,6 +239,9 @@ export default function Adapters() {
               <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {t("table.probed")}
               </th>
+              <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                {t("table.keep_alive")}
+              </th>
               <th className="px-4 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                 {tc("actions")}
               </th>
@@ -245,7 +251,7 @@ export default function Adapters() {
             {(instances ?? []).length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-4 py-6 text-center font-mono text-xs text-muted-foreground"
                 >
                   {t("empty_instances")}
@@ -285,6 +291,25 @@ export default function Adapters() {
                 </td>
                 <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
                   {relTime(inst.last_probed_at)}
+                </td>
+                <td className="px-4 py-3">
+                  {!inst.read_only ? (
+                    <Toggle
+                      checked={inst.keep_alive === 1}
+                      disabled={acting(inst.name)}
+                      onClick={() =>
+                        setKeepAlive.mutate({
+                          name: inst.name,
+                          keep_alive: inst.keep_alive !== 1,
+                        })
+                      }
+                      title={t("keep_alive_tooltip")}
+                    />
+                  ) : (
+                    <span className="font-mono text-[10px] text-muted-foreground">
+                      —
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
@@ -473,10 +498,12 @@ function Toggle({
   checked,
   disabled,
   onClick,
+  title,
 }: {
   checked: boolean;
   disabled?: boolean;
   onClick: () => void;
+  title?: string;
 }) {
   return (
     <button
@@ -485,6 +512,7 @@ function Toggle({
       disabled={disabled}
       role="switch"
       aria-checked={checked}
+      title={title}
       className={cn(
         "relative h-5 w-9 shrink-0 rounded-full transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
         checked ? "bg-success" : "bg-muted-foreground/30",

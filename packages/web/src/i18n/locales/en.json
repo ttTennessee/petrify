@@ -78,8 +78,10 @@
     "table": {
       "source": "Source",
       "command": "Command",
-      "probed": "Probed"
+      "probed": "Probed",
+      "keep_alive": "Keep alive"
     },
+    "keep_alive_tooltip": "When on, the persistent ACP connection is spawned immediately so the first invoke has no cold-start cost. When off, falls back to lazy spawn.",
     "empty_instances": "no instances yet",
     "builtin": "builtin",
     "custom": "custom",

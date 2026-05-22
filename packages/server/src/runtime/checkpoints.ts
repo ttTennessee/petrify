@@ -1,26 +1,6 @@
 import { nanoid } from "nanoid";
 import type { CheckpointBlob } from "@petrify/shared";
-import { db } from "../db.js";
-
-// runs.last_checkpoint_id is optional — older M1 schema may not have it.
-// Run the ALTER *before* preparing statements that reference it.
-try {
-  const cols = db.prepare(`PRAGMA table_info(runs)`).all() as Array<{ name: string }>;
-  if (!cols.some((c) => c.name === "last_checkpoint_id")) {
-    db.exec(`ALTER TABLE runs ADD COLUMN last_checkpoint_id TEXT`);
-  }
-} catch {
-  /* ignore */
-}
-
-const insertCheckpoint = db.prepare(
-  `INSERT INTO checkpoints (id, run_id, label, blob_json, created_at)
-   VALUES (@id, @run_id, @label, @blob_json, @created_at)`,
-);
-
-const updateRunCheckpoint = db.prepare(
-  `UPDATE runs SET last_checkpoint_id = @cid WHERE id = @run_id`,
-);
+import { dbContext } from "../db-context.js";
 
 export interface SavedCheckpoint {
   id: string;
@@ -37,31 +17,19 @@ export function saveCheckpoint(
 ): SavedCheckpoint {
   const id = nanoid();
   const now = Date.now();
-  insertCheckpoint.run({
+  dbContext.checkpoints.insert({
     id,
     run_id: runId,
     label: label ?? null,
     blob_json: JSON.stringify(blob),
     created_at: now,
   });
-  updateRunCheckpoint.run({ cid: id, run_id: runId });
+  dbContext.runs.updateLastCheckpoint(runId, id);
   return { id, run_id: runId, label: label ?? null, blob, created_at: now };
 }
 
 export function listCheckpoints(runId: string): SavedCheckpoint[] {
-  const rows = db
-    .prepare(
-      `SELECT id, run_id, label, blob_json, created_at FROM checkpoints
-       WHERE run_id = ? ORDER BY created_at DESC`,
-    )
-    .all(runId) as Array<{
-    id: string;
-    run_id: string;
-    label: string | null;
-    blob_json: string;
-    created_at: number;
-  }>;
-  return rows.map((r) => ({
+  return dbContext.checkpoints.listByRun(runId).map((r) => ({
     id: r.id,
     run_id: r.run_id,
     label: r.label,
@@ -71,19 +39,7 @@ export function listCheckpoints(runId: string): SavedCheckpoint[] {
 }
 
 export function getCheckpoint(checkpointId: string): SavedCheckpoint | null {
-  const row = db
-    .prepare(
-      `SELECT id, run_id, label, blob_json, created_at FROM checkpoints WHERE id = ?`,
-    )
-    .get(checkpointId) as
-    | {
-        id: string;
-        run_id: string;
-        label: string | null;
-        blob_json: string;
-        created_at: number;
-      }
-    | undefined;
+  const row = dbContext.checkpoints.getById(checkpointId);
   if (!row) return null;
   return {
     id: row.id,
@@ -95,14 +51,13 @@ export function getCheckpoint(checkpointId: string): SavedCheckpoint | null {
 }
 
 export function getLatestCheckpoint(runId: string): SavedCheckpoint | null {
-  const row = db
-    .prepare(
-      `SELECT id FROM runs WHERE id = ?`,
-    )
-    .get(runId) as { id: string; last_checkpoint_id?: string } | undefined;
-  const lcid = (row as { last_checkpoint_id?: string } | undefined)?.last_checkpoint_id;
-  if (lcid) return getCheckpoint(lcid);
-  // fall back to most-recent if last_checkpoint_id is null
+  const run = dbContext.runs.getById(runId);
+  if (!run) return null;
+  if (run.last_checkpoint_id) {
+    const cp = getCheckpoint(run.last_checkpoint_id);
+    if (cp) return cp;
+  }
+  // fall back to most-recent if last_checkpoint_id is null or stale.
   const list = listCheckpoints(runId);
   return list[0] ?? null;
 }

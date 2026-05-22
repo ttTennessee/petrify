@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 
 export const configRouter = Router();
 
@@ -22,9 +22,7 @@ const ConfigPatchSchema = z
   .strict();
 
 function readAll(): GlobalConfig {
-  const rows = db
-    .prepare(`SELECT key, value_json FROM global_config`)
-    .all() as Array<{ key: string; value_json: string }>;
+  const rows = dbContext.globalConfig.list();
   const out: GlobalConfig = { ...DEFAULTS };
   for (const r of rows) {
     if (r.key in DEFAULTS) {
@@ -37,11 +35,6 @@ function readAll(): GlobalConfig {
   }
   return out;
 }
-
-const upsert = db.prepare(
-  `INSERT INTO global_config (key, value_json, updated_at) VALUES (?, ?, ?)
-   ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at`,
-);
 
 export function getConfig(): GlobalConfig {
   return readAll();
@@ -62,7 +55,7 @@ configRouter.put("/", (req, res) => {
   const now = Date.now();
   for (const [k, v] of Object.entries(parsed.data)) {
     if (v === undefined) continue;
-    upsert.run(k, JSON.stringify(v), now);
+    dbContext.globalConfig.upsert(k, JSON.stringify(v), now);
   }
   res.json(readAll());
 });

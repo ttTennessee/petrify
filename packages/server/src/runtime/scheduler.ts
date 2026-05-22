@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 import type { CheckpointBlob, RuntimeEvent, WorkflowNode } from "@petrify/shared";
-import { db } from "../db.js";
+import { dbContext } from "../db-context.js";
 import { getAdapter } from "../adapters/registry.js";
 import { permissionBroker } from "../adapters/acp/permission-broker.js";
 import { resolveServers } from "../services/mcp-servers.js";
@@ -10,10 +10,6 @@ import { saveCheckpoint, getLatestCheckpoint } from "./checkpoints.js";
 import { tracer } from "../telemetry.js";
 import { ResourcePool } from "./resources.js";
 import { evaluateBoolean, evaluateExpression } from "./expr/evaluator.js";
-
-const updateRun = db.prepare(
-  `UPDATE runs SET status = @status, finished_at = @finished_at, error = @error WHERE id = @id`,
-);
 
 interface PauseHandle {
   resolve: () => void;
@@ -44,13 +40,9 @@ interface RunStateInternal {
 const activeRuns = new Map<string, RunStateInternal>();
 
 // ---- M4: breakpoints ----
-const breakpointLookup = db.prepare(
-  `SELECT 1 FROM breakpoints WHERE workflow_id = ? AND node_id = ? AND enabled = 1 LIMIT 1`,
-);
-
 function isBreakpointActive(workflowId: string, nodeId: string): boolean {
   // Forward-compatibility seam: a future workflow.step_mode flag would also be OR-ed here.
-  return breakpointLookup.get(workflowId, nodeId) !== undefined;
+  return dbContext.breakpoints.hasEnabled(workflowId, nodeId);
 }
 
 function waitForContinue(state: RunStateInternal, nodeId: string): Promise<void> {
@@ -361,14 +353,10 @@ export async function executeRun(
   plan: ExecutablePlan,
   options: ExecuteOptions = {},
 ): Promise<void> {
-  const runRow = db
-    .prepare(`SELECT workflow_id FROM runs WHERE id = ?`)
-    .get(runId) as { workflow_id: string } | undefined;
+  const runRow = dbContext.runs.getCore(runId);
   const workflowId = runRow?.workflow_id ?? "";
   const wfRow = workflowId
-    ? (db
-        .prepare(`SELECT project_id FROM workflows WHERE id = ?`)
-        .get(workflowId) as { project_id: string } | undefined)
+    ? dbContext.workflows.getProjectId(workflowId)
     : undefined;
   const projectId: string | null = wfRow?.project_id ?? null;
 
@@ -612,28 +600,25 @@ export async function executeRun(
       await Promise.all(inFlight.values());
 
       if (state.cancelRequested) {
-        updateRun.run({ id: runId, status: "cancelled", finished_at: Date.now(), error: null });
+        dbContext.runs.updateStatus(runId, { status: "cancelled", finished_at: Date.now(), error: null });
       } else if (state.failed.size > 0 || aborted) {
-        updateRun.run({
-          id: runId,
+        dbContext.runs.updateStatus(runId, {
           status: "failed",
           finished_at: Date.now(),
           error: `node(s) failed: ${[...state.failed].join(", ")}`,
         });
       } else if (remaining.size > 0) {
-        updateRun.run({
-          id: runId,
+        dbContext.runs.updateStatus(runId, {
           status: "failed",
           finished_at: Date.now(),
           error: `blocked: ${remaining.size} node(s) had unresolved predecessors`,
         });
       } else {
-        updateRun.run({ id: runId, status: "completed", finished_at: Date.now(), error: null });
+        dbContext.runs.updateStatus(runId, { status: "completed", finished_at: Date.now(), error: null });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      updateRun.run({
-        id: runId,
+      dbContext.runs.updateStatus(runId, {
         status: "failed",
         finished_at: Date.now(),
         error: message,

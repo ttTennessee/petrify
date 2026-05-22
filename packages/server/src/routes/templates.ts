@@ -8,40 +8,14 @@ import {
   type TemplateSummary,
   type WorkflowGraph,
 } from "@petrify/shared";
-import { db } from "../db.js";
+import type { TemplateRow } from "@petrify/db-core";
+import { dbContext } from "../db-context.js";
 import { compile, CompileError } from "../runtime/compiler.js";
 
 export const templatesRouter = Router();
 
-interface TemplateRow {
-  id: string;
-  name: string;
-  description: string | null;
-  tags_json: string | null;
-  graph_json: string;
-  runtime_policy_json: string | null;
-  adapter_bindings_json: string | null;
-  source_workflow_id: string | null;
-  origin: "local" | "imported";
-  created_at: number;
-  updated_at: number;
-}
-
-const insertTemplate = db.prepare(
-  `INSERT INTO templates (
-     id, name, description, tags_json, graph_json,
-     runtime_policy_json, adapter_bindings_json,
-     source_workflow_id, origin, created_at, updated_at
-   ) VALUES (
-     @id, @name, @description, @tags_json, @graph_json,
-     @runtime_policy_json, @adapter_bindings_json,
-     @source_workflow_id, @origin, @created_at, @updated_at
-   )`,
-);
-
-const selectTemplate = db.prepare(`SELECT * FROM templates WHERE id = ?`);
-const deleteTemplate = db.prepare(`DELETE FROM templates WHERE id = ?`);
-
+// 用 db-core 的 TemplateRow:列字段一致(origin 是 string,不是 "local"|"imported"
+// 联合类型 —— 在 rowToTemplate / rowToSummary 内部 narrow)。
 function rowToTemplate(row: TemplateRow): Template {
   return {
     id: row.id,
@@ -56,7 +30,7 @@ function rowToTemplate(row: TemplateRow): Template {
       ? JSON.parse(row.adapter_bindings_json)
       : null,
     source_workflow_id: row.source_workflow_id,
-    origin: row.origin,
+    origin: row.origin as "local" | "imported",
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -68,7 +42,7 @@ function rowToSummary(row: TemplateRow): TemplateSummary {
     name: row.name,
     description: row.description,
     tags: row.tags_json ? (JSON.parse(row.tags_json) as string[]) : [],
-    origin: row.origin,
+    origin: row.origin as "local" | "imported",
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -90,20 +64,14 @@ templatesRouter.post("/", (req, res) => {
   if (!workflowId || !name) {
     return res.status(400).json({ error: "workflowId and name are required" });
   }
-  const wf = db
-    .prepare(`SELECT id, project_id, graph_json FROM workflows WHERE id = ?`)
-    .get(workflowId) as
-    | { id: string; project_id: string; graph_json: string }
-    | undefined;
+  const wf = dbContext.workflows.getForTemplate(workflowId);
   if (!wf) return res.status(404).json({ error: "workflow not found" });
 
-  const project = db
-    .prepare(`SELECT runtime_policy_json FROM projects WHERE id = ?`)
-    .get(wf.project_id) as { runtime_policy_json: string | null } | undefined;
+  const project = dbContext.projects.getRuntimePolicy(wf.project_id);
 
   const now = Date.now();
   const id = nanoid();
-  insertTemplate.run({
+  dbContext.templates.insert({
     id,
     name,
     description: description ?? null,
@@ -146,9 +114,7 @@ templatesRouter.post("/import", (req, res) => {
 templatesRouter.get("/", (req, res) => {
   const q = (req.query.q as string | undefined)?.trim().toLowerCase();
   const tag = (req.query.tag as string | undefined)?.trim().toLowerCase();
-  const rows = db
-    .prepare(`SELECT * FROM templates ORDER BY updated_at DESC`)
-    .all() as TemplateRow[];
+  const rows = dbContext.templates.list();
   const summaries = rows
     .map(rowToSummary)
     .filter((t) => (q ? t.name.toLowerCase().includes(q) : true))
@@ -159,13 +125,13 @@ templatesRouter.get("/", (req, res) => {
 });
 
 templatesRouter.get("/:id", (req, res) => {
-  const row = selectTemplate.get(req.params.id) as TemplateRow | undefined;
+  const row = dbContext.templates.getById(req.params.id);
   if (!row) return res.status(404).json({ error: "not found" });
   res.json(rowToTemplate(row));
 });
 
 templatesRouter.get("/:id/export", (req, res) => {
-  const row = selectTemplate.get(req.params.id) as TemplateRow | undefined;
+  const row = dbContext.templates.getById(req.params.id);
   if (!row) return res.status(404).json({ error: "not found" });
   const t = rowToTemplate(row);
   const exportData: TemplateExport = {
@@ -183,17 +149,16 @@ templatesRouter.get("/:id/export", (req, res) => {
   res.send(JSON.stringify(exportData, null, 2));
 });
 
-templatesRouter.post("/:id/instantiate", (req, res) => {
-  const row = selectTemplate.get(req.params.id) as TemplateRow | undefined;
+templatesRouter.post("/:id/instantiate", async (req, res) => {
+  const row = dbContext.templates.getById(req.params.id);
   if (!row) return res.status(404).json({ error: "template not found" });
   const projectId = (req.body as { projectId?: string })?.projectId;
   if (!projectId) {
     return res.status(400).json({ error: "projectId is required" });
   }
-  const project = db
-    .prepare(`SELECT id FROM projects WHERE id = ?`)
-    .get(projectId);
-  if (!project) return res.status(404).json({ error: "project not found" });
+  if (!dbContext.projects.existsById(projectId)) {
+    return res.status(404).json({ error: "project not found" });
+  }
 
   // Apply adapter_bindings overrides on top of the stored graph, then compile.
   const t = rowToTemplate(row);
@@ -210,16 +175,18 @@ templatesRouter.post("/:id/instantiate", (req, res) => {
   }
 
   const workflowId = nanoid();
-  db.prepare(
-    `INSERT INTO workflows (id, project_id, graph_json, created_at)
-     VALUES (?, ?, ?, ?)`,
-  ).run(workflowId, projectId, JSON.stringify(plan.graph), Date.now());
+  dbContext.workflows.insert({
+    id: workflowId,
+    project_id: projectId,
+    graph_json: JSON.stringify(plan.graph),
+    created_at: Date.now(),
+  });
 
   res.status(201).json({ workflowId, order: plan.order });
 });
 
 templatesRouter.delete("/:id", (req, res) => {
-  const result = deleteTemplate.run(req.params.id);
+  const result = dbContext.templates.deleteById(req.params.id);
   if (result.changes === 0) {
     return res.status(404).json({ error: "not found" });
   }
@@ -229,7 +196,7 @@ templatesRouter.delete("/:id", (req, res) => {
 function saveExport(data: TemplateExport, origin: "local" | "imported"): string {
   const id = nanoid();
   const now = Date.now();
-  insertTemplate.run({
+  dbContext.templates.insert({
     id,
     name: data.name,
     description: data.description ?? null,

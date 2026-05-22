@@ -7,7 +7,7 @@ import type {
   RequestPermissionResponse,
 } from "@agentclientprotocol/sdk";
 import type { RuntimeEvent } from "@petrify/shared";
-import { db } from "../../db.js";
+import { dbContext } from "../../db-context.js";
 import { eventBus } from "../../runtime/events.js";
 import { getConfig } from "../../routes/config.js";
 
@@ -35,18 +35,6 @@ interface PendingEntry {
 // Single in-process registry. Server is single-node by design (CLAUDE.md).
 const pending = new Map<string, PendingEntry>();
 
-const upsertGrant = db.prepare(
-  `INSERT INTO permission_grants (project_id, node_id, tool_kind, decision, created_at)
-   VALUES (@project_id, @node_id, @tool_kind, @decision, @created_at)
-   ON CONFLICT(project_id, node_id, tool_kind)
-   DO UPDATE SET decision = excluded.decision, created_at = excluded.created_at`,
-);
-
-const selectGrant = db.prepare(
-  `SELECT decision FROM permission_grants
-   WHERE project_id = ? AND node_id = ? AND tool_kind = ?`,
-);
-
 function lookupGrant(
   projectId: string | null,
   nodeId: string,
@@ -55,10 +43,8 @@ function lookupGrant(
   // Grants are keyed by project. Without a project we treat the run as
   // unscoped — no cached decisions apply, every request asks fresh.
   if (!projectId) return null;
-  const row = selectGrant.get(projectId, nodeId, toolKind) as
-    | { decision: "allow" | "deny" }
-    | undefined;
-  return row?.decision ?? null;
+  const d = dbContext.permissionGrants.getDecision(projectId, nodeId, toolKind);
+  return (d as "allow" | "deny" | undefined) ?? null;
 }
 
 function rememberGrant(
@@ -68,7 +54,7 @@ function rememberGrant(
   decision: "allow" | "deny",
 ): void {
   if (!projectId) return;
-  upsertGrant.run({
+  dbContext.permissionGrants.upsert({
     project_id: projectId,
     node_id: nodeId,
     tool_kind: toolKind,
