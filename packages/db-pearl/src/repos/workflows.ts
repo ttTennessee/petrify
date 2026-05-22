@@ -89,35 +89,60 @@ export function createWorkflowsRepo(pearl: Pearl): WorkflowsRepo {
       });
     },
 
-    // 以下 4 个方法本轮不为 pearl 实现 —— 仅 throw-stub 满足类型契约。
-    // 现状 server 默认走 sqlite backend;PETRIFY_DB_BACKEND=pearl 跑到这里会爆,
-    // 等后续 PR 把 pearl 侧也实现。
-    getProjectId: () => {
-      throw new Error("db-pearl: WorkflowsRepo.getProjectId not implemented");
+    getProjectId(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return { project_id: lookupProjectId(pearl, id) };
     },
-    getGraphAndVerify: () => {
-      throw new Error("db-pearl: WorkflowsRepo.getGraphAndVerify not implemented");
+
+    getGraphAndVerify(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return {
+        graph_json: String(ent.attrs["graph_json"] ?? ""),
+        last_verify_json:
+          ent.attrs["last_verify_json"] == null
+            ? null
+            : String(ent.attrs["last_verify_json"]),
+      };
     },
-    getLastVerify: () => {
-      throw new Error("db-pearl: WorkflowsRepo.getLastVerify not implemented");
+
+    getLastVerify(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return {
+        last_verify_json:
+          ent.attrs["last_verify_json"] == null
+            ? null
+            : String(ent.attrs["last_verify_json"]),
+      };
     },
-    getForTemplate: () => {
-      throw new Error("db-pearl: WorkflowsRepo.getForTemplate not implemented");
+
+    getForTemplate(id) {
+      const ent = pearl.get(id);
+      if (!ent || ent.type !== TYPE || ent.deleted) return undefined;
+      return {
+        id,
+        project_id: lookupProjectId(pearl, id),
+        graph_json: String(ent.attrs["graph_json"] ?? ""),
+      };
     },
   };
 }
 
-function entityToRow(id: string, ent: Entity, pearl: Pearl): WorkflowRow {
-  // project_id 通过出边反查 —— traverse out + edge type filter。
-  const projects = pearl.traverse(id, {
+function lookupProjectId(pearl: Pearl, workflowId: string): string {
+  const projects = pearl.traverse(workflowId, {
     direction: "out",
     edgeType: PROJECT_EDGE,
     limit: 1,
   });
-  const projectId = projects[0]?.id ?? "";
+  return projects[0]?.id ?? "";
+}
+
+function entityToRow(id: string, ent: Entity, pearl: Pearl): WorkflowRow {
   return {
     id,
-    project_id: projectId,
+    project_id: lookupProjectId(pearl, id),
     graph_json: String(ent.attrs["graph_json"] ?? ""),
     last_verify_json:
       ent.attrs["last_verify_json"] == null

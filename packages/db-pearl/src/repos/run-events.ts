@@ -59,10 +59,19 @@ export function createRunEventsRepo(pearl: Pearl): RunEventsRepo {
         .sort((a, b) => a.id - b.id);
     },
 
-    listTypesAndNodes: () => {
-      throw new Error(
-        "db-pearl: RunEventsRepo.listTypesAndNodes not implemented",
-      );
+    listTypesAndNodes(runId) {
+      const events = pearl.traverse(runId, {
+        direction: "in",
+        edgeType: RUN_EDGE,
+      });
+      return events
+        .filter((e) => e.type === TYPE && !e.deleted)
+        .sort((a, b) => a.version - b.version)
+        .map((e) => ({
+          type: String(e.attrs["type"] ?? ""),
+          node_id:
+            e.attrs["node_id"] == null ? null : String(e.attrs["node_id"]),
+        }));
     },
   };
 }
