@@ -113,6 +113,7 @@ describe("db-sqlite smoke", () => {
       name: "a1", catalog_id: null, kind: "spawn", enabled: 0,
       command: "echo", args_json: "[]", env_json: "{}", default_cwd: null, endpoint: null,
       status: "unknown", status_detail: null, last_probed_at: null,
+      keep_alive: 0,
       created_at: 1, updated_at: 1,
     });
     expect(ctx.adapterInstances.list()).toHaveLength(1);
@@ -120,11 +121,14 @@ describe("db-sqlite smoke", () => {
     expect(ctx.adapterInstances.getByName("a1")?.enabled).toBe(1);
     ctx.adapterInstances.setStatus("a1", { status: "ok", status_detail: "fine", last_probed_at: 10, updated_at: 10 });
     expect(ctx.adapterInstances.getByName("a1")?.status).toBe("ok");
+    ctx.adapterInstances.setKeepAlive("a1", 1, 15);
+    expect(ctx.adapterInstances.getByName("a1")?.keep_alive).toBe(1);
     ctx.adapterInstances.patch("a1", {
       catalog_id: "c1", kind: "spawn", command: "ls", args_json: null,
-      env_json: null, default_cwd: null, endpoint: null, updated_at: 20,
+      env_json: null, default_cwd: null, endpoint: null, keep_alive: 1, updated_at: 20,
     });
     expect(ctx.adapterInstances.getByName("a1")?.enabled).toBe(0); // patch resets
+    expect(ctx.adapterInstances.getByName("a1")?.keep_alive).toBe(1);
     expect(ctx.adapterInstances.deleteByName("a1").changes).toBe(1);
     ctx.close();
   });

@@ -33,6 +33,7 @@ export interface AdapterInstanceRow {
   status: AdapterStatus;
   status_detail: string | null;
   last_probed_at: number | null;
+  keep_alive: 0 | 1;
   created_at: number;
   updated_at: number;
 }
@@ -50,6 +51,7 @@ interface RawRow {
   status: string;
   status_detail: string | null;
   last_probed_at: number | null;
+  keep_alive: number;
   created_at: number;
   updated_at: number;
 }
@@ -68,6 +70,7 @@ function mapRow(r: RawRow): AdapterInstanceRow {
     status: (r.status as AdapterStatus) ?? "unknown",
     status_detail: r.status_detail,
     last_probed_at: r.last_probed_at,
+    keep_alive: r.keep_alive ? 1 : 0,
     created_at: r.created_at,
     updated_at: r.updated_at,
   };
@@ -108,6 +111,7 @@ export function createInstance(input: UpsertInput): AdapterInstanceRow {
     status: "unknown",
     status_detail: null,
     last_probed_at: null,
+    keep_alive: 0,
     created_at: now,
     updated_at: now,
   });
@@ -137,6 +141,8 @@ export function patchInstance(
     env_json: JSON.stringify(next.env),
     default_cwd: next.default_cwd,
     endpoint: next.endpoint,
+    // 编辑配置不应丢失保活意图 —— 透传当前值。
+    keep_alive: row.keep_alive,
     updated_at: Date.now(),
   });
   // Editing implies disabling — drop from runtime registry.
@@ -152,6 +158,10 @@ export function deleteInstance(name: string): boolean {
 
 export function setEnabled(name: string, enabled: boolean): void {
   dbContext.adapterInstances.setEnabled(name, enabled ? 1 : 0, Date.now());
+}
+
+export function setKeepAlive(name: string, keepAlive: boolean): void {
+  dbContext.adapterInstances.setKeepAlive(name, keepAlive ? 1 : 0, Date.now());
 }
 
 export function setStatus(
@@ -178,6 +188,7 @@ function defaultAcpFactory(row: AdapterInstanceRow): AgentAdapter {
     env: row.env,
     defaultCwd: row.default_cwd ?? undefined,
     instanceName: row.name,
+    keepAlive: row.keep_alive === 1,
     onPermission: (ctx) => permissionBroker.request(ctx),
   });
 }
@@ -214,6 +225,19 @@ export function restoreEnabledAdapters(): void {
         catalog_id: row.catalog_id ?? undefined,
       });
       console.log(`[petrify] restored adapter '${row.name}' (${row.kind})`);
+      if (row.keep_alive === 1 && adapter instanceof AcpAdapter) {
+        adapter.prewarm().then(
+          () =>
+            console.log(`[petrify] prewarmed adapter '${row.name}'`),
+          (err) => {
+            const msg = (err as Error).message;
+            console.warn(
+              `[petrify] prewarm failed for '${row.name}': ${msg}`,
+            );
+            setStatus(row.name, "error", msg);
+          },
+        );
+      }
     } catch (err) {
       console.warn(
         `[petrify] failed to restore adapter '${row.name}': ${(err as Error).message}`,

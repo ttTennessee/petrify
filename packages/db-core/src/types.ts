@@ -70,6 +70,7 @@ export type AdapterInstanceRow = {
   status: string;
   status_detail: string | null;
   last_probed_at: number | null;
+  keep_alive: number;
   created_at: number;
   updated_at: number;
 };

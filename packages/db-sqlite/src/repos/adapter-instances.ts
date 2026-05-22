@@ -44,6 +44,7 @@ export function createAdapterInstancesRepo(
           status: row.status,
           status_detail: row.status_detail,
           last_probed_at: row.last_probed_at,
+          keep_alive: row.keep_alive,
           created_at: row.created_at,
           updated_at: row.updated_at,
         })
@@ -61,6 +62,7 @@ export function createAdapterInstancesRepo(
           env_json: patch.env_json,
           default_cwd: patch.default_cwd,
           endpoint: patch.endpoint,
+          keep_alive: patch.keep_alive,
           enabled: 0,
           status: "unknown",
           status_detail: null,
@@ -82,6 +84,13 @@ export function createAdapterInstancesRepo(
     setEnabled(name, enabled, updatedAt) {
       d.update(adapterInstances)
         .set({ enabled, updated_at: updatedAt })
+        .where(eq(adapterInstances.name, name))
+        .run();
+    },
+
+    setKeepAlive(name, keepAlive, updatedAt) {
+      d.update(adapterInstances)
+        .set({ keep_alive: keepAlive, updated_at: updatedAt })
         .where(eq(adapterInstances.name, name))
         .run();
     },

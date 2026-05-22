@@ -8,10 +8,12 @@ import {
   listInstances,
   patchInstance,
   setEnabled,
+  setKeepAlive,
   setStatus,
   buildAdapterFromRow,
   type AdapterKind,
 } from "../adapters/persistence.js";
+import { AcpAdapter } from "../adapters/acp/index.js";
 import {
   getAdapterEntry,
   listAdapterEntries,
@@ -232,6 +234,17 @@ adaptersRouter.post("/:name/enable", async (req, res) => {
     });
     setEnabled(name, true);
     setStatus(name, "ok", null);
+    if (row.keep_alive === 1 && adapter instanceof AcpAdapter) {
+      // Don't block enable on prewarm — if the persistent spawn fails the
+      // status detail records it but the adapter is still registered and
+      // will fall back to lazy spawn on next invoke.
+      adapter.prewarm().catch((err: Error) => {
+        console.warn(
+          `[petrify] prewarm failed for '${name}': ${err.message}`,
+        );
+        setStatus(name, "error", err.message);
+      });
+    }
     const { ok: _ok2, ...probeRest } = probe;
     void _ok2;
     res.json({ ok: true, ...probeRest, enabled: true });
@@ -239,6 +252,47 @@ adaptersRouter.post("/:name/enable", async (req, res) => {
     setStatus(name, "error", (err as Error).message);
     res.status(500).json({ ok: false, error: (err as Error).message });
   }
+});
+
+// === PATCH /:name/keep-alive =================================================
+const KeepAliveBodySchema = z.object({ keep_alive: z.boolean() });
+adaptersRouter.patch("/:name/keep-alive", async (req, res) => {
+  const { name } = req.params;
+  if (isReadOnlyName(name)) {
+    return res.status(403).json({ error: `'${name}' is read-only` });
+  }
+  const parsed = KeepAliveBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "invalid input",
+      issues: parsed.error.issues.map(
+        (i) => `${i.path.join(".")}: ${i.message}`,
+      ),
+    });
+  }
+  const row = getInstance(name);
+  if (!row) return res.status(404).json({ error: "not found" });
+  const want = parsed.data.keep_alive;
+  setKeepAlive(name, want);
+  // If the adapter is live, sync runtime state with the new setting.
+  const entry = getAdapterEntry(name);
+  if (entry && entry.adapter instanceof AcpAdapter) {
+    if (want) {
+      try {
+        await entry.adapter.prewarm();
+        setStatus(name, "ok", null);
+      } catch (err) {
+        const msg = (err as Error).message;
+        setStatus(name, "error", msg);
+        return res.status(502).json({ ok: false, error: msg });
+      }
+    } else if (entry.adapter.hasShared()) {
+      // Releasing the shared connection drops the persistent child; next
+      // invoke will lazy-spawn again.
+      await entry.adapter.dispose();
+    }
+  }
+  res.json(getInstance(name));
 });
 
 // === POST /:name/disable ====================================================

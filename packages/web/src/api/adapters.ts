@@ -80,6 +80,21 @@ export function useEnableAdapter() {
   });
 }
 
+export function useSetKeepAlive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { name: string; keep_alive: boolean }) =>
+      http<AdapterInstance>(
+        `/api/adapters/${encodeURIComponent(vars.name)}/keep-alive`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ keep_alive: vars.keep_alive }),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["adapters"] }),
+  });
+}
+
 export function useDisableAdapter() {
   const qc = useQueryClient();
   return useMutation({

@@ -78,8 +78,10 @@
     "table": {
       "source": "来源",
       "command": "命令",
-      "probed": "探测时间"
+      "probed": "探测时间",
+      "keep_alive": "保活"
     },
+    "keep_alive_tooltip": "开启后立即建立持久 ACP 连接，免去首次调用的子进程冷启动。关闭则回到按需启动。",
     "empty_instances": "暂无实例",
     "builtin": "内置",
     "custom": "自定义",

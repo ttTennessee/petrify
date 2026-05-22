@@ -156,11 +156,13 @@ export interface AdapterInstancesRepo {
       env_json: string | null;
       default_cwd: string | null;
       endpoint: string | null;
+      keep_alive: number;
       updated_at: number;
     },
   ): void;
   deleteByName(name: string): { changes: number };
   setEnabled(name: string, enabled: 0 | 1, updatedAt: number): void;
+  setKeepAlive(name: string, keepAlive: 0 | 1, updatedAt: number): void;
   setStatus(
     name: string,
     patch: {

@@ -113,6 +113,7 @@ export const adapterInstances = sqliteTable(
     status: text("status").notNull().default("unknown"),
     status_detail: text("status_detail"),
     last_probed_at: integer("last_probed_at"),
+    keep_alive: integer("keep_alive").notNull().default(0),
     created_at: integer("created_at").notNull(),
     updated_at: integer("updated_at").notNull(),
   },
@@ -288,6 +289,7 @@ export function applySchema(db: Database.Database): void {
       status         TEXT NOT NULL DEFAULT 'unknown',
       status_detail  TEXT,
       last_probed_at INTEGER,
+      keep_alive     INTEGER NOT NULL DEFAULT 0,
       created_at     INTEGER NOT NULL,
       updated_at     INTEGER NOT NULL
     );
@@ -349,6 +351,12 @@ export function applySchema(db: Database.Database): void {
   ensureColumn(db, "runs", "target_node_id", "TEXT");
   ensureColumn(db, "runs", "last_checkpoint_id", "TEXT");
   ensureColumn(db, "workflows", "last_verify_json", "TEXT");
+  ensureColumn(
+    db,
+    "adapter_instances",
+    "keep_alive",
+    "INTEGER NOT NULL DEFAULT 0",
+  );
 }
 
 function ensureColumn(
