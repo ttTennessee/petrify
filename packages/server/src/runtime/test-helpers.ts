@@ -14,10 +14,7 @@ export function ensureWorkflow(graph: unknown): string {
     status: "draft",
     created_at: Date.now(),
   });
-  // workflows.insert 接口签名是 Promise<void>(为兼容 pearl 异步),但
-  // sqlite/drizzle 实现内部完全同步。这里 fire-and-forget 是安全的:
-  // 后续 SELECT 在同一连接上必能看到。
-  void dbContext.workflows.insert({
+  dbContext.workflows.insert({
     id: workflowId,
     project_id: projectId,
     graph_json: JSON.stringify(graph),

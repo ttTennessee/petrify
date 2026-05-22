@@ -11,7 +11,7 @@ import { runEvents } from "../schema.js";
 
 export function createRunEventsRepo(d: DrizzleDb): RunEventsRepo {
   return {
-    async append(row) {
+    append(row) {
       d.insert(runEvents)
         .values({
           event_id: row.event_id,

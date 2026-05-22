@@ -42,11 +42,11 @@ describe("db-pearl WorkflowsRepo (smoke)", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it("insert → getById → updateGraph → getGraphById → listByProject", async () => {
+  it("insert → getById → updateGraph → getGraphById → listByProject", () => {
     expect(ctx.projects.existsById("proj-1")).toBe(true);
     expect(ctx.projects.existsById("proj-missing")).toBe(false);
 
-    await ctx.workflows.insert({
+    ctx.workflows.insert({
       id: "wf-1",
       project_id: "proj-1",
       graph_json: '{"nodes":[],"edges":[]}',
@@ -61,15 +61,15 @@ describe("db-pearl WorkflowsRepo (smoke)", () => {
     expect(got?.created_at).toBe(100);
     expect(got?.last_verify_json).toBeNull();
 
-    await ctx.workflows.updateGraph("wf-1", '{"nodes":[{"id":"n1"}],"edges":[]}');
+    ctx.workflows.updateGraph("wf-1", '{"nodes":[{"id":"n1"}],"edges":[]}');
     expect(ctx.workflows.getGraphById("wf-1")?.graph_json).toBe(
       '{"nodes":[{"id":"n1"}],"edges":[]}',
     );
 
-    await ctx.workflows.updateVerify("wf-1", '{"ok":true}');
+    ctx.workflows.updateVerify("wf-1", '{"ok":true}');
     expect(ctx.workflows.getById("wf-1")?.last_verify_json).toBe('{"ok":true}');
 
-    await ctx.workflows.insert({
+    ctx.workflows.insert({
       id: "wf-2",
       project_id: "proj-1",
       graph_json: "{}",
@@ -85,9 +85,9 @@ describe("db-pearl WorkflowsRepo (smoke)", () => {
     expect(ctx.workflows.getById("wf-missing")).toBeUndefined();
   });
 
-  it("RunEventsRepo: append → listSince", async () => {
+  it("RunEventsRepo: append → listSince", () => {
     // 不依赖 runs 表(尚未实现)。listSince 直接用 runId 反查边。
-    await ctx.runEvents.append({
+    ctx.runEvents.append({
       event_id: "ev-1",
       run_id: "run-1",
       node_id: "n-a",
@@ -95,7 +95,7 @@ describe("db-pearl WorkflowsRepo (smoke)", () => {
       payload_json: '{"x":1}',
       ts: 1,
     });
-    await ctx.runEvents.append({
+    ctx.runEvents.append({
       event_id: "ev-2",
       run_id: "run-1",
       node_id: "n-a",

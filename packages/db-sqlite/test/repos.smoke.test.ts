@@ -30,18 +30,18 @@ describe("db-sqlite smoke", () => {
     ctx.close();
   });
 
-  it("workflows: insert / getById / listByProject / updateGraph / updateVerify / getForTemplate", async () => {
+  it("workflows: insert / getById / listByProject / updateGraph / updateVerify / getForTemplate", () => {
     const ctx = fresh();
     ctx.projects.insert({
       id: "p1", goal: "g", description: null,
       constraints_json: null, preferred_tools_json: null, runtime_policy_json: null,
       status: "draft", created_at: 0,
     });
-    await ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 1 });
+    ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 1 });
     expect(ctx.workflows.getById("w1")?.graph_json).toBe("{}");
     expect(ctx.workflows.listByProject("p1")).toHaveLength(1);
-    await ctx.workflows.updateGraph("w1", '{"n":1}');
-    await ctx.workflows.updateVerify("w1", '{"status":"pass"}');
+    ctx.workflows.updateGraph("w1", '{"n":1}');
+    ctx.workflows.updateVerify("w1", '{"status":"pass"}');
     expect(ctx.workflows.getGraphAndVerify("w1")).toEqual({
       graph_json: '{"n":1}', last_verify_json: '{"status":"pass"}',
     });
@@ -57,7 +57,7 @@ describe("db-sqlite smoke", () => {
       constraints_json: null, preferred_tools_json: null, runtime_policy_json: null,
       status: "draft", created_at: 0,
     });
-    void ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 0 });
+    ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 0 });
     ctx.runs.insert({ id: "r1", workflow_id: "w1", status: "running", started_at: 1 });
     ctx.checkpoints.insert({ id: "cp1", run_id: "r1", label: null, blob_json: "{}", created_at: 2 });
     ctx.runs.updateLastCheckpoint("r1", "cp1");
@@ -71,17 +71,17 @@ describe("db-sqlite smoke", () => {
     ctx.close();
   });
 
-  it("run_events: append + listSince + listTypesAndNodes", async () => {
+  it("run_events: append + listSince + listTypesAndNodes", () => {
     const ctx = fresh();
     ctx.projects.insert({
       id: "p1", goal: "g", description: null,
       constraints_json: null, preferred_tools_json: null, runtime_policy_json: null,
       status: "draft", created_at: 0,
     });
-    void ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 0 });
+    ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 0 });
     ctx.runs.insert({ id: "r1", workflow_id: "w1", status: "running", started_at: 1 });
-    await ctx.runEvents.append({ event_id: "e1", run_id: "r1", node_id: "n1", type: "Started", payload_json: "{}", ts: 1 });
-    await ctx.runEvents.append({ event_id: "e2", run_id: "r1", node_id: null, type: "Completed", payload_json: "{}", ts: 2 });
+    ctx.runEvents.append({ event_id: "e1", run_id: "r1", node_id: "n1", type: "Started", payload_json: "{}", ts: 1 });
+    ctx.runEvents.append({ event_id: "e2", run_id: "r1", node_id: null, type: "Completed", payload_json: "{}", ts: 2 });
     const evs = ctx.runEvents.listSince("r1");
     expect(evs).toHaveLength(2);
     expect(evs[0].id).toBe(1);
@@ -151,7 +151,7 @@ describe("db-sqlite smoke", () => {
       constraints_json: null, preferred_tools_json: null, runtime_policy_json: null,
       status: "draft", created_at: 0,
     });
-    void ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 0 });
+    ctx.workflows.insert({ id: "w1", project_id: "p1", graph_json: "{}", created_at: 0 });
     ctx.breakpoints.insert({
       id: "b1", workflow_id: "w1", node_id: "n1", enabled: 1, created_at: 1,
     });

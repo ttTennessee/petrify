@@ -41,13 +41,13 @@ export interface WorkflowsRepo {
     project_id: string;
     graph_json: string;
     created_at: number;
-  }): Promise<void>;
+  }): void;
   getById(id: string): WorkflowRow | undefined;
   /** routes/workflows.ts PATCH 路径只需要 graph_json。 */
   getGraphById(id: string): { id: string; graph_json: string } | undefined;
   listByProject(projectId: string): Array<Pick<WorkflowRow, "id" | "created_at">>;
-  updateGraph(id: string, graphJson: string): Promise<void>;
-  updateVerify(id: string, lastVerifyJson: string): Promise<void>;
+  updateGraph(id: string, graphJson: string): void;
+  updateVerify(id: string, lastVerifyJson: string): void;
   /** permission-broker.test 用,只取 project_id 列。 */
   getProjectId(id: string): { project_id: string } | undefined;
   /** routes/verification.ts、routes/runs.ts 用。 */
@@ -119,7 +119,7 @@ export interface RunsRepo {
 
 export interface RunEventsRepo {
   /** append-only;实现需为 row 分配自增 id 并写入。 */
-  append(row: RunEventRow): Promise<void>;
+  append(row: RunEventRow): void;
   /** 列出 run 内 id > sinceId 的事件,按 id 升序。 */
   listSince(runId: string, sinceId?: number): Array<RunEventRow & { id: number }>;
   /** test-helpers 用,只取 type+node_id。 */

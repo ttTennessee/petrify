@@ -14,8 +14,8 @@ const PROJECT_EDGE = "belongs_to_project";
 
 export function createWorkflowsRepo(pearl: Pearl): WorkflowsRepo {
   return {
-    async insert(row) {
-      await pearl.commit({
+    insert(row) {
+      pearl.commit({
         events: [
           {
             entityId: row.id,
@@ -65,8 +65,8 @@ export function createWorkflowsRepo(pearl: Pearl): WorkflowsRepo {
         .sort((a, b) => b.created_at - a.created_at);
     },
 
-    async updateGraph(id, graphJson) {
-      await pearl.commit({
+    updateGraph(id, graphJson) {
+      pearl.commit({
         events: [
           {
             entityId: id,
@@ -77,8 +77,8 @@ export function createWorkflowsRepo(pearl: Pearl): WorkflowsRepo {
       });
     },
 
-    async updateVerify(id, lastVerifyJson) {
-      await pearl.commit({
+    updateVerify(id, lastVerifyJson) {
+      pearl.commit({
         events: [
           {
             entityId: id,

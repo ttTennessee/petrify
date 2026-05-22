@@ -12,9 +12,9 @@ const RUN_EDGE = "of_run";
 
 export function createRunEventsRepo(pearl: Pearl): RunEventsRepo {
   return {
-    async append(row) {
+    append(row) {
       const entityId = nanoid();
-      await pearl.commit({
+      pearl.commit({
         events: [
           {
             entityId,

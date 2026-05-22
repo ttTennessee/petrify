@@ -175,7 +175,7 @@ templatesRouter.post("/:id/instantiate", async (req, res) => {
   }
 
   const workflowId = nanoid();
-  await dbContext.workflows.insert({
+  dbContext.workflows.insert({
     id: workflowId,
     project_id: projectId,
     graph_json: JSON.stringify(plan.graph),

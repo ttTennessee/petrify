@@ -12,7 +12,7 @@ import { workflows } from "../schema.js";
 
 export function createWorkflowsRepo(d: DrizzleDb): WorkflowsRepo {
   return {
-    async insert(row) {
+    insert(row) {
       d.insert(workflows)
         .values({
           id: row.id,
@@ -50,14 +50,14 @@ export function createWorkflowsRepo(d: DrizzleDb): WorkflowsRepo {
         .all();
     },
 
-    async updateGraph(id, graphJson) {
+    updateGraph(id, graphJson) {
       d.update(workflows)
         .set({ graph_json: graphJson })
         .where(eq(workflows.id, id))
         .run();
     },
 
-    async updateVerify(id, lastVerifyJson) {
+    updateVerify(id, lastVerifyJson) {
       d.update(workflows)
         .set({ last_verify_json: lastVerifyJson })
         .where(eq(workflows.id, id))

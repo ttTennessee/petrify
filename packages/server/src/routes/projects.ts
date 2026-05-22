@@ -69,7 +69,7 @@ projectsRouter.post("/:id/generate-workflow", async (req, res) => {
       description: row.description,
     });
     const workflowId = nanoid();
-    await dbContext.workflows.insert({
+    dbContext.workflows.insert({
       id: workflowId,
       project_id: req.params.id,
       graph_json: JSON.stringify(result.plan.graph),

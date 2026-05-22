@@ -17,7 +17,7 @@ verificationRouter.post("/workflows/:id/verify", async (req, res) => {
   const graph = loadGraph(req.params.id);
   if (!graph) return res.status(404).json({ error: "workflow not found" });
   const report = verifyWorkflow(graph);
-  await dbContext.workflows.updateVerify(req.params.id, JSON.stringify(report));
+  dbContext.workflows.updateVerify(req.params.id, JSON.stringify(report));
   res.json(report);
 });
 

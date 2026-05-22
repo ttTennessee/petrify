@@ -33,7 +33,7 @@ workflowsRouter.post("/projects/:projectId/workflow", async (req, res) => {
   try {
     const plan = compile(req.body);
     const id = nanoid();
-    await dbContext.workflows.insert({
+    dbContext.workflows.insert({
       id,
       project_id: req.params.projectId,
       graph_json: JSON.stringify(plan.graph),
@@ -91,7 +91,7 @@ workflowsRouter.patch("/workflows/:id/nodes/:nodeId", async (req, res) => {
 
   try {
     const plan = compile(nextGraph);
-    await dbContext.workflows.updateGraph(row.id, JSON.stringify(plan.graph));
+    dbContext.workflows.updateGraph(row.id, JSON.stringify(plan.graph));
     return res.json({ id: row.id, graph: plan.graph });
   } catch (err) {
     if (err instanceof CompileError) {
