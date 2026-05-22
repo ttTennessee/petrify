@@ -4,43 +4,58 @@ interface SpeechBubbleProps {
   y: number;
 }
 
-// 简单的卡通对话框：圆角矩形 + 小尾巴
+// 报纸风格便签气泡
 export function SpeechBubble({ text, x, y }: SpeechBubbleProps) {
-  const padX = 8;
-  const padY = 5;
-  // 估算宽度：中文字符 ~ 11px，英文 ~ 7px。粗略平均 10px。
-  const w = Math.min(160, Math.max(40, text.length * 11 + padX * 2));
-  const h = 24;
+  const padX = 10;
+  const padY = 6;
+  const charW = /[一-鿿]/.test(text) ? 11 : 6.5;
+  const w = Math.min(180, Math.max(48, text.length * charW + padX * 2));
+  const h = 26;
   return (
     <g
-      transform={`translate(${x - w / 2}, ${y - h - 10})`}
+      transform={`translate(${x - w / 2}, ${y - h - 12})`}
       className="office-bubble"
       style={{ pointerEvents: "none" }}
     >
+      {/* 投影 */}
+      <rect x={1.5} y={2} width={w} height={h} rx={4} fill="#241c14" opacity={0.18} />
+      {/* 主体 */}
       <rect
         x={0}
         y={0}
         width={w}
         height={h}
-        rx={8}
-        ry={8}
-        fill="#fffdf5"
-        stroke="#3b3a36"
-        strokeWidth={1.5}
+        rx={4}
+        fill="#fbf5e4"
+        stroke="#241c14"
+        strokeWidth={1.4}
       />
+      {/* 顶部装饰条 */}
+      <rect x={0} y={0} width={w} height={3} rx={4} fill="#c97a5b" opacity={0.85} />
+      {/* 尾巴 */}
       <polygon
-        points={`${w / 2 - 5},${h} ${w / 2 + 5},${h} ${w / 2 + 1},${h + 6}`}
-        fill="#fffdf5"
-        stroke="#3b3a36"
-        strokeWidth={1.5}
+        points={`${w / 2 - 5},${h - 0.5} ${w / 2 + 5},${h - 0.5} ${w / 2 + 1},${h + 7}`}
+        fill="#fbf5e4"
+        stroke="#241c14"
+        strokeWidth={1.4}
+      />
+      <line
+        x1={w / 2 - 4}
+        y1={h - 0.5}
+        x2={w / 2 + 4}
+        y2={h - 0.5}
+        stroke="#fbf5e4"
+        strokeWidth={2}
       />
       <text
         x={w / 2}
-        y={h / 2 + 4}
+        y={h / 2 + 5}
         textAnchor="middle"
         fontSize="11"
-        fontFamily="ui-sans-serif, system-ui, sans-serif"
-        fill="#3b3a36"
+        fontFamily='"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif'
+        fontWeight="500"
+        fill="#241c14"
+        letterSpacing="0.01em"
       >
         {text}
       </text>

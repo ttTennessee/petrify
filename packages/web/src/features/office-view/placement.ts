@@ -1,4 +1,5 @@
 import type { NodeStatus, WorkflowGraph, WorkflowNode } from "@petrify/shared";
+import { iso, ISO } from "./iso";
 
 export type Zone =
   | "desk"
@@ -23,41 +24,53 @@ export interface Placement {
   nodeId: string;
   title: string;
   zone: Zone;
-  // 屏幕坐标 (在 VIEWBOX 内)。已考虑围观/摸鱼时多人散开避免重叠。
   x: number;
   y: number;
   facing: "left" | "right";
   anchorNodeId?: string;
   mood: Mood;
   status: NodeStatus;
-  // 调色板索引 0..PALETTE_SIZE-1，hash 自 node.id
   paletteIdx: number;
   speech?: { kind: "nag" | "blocked" | "cry"; idx: number };
 }
 
 export const VIEWBOX = { w: 960, h: 540 };
 
-// 工位区上半部分；底部留给咖啡/厕所/跑步机/饮水机/出口
-const DESK_ROW_Y = 170;
-const DESK_SPACING_MIN = 110;
-const DESK_LEFT_PAD = 90;
+const DESK_GY = 2.3;
+const DESK_GX_MIN = 2.2;
+const DESK_GX_MAX = 11.8;
+const DESK_GAP_MIN = 1.6;
+const DESK_GAP_MAX = 2.6;
+const DESK_TOP_Z = 26;
 
-const ZONE_CENTERS: Record<Exclude<Zone, "desk" | "behind-desk">, { x: number; y: number }> = {
-  cafe: { x: 130, y: 420 },
-  watercooler: { x: 340, y: 430 },
-  treadmill: { x: 540, y: 430 },
-  toilet: { x: 740, y: 420 },
-  exit: { x: 900, y: 430 },
+// 厕所小屋（OfficeFloor 也用这份常量画屋）
+export const TOILET_ROOM = {
+  gx: 11.6,
+  gy: 0.1,
+  gw: 2.0,
+  gd: 1.6,
+  h: 70,
+} as const;
+
+export const ZONE_GRID: Record<Exclude<Zone, "desk" | "behind-desk">, { gx: number; gy: number }> = {
+  cafe: { gx: 1.5, gy: 6.6 },
+  watercooler: { gx: 5.5, gy: 6.8 },
+  treadmill: { gx: 9.2, gy: 6.8 },
+  // toilet 的 grid 仅作"接近点"，实际坐标在 computePlacements 里替换为屋顶
+  toilet: { gx: 12.6, gy: 1.8 },
+  exit: { gx: 13.2, gy: 5.4 },
 };
 
-const PALETTE_SIZE = 8;
+const ZONE_CENTERS: Record<Exclude<Zone, "desk" | "behind-desk">, { x: number; y: number }> =
+  Object.fromEntries(
+    Object.entries(ZONE_GRID).map(([k, v]) => [k, iso(v.gx, v.gy)]),
+  ) as Record<Exclude<Zone, "desk" | "behind-desk">, { x: number; y: number }>;
 
-// 文案行数（必须与 i18n 资源里 office.nag_lines/blocked_lines/cry_lines 数组长度对齐）
+const PALETTE_SIZE = 8;
 const NAG_LINES_COUNT = 7;
 const BLOCKED_LINES_COUNT = 3;
 const CRY_LINES_COUNT = 3;
 
-// FNV-1a 32-bit hash —— 稳定、不依赖运行时
 export function hash32(s: string): number {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
@@ -67,15 +80,28 @@ export function hash32(s: string): number {
   return h >>> 0;
 }
 
-function deskPositions(nodes: WorkflowNode[]) {
+export function getDeskGridPositions(nodes: WorkflowNode[]): Record<string, { gx: number; gy: number }> {
   const n = nodes.length;
-  const usable = VIEWBOX.w - DESK_LEFT_PAD * 2;
-  const spacing = n <= 1 ? 0 : Math.max(DESK_SPACING_MIN, Math.min(160, usable / (n - 1)));
-  const totalWidth = spacing * Math.max(0, n - 1);
-  const startX = VIEWBOX.w / 2 - totalWidth / 2;
-  const result: Record<string, { x: number; y: number }> = {};
+  const span = DESK_GX_MAX - DESK_GX_MIN;
+  const gap = n <= 1 ? 0 : Math.max(DESK_GAP_MIN, Math.min(DESK_GAP_MAX, span / (n - 1)));
+  const totalW = gap * Math.max(0, n - 1);
+  const startGx = (DESK_GX_MIN + DESK_GX_MAX) / 2 - totalW / 2;
+  const result: Record<string, { gx: number; gy: number }> = {};
   for (let i = 0; i < n; i++) {
-    result[nodes[i]!.id] = { x: startX + i * spacing, y: DESK_ROW_Y };
+    result[nodes[i]!.id] = { gx: startGx + i * gap, gy: DESK_GY };
+  }
+  return result;
+}
+
+function deskScreenPositions(nodes: WorkflowNode[]) {
+  const grid = getDeskGridPositions(nodes);
+  const result: Record<string, { x: number; y: number; gx: number; gy: number }> = {};
+  for (const id in grid) {
+    const g = grid[id]!;
+    const standGx = g.gx + 0.6;
+    const standGy = g.gy + 0.45;
+    const p = iso(standGx, standGy);
+    result[id] = { x: p.x, y: p.y, gx: g.gx, gy: g.gy };
   }
   return result;
 }
@@ -83,23 +109,10 @@ function deskPositions(nodes: WorkflowNode[]) {
 interface PlacementInput {
   graph: WorkflowGraph;
   nodeStatus: Record<string, NodeStatus>;
-  // 进入"等待围观"的时间戳，用于决定催促/暂离
   watchingSince: Record<string, number>;
   now: number;
 }
 
-interface PlacementHints {
-  // 哪些 node 在催促 / 离场摸鱼周期内
-  shouldNag: (nodeId: string) => boolean;
-  shouldStepOut: (nodeId: string) => boolean;
-}
-
-// 围观 → 催促 → 暂离 → 回来 的简单时序：
-// 0-12s: 安静围观
-// 12-22s: 头上冒催促泡泡
-// 22-40s: 离开 (去 cafe/toilet)
-// 40-50s: 回到 behind-desk
-// 50s 后: 周期重置
 function watchingPhase(elapsedMs: number): "calm" | "nag" | "away" {
   const t = elapsedMs % 50000;
   if (t < 12000) return "calm";
@@ -108,16 +121,21 @@ function watchingPhase(elapsedMs: number): "calm" | "nag" | "away" {
   return "calm";
 }
 
+// 厕所屋顶上方的"名字浮点"屏幕坐标（顶面前沿中央，再向上 8px）
+const TOILET_NAME_ANCHOR = iso(
+  TOILET_ROOM.gx + TOILET_ROOM.gw / 2,
+  TOILET_ROOM.gy + TOILET_ROOM.gd,
+  TOILET_ROOM.h + 8,
+);
+
 export function computePlacements(input: PlacementInput): Placement[] {
   const { graph, nodeStatus, watchingSince, now } = input;
   const nodes = graph.nodes;
-  const desk = deskPositions(nodes);
+  const desk = deskScreenPositions(nodes);
   const placements: Placement[] = [];
 
-  // 先按 anchor 分组围观者，以便散开
   const watchersByAnchor: Record<string, string[]> = {};
 
-  // 第一遍：决定每个 node 的 zone + anchor
   type Decision = {
     node: WorkflowNode;
     zone: Zone;
@@ -147,7 +165,6 @@ export function computePlacements(input: PlacementInput): Placement[] {
         decisions.push({ node, zone: "desk", mood: "compensating" });
         break;
       case "completed": {
-        // 完成后短暂庆祝再去 exit；用 watchingSince 复用计时
         const since = watchingSince[`done:${node.id}`];
         const elapsed = since ? now - since : 0;
         if (elapsed > 5000) decisions.push({ node, zone: "exit", mood: "leaving" });
@@ -168,49 +185,26 @@ export function computePlacements(input: PlacementInput): Placement[] {
       case "pending":
       case "idle":
       default: {
-        // 找直接依赖中是否有 running，没有就找未完成依赖中最浅的
         const directRunning = node.dependencies.find((dep) => nodeStatus[dep] === "running");
         if (directRunning) {
-          // 默认围观；超时进入 nag/away
           const since = watchingSince[`watch:${node.id}:${directRunning}`];
           const elapsed = since ? now - since : 0;
           const phase = watchingPhase(elapsed);
           if (phase === "away") {
             const opts: Zone[] = ["cafe", "toilet", "treadmill"];
-            decisions.push({
-              node,
-              zone: opts[h % 3]!,
-              mood: "slacking",
-            });
+            decisions.push({ node, zone: opts[h % 3]!, mood: "slacking" });
           } else {
             decisions.push({
               node,
               zone: "behind-desk",
               anchor: directRunning,
               mood: "watching",
-              speech:
-                phase === "nag"
-                  ? { kind: "nag", idx: h % NAG_LINES_COUNT }
-                  : undefined,
+              speech: phase === "nag" ? { kind: "nag", idx: h % NAG_LINES_COUNT } : undefined,
             });
           }
         } else {
-          // 没有 running 的直接依赖：看依赖链深度
-          const unresolved = node.dependencies.some((dep) => {
-            const st = nodeStatus[dep] ?? "idle";
-            return st !== "completed" && st !== "skipped";
-          });
-          if (unresolved) {
-            // 深层等待 —— 摸鱼
-            const opts: Zone[] = ["cafe", "toilet", "treadmill"];
-            decisions.push({ node, zone: opts[h % 3]!, mood: "slacking" });
-          } else if (node.dependencies.length === 0 && status === "idle") {
-            // 完全 idle + 没依赖：在饮水机闲聊
-            decisions.push({ node, zone: "watercooler", mood: "idle" });
-          } else {
-            // 依赖已 done 但还没起跑：饮水机预备
-            decisions.push({ node, zone: "watercooler", mood: "idle" });
-          }
+          // 一切 idle/pending 且无 running 依赖 → 都在饮水机闲聊
+          decisions.push({ node, zone: "watercooler", mood: "idle" });
         }
         break;
       }
@@ -223,7 +217,9 @@ export function computePlacements(input: PlacementInput): Placement[] {
     }
   }
 
-  // 第二遍：计算坐标
+  // 计数：厕所内人按到达顺序堆叠名字
+  let toiletIdx = 0;
+
   for (const d of decisions) {
     const h = hash32(d.node.id);
     let x = 0;
@@ -235,22 +231,34 @@ export function computePlacements(input: PlacementInput): Placement[] {
       x = pos.x;
       y = pos.y;
     } else if (d.zone === "behind-desk" && d.anchor) {
-      const anchorPos = desk[d.anchor]!;
+      const anchor = desk[d.anchor]!;
       const watchers = watchersByAnchor[d.anchor] ?? [];
       const idx = watchers.indexOf(d.node.id);
       const total = watchers.length;
-      // 围在工位后方扇形散开
-      const angle = total === 1 ? 0 : (idx - (total - 1) / 2) * 0.45;
-      const radius = 64;
-      x = anchorPos.x + Math.sin(angle) * radius;
-      y = anchorPos.y - 52 - Math.abs(Math.cos(angle)) * 8;
+      // 更大角度、更大半径、奇偶错落 y 偏移以拉开气泡
+      const angle = total === 1 ? 0 : (idx - (total - 1) / 2) * 0.95;
+      const radius = 56;
+      x = anchor.x + Math.sin(angle) * radius;
+      y = anchor.y + 28 + (idx % 2) * 18 + Math.abs(Math.cos(angle)) * 4;
       facing = "right";
+    } else if (d.zone === "toilet") {
+      // 在厕所小屋内 —— 仅在屋顶上方堆叠名字
+      x = TOILET_NAME_ANCHOR.x + ((h % 24) - 12);
+      // 名字 tag 在 Person 内绘制于 y-70 处，所以 placement.y = anchorY + 70
+      // 用 toiletIdx 让多个名字向下堆叠
+      y = TOILET_NAME_ANCHOR.y + 70 + toiletIdx * 16;
+      toiletIdx++;
     } else {
       const c = ZONE_CENTERS[d.zone as Exclude<Zone, "desk" | "behind-desk">];
-      // 同区多人散开
-      const offset = ((h % 60) - 30);
-      x = c.x + offset;
-      y = c.y + ((h >> 6) % 20) - 10;
+      // 饮水机区铺得最宽（初始所有人都在这里）
+      if (d.zone === "watercooler") {
+        x = c.x + ((h % 160) - 80);
+        y = c.y + (((h >> 7) % 56) - 28);
+      } else {
+        const offset = ((h % 50) - 25);
+        x = c.x + offset;
+        y = c.y + ((h >> 6) % 14) - 7;
+      }
       if (d.zone === "exit") facing = "right";
       if (d.zone === "cafe") facing = (h & 1) ? "left" : "right";
     }
@@ -274,4 +282,5 @@ export function computePlacements(input: PlacementInput): Placement[] {
 }
 
 export { PALETTE_SIZE };
-export const DESK_Y = DESK_ROW_Y;
+export const DESK_Y = iso(0, DESK_GY).y;
+export { ISO, DESK_TOP_Z };

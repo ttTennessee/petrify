@@ -1,4 +1,4 @@
-/* 办公室视图卡通动画 */
+/* 办公室视图 —— iso diorama 动画 */
 
 @keyframes office-typing {
   0%, 100% { transform: translateY(0); }
@@ -41,8 +41,39 @@
 
 @keyframes office-bubble-pop {
   0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.08); opacity: 1; }
+  60% { transform: scale(1.06); opacity: 1; }
   100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes office-steam-rise {
+  0% { opacity: 0; transform: translateY(0); }
+  40% { opacity: 0.7; }
+  100% { opacity: 0; transform: translateY(-12px); }
+}
+
+@keyframes office-leaves-sway {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+
+@keyframes office-water-bubble {
+  0% { opacity: 0; transform: translateY(8px); }
+  40% { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-14px); }
+}
+
+/* 走路：两条腿用 steps(2) 切换两帧；前后腿反相 */
+@keyframes office-walk-leg {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-3px); }
+}
+@keyframes office-walk-arm {
+  0% { transform: translateY(-1px); }
+  100% { transform: translateY(1px); }
+}
+@keyframes office-walk-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
 }
 
 .office-person {
@@ -56,27 +87,65 @@
 .office-mood-idle { animation: office-bob 3000ms ease-in-out infinite; }
 .office-mood-celebrating { animation: office-celebrate 700ms ease-in-out infinite; }
 .office-mood-crying { animation: office-sob 800ms ease-in-out infinite; }
-.office-mood-leaving { animation: office-bob 600ms ease-in-out infinite; }
+.office-mood-leaving { animation: office-walk-bob 360ms ease-in-out infinite; }
 .office-mood-compensating { animation: office-typing 280ms infinite; }
 
-.office-treadmill-running {
-  animation: office-treadmill-run 280ms ease-in-out infinite;
+/* 走路腿（leaving 才动） */
+.office-mood-leaving .office-walk-leg-l {
+  animation: office-walk-leg 360ms steps(2) infinite;
+  transform-origin: top center;
+}
+.office-mood-leaving .office-walk-leg-r {
+  animation: office-walk-leg 360ms steps(2) infinite;
+  animation-direction: reverse;
+  transform-origin: top center;
+}
+.office-mood-leaving .office-walk-arm-l {
+  animation: office-walk-arm 360ms steps(2) infinite;
+}
+.office-mood-leaving .office-walk-arm-r {
+  animation: office-walk-arm 360ms steps(2) infinite;
+  animation-direction: reverse;
 }
 
-.office-sweat-drop {
-  animation: office-sweat 1100ms ease-in infinite;
-}
+.office-treadmill-running { animation: office-treadmill-run 280ms ease-in-out infinite; }
+.office-sweat-drop { animation: office-sweat 1100ms ease-in infinite; }
+.office-zzz { animation: office-zzz-rise 2400ms ease-out infinite; }
+.office-bubble { animation: office-bubble-pop 280ms ease-out backwards; transform-origin: center bottom; }
 
-.office-zzz {
-  animation: office-zzz-rise 2400ms ease-out infinite;
-}
+.office-steam { animation: office-steam-rise 2200ms ease-out infinite; transform-origin: center bottom; }
+.office-leaves { animation: office-leaves-sway 5200ms ease-in-out infinite; transform-origin: 17px 100px; }
+.office-bubble-1 { animation: office-water-bubble 2800ms ease-out infinite; }
+.office-bubble-2 { animation: office-water-bubble 3400ms ease-out infinite; animation-delay: 700ms; }
+.office-bubble-3 { animation: office-water-bubble 3000ms ease-out infinite; animation-delay: 1500ms; }
 
-.office-bubble {
-  animation: office-bubble-pop 280ms ease-out backwards;
-}
+.dark .office-room-floor { fill: #2a2218; }
+.dark .office-room-wall { fill: #1f1a14; }
+.dark .office-room-desk { fill: #4a3a26; }
+.dark .office-room-monitor { fill: #0a0d12; }
 
-/* 暗色模式下房间稍微调暗 */
-.dark .office-room-floor { fill: #2a2f3a; }
-.dark .office-room-wall { fill: #1f232c; }
-.dark .office-room-desk { fill: #4a5568; }
-.dark .office-room-monitor { fill: #1a1d24; }
+@media (prefers-reduced-motion: reduce) {
+  .office-mood-working,
+  .office-mood-watching,
+  .office-mood-slacking,
+  .office-mood-idle,
+  .office-mood-celebrating,
+  .office-mood-crying,
+  .office-mood-leaving,
+  .office-mood-compensating,
+  .office-walk-leg-l,
+  .office-walk-leg-r,
+  .office-walk-arm-l,
+  .office-walk-arm-r,
+  .office-treadmill-running,
+  .office-sweat-drop,
+  .office-zzz,
+  .office-bubble,
+  .office-steam,
+  .office-leaves,
+  .office-bubble-1,
+  .office-bubble-2,
+  .office-bubble-3 {
+    animation: none;
+  }
+}

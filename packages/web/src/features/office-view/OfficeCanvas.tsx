@@ -5,6 +5,13 @@ import { OfficeFloor } from "./OfficeFloor";
 import { Person } from "./Person";
 import { SpeechBubble } from "./SpeechBubble";
 import { computePlacements, VIEWBOX } from "./placement";
+
+// 状态变更的延迟缓冲：非 running 的过渡都拖 0-3s 才生效
+interface DelaySchedule {
+  target: NodeStatus;
+  scheduledAt: number;
+  delay: number;
+}
 import "./style.css";
 
 interface OfficeCanvasProps {
@@ -24,31 +31,82 @@ function StatusSummary({ nodeStatus }: { nodeStatus: Record<string, NodeStatus> 
     ["completed", t("office.status_completed"), "bg-indigo-500"],
     ["failed", t("office.status_failed"), "bg-red-500"],
   ];
+  const total = Object.values(counts).reduce((s, n) => s + (n ?? 0), 0);
   return (
-    <div className="absolute right-3 top-3 flex flex-col gap-1 rounded-md border border-border bg-card/80 px-2 py-1.5 font-mono text-[10px] backdrop-blur">
-      {items.map(([k, label, color]) =>
-        counts[k] ? (
-          <div key={k} className="flex items-center gap-1.5">
-            <span className={`inline-block h-2 w-2 rounded-full ${color}`} />
-            <span className="text-muted-foreground">{label}</span>
-            <span className="ml-auto text-foreground">{counts[k]}</span>
-          </div>
-        ) : null,
-      )}
+    <div className="absolute right-4 top-4 min-w-[160px] rounded-sm border border-border bg-card/85 px-3 py-2.5 shadow-lg backdrop-blur-sm">
+      <div className="mb-2 flex items-baseline justify-between border-b border-border/60 pb-1.5">
+        <span className="font-display text-[11px] italic tracking-wide text-muted-foreground">
+          {t("office.title", { defaultValue: "Studio" })}
+        </span>
+        <span className="font-mono text-[10px] text-muted-foreground/80">
+          {total} ppl
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5 font-mono text-[10px]">
+        {items.map(([k, label, color]) =>
+          counts[k] ? (
+            <div key={k} className="flex items-center gap-2">
+              <span className={`inline-block h-2 w-2 rounded-full ${color} shadow-[0_0_0_2px_hsl(var(--card))]`} />
+              <span className="text-muted-foreground">{label}</span>
+              <span className="ml-auto tabular-nums text-foreground">{counts[k]}</span>
+            </div>
+          ) : null,
+        )}
+      </div>
     </div>
   );
 }
 
 export function OfficeCanvas({ graph, nodeStatus }: OfficeCanvasProps) {
   const { t } = useTranslation("workflow");
-  // 用 tick 强制每秒 re-compute placement（催促/暂离/庆祝有时序）
+  // 250ms tick：让 0-3s 随机延时的过渡更顺滑
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, []);
 
-  // 记录每个 node 进入某状态的起始时间
+  // 状态延时缓冲层：real → effective（running 立即；其他 0-3s 随机延时）
+  const effectiveStatusRef = useRef<Record<string, NodeStatus>>({});
+  const scheduledRef = useRef<Record<string, DelaySchedule>>({});
+
+  const effectiveStatus = useMemo(() => {
+    const eff = { ...effectiveStatusRef.current };
+    const sched = scheduledRef.current;
+    for (const node of graph.nodes) {
+      const real = nodeStatus[node.id] ?? "idle";
+      if (!(node.id in eff)) {
+        // 首次见到节点：直接对齐（保证 unmount/remount 不会卡）
+        eff[node.id] = real;
+        continue;
+      }
+      if (eff[node.id] === real) {
+        if (sched[node.id]) delete sched[node.id];
+        continue;
+      }
+      if (real === "running") {
+        // 干活的人没空延时
+        eff[node.id] = real;
+        delete sched[node.id];
+        continue;
+      }
+      const cur = sched[node.id];
+      if (!cur || cur.target !== real) {
+        sched[node.id] = {
+          target: real,
+          scheduledAt: now,
+          delay: Math.floor(Math.random() * 3000),
+        };
+      } else if (now - cur.scheduledAt >= cur.delay) {
+        eff[node.id] = real;
+        delete sched[node.id];
+      }
+    }
+    effectiveStatusRef.current = eff;
+    return eff;
+  }, [graph.nodes, nodeStatus, now]);
+
+  // 记录每个 node 进入某状态的起始时间（用 effectiveStatus）
   const watchingSinceRef = useRef<Record<string, number>>({});
   const prevStatusRef = useRef<Record<string, NodeStatus>>({});
 
@@ -57,12 +115,11 @@ export function OfficeCanvas({ graph, nodeStatus }: OfficeCanvasProps) {
     const map = { ...watchingSinceRef.current };
     const prev = prevStatusRef.current;
     for (const node of graph.nodes) {
-      const status = nodeStatus[node.id] ?? "idle";
-      const wasStatus = prev[node.id];
+      const status = effectiveStatus[node.id] ?? "idle";
 
       // pending → 围观计时（key = watch:{node}:{runningDep}）
       if (status === "pending" || status === "idle") {
-        const runningDep = node.dependencies.find((d) => nodeStatus[d] === "running");
+        const runningDep = node.dependencies.find((d) => effectiveStatus[d] === "running");
         if (runningDep) {
           const key = `watch:${node.id}:${runningDep}`;
           if (!(key in map)) map[key] = now;
@@ -95,25 +152,31 @@ export function OfficeCanvas({ graph, nodeStatus }: OfficeCanvasProps) {
     watchingSinceRef.current = map;
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [graph.nodes, nodeStatus, now]);
+  }, [graph.nodes, effectiveStatus, now]);
 
   const placements = useMemo(
-    () => computePlacements({ graph, nodeStatus, watchingSince, now }),
-    [graph, nodeStatus, watchingSince, now],
+    () => computePlacements({ graph, nodeStatus: effectiveStatus, watchingSince, now }),
+    [graph, effectiveStatus, watchingSince, now],
+  );
+
+  // z-order：屏幕 y 越大（越靠前）越后画 —— 让前景人物压住背景人物
+  const sortedPlacements = useMemo(
+    () => [...placements].sort((a, b) => a.y - b.y),
+    [placements],
   );
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-muted/30">
+    <div className="relative h-full w-full overflow-hidden bg-[#f5ead2]">
       <svg
         viewBox={`0 0 ${VIEWBOX.w} ${VIEWBOX.h}`}
         preserveAspectRatio="xMidYMid meet"
         className="h-full w-full"
       >
         <OfficeFloor nodes={graph.nodes} />
-        {placements.map((p) => (
+        {sortedPlacements.map((p) => (
           <Person key={p.nodeId} placement={p} />
         ))}
-        {placements.map((p) => {
+        {sortedPlacements.map((p) => {
           if (!p.speech) return null;
           const arrKey =
             p.speech.kind === "nag"
@@ -129,8 +192,9 @@ export function OfficeCanvas({ graph, nodeStatus }: OfficeCanvasProps) {
         })}
       </svg>
       <StatusSummary nodeStatus={nodeStatus} />
-      <div className="absolute bottom-2 left-3 font-mono text-[10px] text-muted-foreground">
-        {t("office.footer", { count: graph.nodes.length })}
+      <div className="absolute bottom-3 left-4 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+        <span className="inline-block h-px w-6 bg-muted-foreground/40" />
+        <span className="tracking-wider uppercase">{t("office.footer", { count: graph.nodes.length })}</span>
       </div>
     </div>
   );
