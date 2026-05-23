@@ -33,7 +33,7 @@ export function MachineBack({ status, iconUrl, label }: MachineBackProps) {
   const powerLed = status === "running" || status === "completed" ? GREEN : status === "failed" ? "#c25450" : "#3a2820";
   const labelText = label ? label.toUpperCase().slice(0, 12) : "";
   return (
-    <svg className="factory-machine" viewBox="0 0 120 120" width="120" height="120">
+    <svg className="office-machine" viewBox="0 0 120 120" width="120" height="120">
       <ellipse cx="60" cy="112" rx="34" ry="3.5" fill={INK} opacity="0.18" />
       {/* wheels */}
       {(["50", "70"] as const).map((cx) => {

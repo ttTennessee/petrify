@@ -16,5 +16,6 @@ coverage/
 .claude/
 .github/
 outputs/
+.codegraph/
 prd.md
 .mcp.json

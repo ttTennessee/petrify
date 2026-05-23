@@ -173,7 +173,7 @@ function Chassis({ status, label }: { status: NodeStatus; label?: string }) {
 
 export function MachineFront({ status, label }: MachineFrontProps) {
   return (
-    <svg className="factory-machine" viewBox="0 0 120 120" width="120" height="120">
+    <svg className="office-machine" viewBox="0 0 120 120" width="120" height="120">
       {/* running steam */}
       {status === "running" && (
         <>

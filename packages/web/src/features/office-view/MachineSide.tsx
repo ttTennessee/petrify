@@ -32,7 +32,7 @@ function Antenna({ status }: { status: NodeStatus }) {
 export function MachineSide({ status, facing = "right" }: MachineSideProps) {
   const flip = facing === "left" ? "scale(-1, 1) translate(-120, 0)" : undefined;
   return (
-    <svg className="factory-machine" viewBox="0 0 120 120" width="120" height="120">
+    <svg className="office-machine" viewBox="0 0 120 120" width="120" height="120">
       <g transform={flip}>
         <ellipse cx="60" cy="112" rx="20" ry="3" fill={INK} opacity="0.18" />
         {/* single centered wheel (far wheel hidden behind body) */}
