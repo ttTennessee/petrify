@@ -52,15 +52,15 @@ const STATIC_ROBOTS: RobotConfig[] = [
   { id: "t2", x: 890, y: 300, facing: "north", status: "idle", label: "watcher", iconText: "GPT", size: 80 },
   { id: "t3", x: 1010, y: 300, facing: "north", status: "idle", label: "watcher", iconText: "MCK", size: 80 },
   // 北排工位 (脚下 y=440, 桌北侧, 由 NorthDeskOverlay 遮住机器人下 ~1/3)
-  { id: "n1", x: 200, y: 440, facing: "south", status: "running", label: "dev-A", size: 75 },
-  { id: "n2", x: 440, y: 440, facing: "south", status: "running", label: "dev-B", size: 75 },
-  { id: "n3", x: 680, y: 440, facing: "south", status: "running", label: "dev-C", size: 75 },
-  { id: "n4", x: 920, y: 440, facing: "south", status: "running", label: "dev-D", size: 75 },
+  { id: "n1", x: 280, y: 440, facing: "south", status: "running", label: "dev-A", size: 75 },
+  { id: "n2", x: 520, y: 440, facing: "south", status: "running", label: "dev-B", size: 75 },
+  { id: "n3", x: 760, y: 440, facing: "south", status: "running", label: "dev-C", size: 75 },
+  { id: "n4", x: 1000, y: 440, facing: "south", status: "running", label: "dev-D", size: 75 },
   // 南排工位 (脚下 y=640 坐在椅子上, 椅 cy=650, 桌南侧, 4 个) — face north 露出后背
-  { id: "s1", x: 200, y: 650, facing: "north", status: "running", label: "dev-E", iconText: "CLD", size: 75 },
-  { id: "s2", x: 440, y: 650, facing: "north", status: "running", label: "dev-F", iconText: "GPT", size: 75 },
-  { id: "s3", x: 680, y: 650, facing: "north", status: "running", label: "dev-G", iconText: "ACP", size: 75 },
-  { id: "s4", x: 920, y: 650, facing: "north", status: "running", label: "dev-H", iconText: "MCK", size: 75 },
+  { id: "s1", x: 280, y: 650, facing: "north", status: "running", label: "dev-E", iconText: "CLD", size: 75 },
+  { id: "s2", x: 520, y: 650, facing: "north", status: "running", label: "dev-F", iconText: "GPT", size: 75 },
+  { id: "s3", x: 760, y: 650, facing: "north", status: "running", label: "dev-G", iconText: "ACP", size: 75 },
+  { id: "s4", x: 1000, y: 650, facing: "north", status: "running", label: "dev-H", iconText: "MCK", size: 75 },
 ];
 
 // 走动演示机器人沿矩形过道循环:
@@ -128,14 +128,14 @@ const ZONE_SLOTS = {
   // 工位 (running / failed / compensating): 北南交替, 朝中央显示器, 8 个
   // 北排 y=440 (机器人下 1/4 被桌面遮); 南排 y=640 (坐在椅子上)
   desk: [
-    { x: 200, y: 440, facing: "south" as Facing },
-    { x: 200, y: 650, facing: "north" as Facing },
-    { x: 440, y: 440, facing: "south" as Facing },
-    { x: 440, y: 650, facing: "north" as Facing },
-    { x: 680, y: 440, facing: "south" as Facing },
-    { x: 680, y: 650, facing: "north" as Facing },
-    { x: 920, y: 440, facing: "south" as Facing },
-    { x: 920, y: 650, facing: "north" as Facing },
+    { x: 280, y: 440, facing: "south" as Facing },
+    { x: 280, y: 650, facing: "north" as Facing },
+    { x: 520, y: 440, facing: "south" as Facing },
+    { x: 520, y: 650, facing: "north" as Facing },
+    { x: 760, y: 440, facing: "south" as Facing },
+    { x: 760, y: 650, facing: "north" as Facing },
+    { x: 1000, y: 440, facing: "south" as Facing },
+    { x: 1000, y: 650, facing: "north" as Facing },
   ],
 };
 

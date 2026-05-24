@@ -1003,26 +1003,26 @@ export function OfficeFloor() {
 
       {/* 工位 北排: 椅子在这里画 (会被 NorthDeskOverlay 桌面遮上半, 模拟椅推进桌底);
           北排桌 DeskN 已挪到 NorthDeskOverlay, 在机器人之后渲染以遮住机器人下 1/3 */}
-      <Chair cx={200} cy={430} />
-      <Chair cx={440} cy={430} />
-      <Chair cx={680} cy={430} />
-      <Chair cx={920} cy={430} />
+      <Chair cx={280} cy={430} />
+      <Chair cx={520} cy={430} />
+      <Chair cx={760} cy={430} />
+      <Chair cx={1000} cy={430} />
 
       {/* 工位 南排: 桌在前, 椅在后 (椅子从镜头侧"坐进"桌底, 桌前画椅压住桌沿) */}
-      <DeskS x={130} />
-      <DeskS x={370} />
-      <DeskS x={610} />
-      <DeskS x={850} />
-      <Chair cx={200} cy={650} />
-      <Chair cx={440} cy={650} />
-      <Chair cx={680} cy={650} />
-      <Chair cx={920} cy={650} />
+      <DeskS x={210} />
+      <DeskS x={450} />
+      <DeskS x={690} />
+      <DeskS x={930} />
+      <Chair cx={280} cy={650} />
+      <Chair cx={520} cy={650} />
+      <Chair cx={760} cy={650} />
+      <Chair cx={1000} cy={650} />
 
       {/* 工位区点缀盆栽 (桌间空隙) */}
-      <Plant cx={310} cy={500} size={0.6} />
-      <Plant cx={550} cy={500} size={0.6} />
-      <Plant cx={790} cy={500} size={0.6} />
-      <Plant cx={1030} cy={500} size={0.6} />
+      <Plant cx={390} cy={500} size={0.6} />
+      <Plant cx={630} cy={500} size={0.6} />
+      <Plant cx={870} cy={500} size={0.6} />
+      <Plant cx={1110} cy={500} size={0.6} />
     </>
   );
 }
@@ -1031,10 +1031,10 @@ export function OfficeFloor() {
 export function NorthDeskOverlay() {
   return (
     <>
-      <DeskN x={130} />
-      <DeskN x={370} />
-      <DeskN x={610} />
-      <DeskN x={850} />
+      <DeskN x={210} />
+      <DeskN x={450} />
+      <DeskN x={690} />
+      <DeskN x={930} />
     </>
   );
 }
