@@ -16,6 +16,7 @@ import {
 } from "../api/client";
 import { useWorkflowStore } from "../store/workflow";
 import { DagCanvas } from "../features/workflow-editor/DagCanvas";
+import { OfficeCanvas } from "../features/office-view/OfficeCanvas";
 import { RunActions, RunPausedBanner, useRunPanelData } from "../features/workflow-run/RunPanel";
 import { EventStream } from "../features/workflow-run/EventStream";
 import { TimelineScrubber } from "../features/workflow-run/TimelineScrubber";
@@ -46,6 +47,7 @@ export default function WorkflowEditor() {
   } = useWorkflowStore();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
+  const [canvasView, setCanvasView] = useState<"dag" | "office">("dag");
 
   // Reset store state synchronously when the workflow id changes or when the
   // editor mounts on a new workflow id. The store is a zustand singleton
@@ -284,19 +286,47 @@ export default function WorkflowEditor() {
           />
         )}
       </div>
-      <div className="min-h-0 min-w-0 border-r border-border">
-        <DagCanvas
-          graph={data.graph}
-          nodeStatus={nodeStatus}
-          onSelectNode={(n) => setSelectedId(n?.id ?? null)}
-          selectedNodeId={selected?.id ?? null}
-          issueByRef={issueByRef}
-          breakpointNodeIds={breakpointNodeIds}
-          pausedNodeIds={pausedNodeIds}
-          onRunNode={handleRunNode}
-          runnableNodeIds={runnableNodeIds}
-          runningNodeId={runningNodeId}
-        />
+      <div className="relative min-h-0 min-w-0 border-r border-border">
+        <div className="absolute left-3 top-3 z-10 flex overflow-hidden rounded-md border border-border bg-card/80 font-mono text-[10px] backdrop-blur">
+          <button
+            type="button"
+            onClick={() => setCanvasView("dag")}
+            className={`px-2.5 py-1 transition-colors ${
+              canvasView === "dag"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("view_dag")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCanvasView("office")}
+            className={`px-2.5 py-1 transition-colors ${
+              canvasView === "office"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t("view_office")}
+          </button>
+        </div>
+        {canvasView === "dag" ? (
+          <DagCanvas
+            graph={data.graph}
+            nodeStatus={nodeStatus}
+            onSelectNode={(n) => setSelectedId(n?.id ?? null)}
+            selectedNodeId={selected?.id ?? null}
+            issueByRef={issueByRef}
+            breakpointNodeIds={breakpointNodeIds}
+            pausedNodeIds={pausedNodeIds}
+            onRunNode={handleRunNode}
+            runnableNodeIds={runnableNodeIds}
+            runningNodeId={runningNodeId}
+          />
+        ) : (
+          <OfficeCanvas graph={data.graph} nodeStatus={nodeStatus} />
+        )}
       </div>
       <div className="min-h-0">
         {selected ? (

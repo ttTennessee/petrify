@@ -1,0 +1,18 @@
+# Force LF line endings for all text files (regardless of contributor's
+# core.autocrlf setting). Binary files are detected automatically.
+* text=auto eol=lf
+
+# Explicit binary types (skip text handling entirely)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

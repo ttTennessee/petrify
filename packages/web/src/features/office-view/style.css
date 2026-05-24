@@ -1,0 +1,161 @@
+/* Office machine views — shared animations & color tokens */
+
+.office-machine {
+  overflow: visible;
+  --m-bg: #f5ead2;
+  --m-ink: #241c14;
+  --m-ink-soft: #5a4a36;
+  --m-paper: #fbf5e4;
+  --m-body: #5b7a8d;
+  --m-body-dark: #3f5765;
+  --m-body-light: #7a99ad;
+  --m-brass: #c89968;
+  --m-brass-dark: #8a6a40;
+  --m-green: #5fae6a;
+  --m-red: #c25450;
+  --m-amber: #e0a040;
+}
+
+/* === keyframes === */
+@keyframes m-scan {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(20px); }
+}
+@keyframes m-blink-green {
+  0%, 50% { fill: #5fae6a; }
+  51%, 100% { fill: #2a4a30; }
+}
+@keyframes m-blink-red {
+  0%, 60% { fill: #c25450; }
+  61%, 100% { fill: #4a2020; }
+}
+@keyframes m-steam {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  30% { opacity: 0.55; }
+  100% { opacity: 0; transform: translate(2px, -16px) scale(1.4); }
+}
+@keyframes m-spark {
+  0% { opacity: 0; transform: translate(0, 0); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, 6px), var(--dy, -10px)); }
+}
+@keyframes m-dial-turn {
+  0%, 100% { transform: rotate(-25deg); }
+  50% { transform: rotate(25deg); }
+}
+@keyframes m-pulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.4; }
+}
+@keyframes m-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.8px, 0.4px); }
+  75% { transform: translate(0.8px, -0.4px); }
+}
+@keyframes m-wheel-spin { to { transform: rotate(360deg); } }
+
+/* === classes === */
+.m-scan-bars { animation: m-scan 800ms steps(8) infinite; }
+.m-led-running { animation: m-blink-green 700ms infinite; }
+.m-led-failed { animation: m-blink-red 500ms infinite; }
+.m-steam-puff { animation: m-steam 1800ms ease-out infinite; transform-origin: center; }
+.m-steam-puff.d1 { animation-delay: 0ms; }
+.m-steam-puff.d2 { animation-delay: 600ms; }
+.m-steam-puff.d3 { animation-delay: 1200ms; }
+.m-spark { animation: m-spark 600ms ease-out infinite; }
+.m-spark.s1 { --dx: -6px; --dy: -8px; animation-delay: 0ms; }
+.m-spark.s2 { --dx: 7px; --dy: -9px; animation-delay: 200ms; }
+.m-spark.s3 { --dx: 0px; --dy: -12px; animation-delay: 400ms; }
+.m-dial-running { animation: m-dial-turn 1400ms ease-in-out infinite; transform-origin: 80px 88px; }
+.m-failed-body { animation: m-shake 280ms ease-in-out infinite; transform-origin: center; }
+.m-blocked-dim { opacity: 0.42; }
+.m-blocked-overlay { animation: m-pulse 1800ms ease-in-out infinite; }
+.m-wheel-spin { transform-box: fill-box; transform-origin: center; animation: m-wheel-spin 600ms linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .m-scan-bars,
+  .m-led-running,
+  .m-led-failed,
+  .m-steam-puff,
+  .m-spark,
+  .m-dial-running,
+  .m-failed-body,
+  .m-blocked-overlay,
+  .m-wheel-spin { animation: none; }
+}
+
+/* === OfficeFloor 场景动画 === */
+@keyframes of-dock-blink {
+  0%, 50% { fill: #5fae6a; }
+  51%, 100% { fill: #2a4a30; }
+}
+@keyframes of-screen-flicker {
+  0%, 90% { opacity: 0.7; }
+  92% { opacity: 0.3; }
+  100% { opacity: 0.7; }
+}
+@keyframes of-path-flow {
+  to { stroke-dashoffset: -28; }
+}
+
+@keyframes of-lamp-breath {
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.32; }
+}
+@keyframes of-lamp-breath-inner {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.62; }
+}
+@keyframes of-sun-breath {
+  0%, 100% { opacity: 0.32; }
+  50% { opacity: 0.45; }
+}
+
+.of-dock-led { animation: of-dock-blink 1400ms infinite; }
+.of-monitor { animation: of-screen-flicker 3200ms ease-in-out infinite; }
+.of-path-dash { animation: of-path-flow 2400ms linear infinite; }
+.of-lamp-glow {
+  animation: of-lamp-breath 3600ms ease-in-out infinite;
+  transform-origin: center;
+}
+.of-lamp-glow-inner { animation-name: of-lamp-breath-inner; }
+.of-sun-pulse { animation: of-sun-breath 6000ms ease-in-out infinite; }
+
+/* === 状态气泡动画 === */
+@keyframes of-bubble-spin { to { transform: rotate(360deg); } }
+@keyframes of-bubble-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 0.5px); }
+  75% { transform: translate(1px, -0.5px); }
+}
+@keyframes of-bubble-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+.of-bubble-spin {
+  animation: of-bubble-spin 2400ms linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.of-bubble-shake {
+  animation: of-bubble-shake 320ms ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.of-bubble-float {
+  animation: of-bubble-float 2200ms ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .of-dock-led,
+  .of-monitor,
+  .of-path-dash,
+  .of-lamp-glow,
+  .of-sun-pulse,
+  .of-bubble-spin,
+  .of-bubble-shake,
+  .of-bubble-float { animation: none; }
+}
