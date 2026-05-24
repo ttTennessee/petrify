@@ -39,6 +39,8 @@ export interface BehaviorContext {
   workingDeskSlotByNodeId: Map<string, number>;
   /** completed 节点 id 集合 (这些占着沙发) */
   resting: Set<string>;
+  /** resting 节点 → 它已占用的 sofa slot index. 没占到沙发 (overflow 到充电桩) 的不在 map 里. */
+  restingSofaSlotByNodeId: Map<string, number>;
   /** 空闲节点 id 列表 (其余) */
   idleIds: string[];
   /** node id → node (for dependencies lookup) */
@@ -54,6 +56,8 @@ const SWITCH_ACTIVE_MIN_MS = 5000;
 const SWITCH_ACTIVE_MAX_MS = 12000;
 const SWITCH_IDLE_MIN_MS = 20000;
 const SWITCH_IDLE_MAX_MS = 45000;
+// chatting 选中后, 至少持续 12 秒 — 保证 ChatBubble 能完整跑几轮 q/a (CHAT_BEAT_MS=2400ms)
+const CHAT_MIN_MS = 12000;
 
 function rand(seed: number): number {
   // simple LCG for deterministic-ish randomness
@@ -258,11 +262,19 @@ function pickBehavior(
           if (otherId === nodeId) continue;
           if (isAnchorTaken(otherId)) continue;
           if (otherBeh.kind === "watching" || otherBeh.kind === "slacking") {
-            add({
-              kind: "chatting",
-              anchorId: otherId,
-              nextSwitchAt: nextSwitchTime(ctx.now, seed, active),
-            });
+            // chatting 至少持续 CHAT_MIN_MS, 保证能完整聊几句而不会刚靠过去就走
+            const chatSwitchAt = Math.max(
+              nextSwitchTime(ctx.now, seed, active),
+              ctx.now + CHAT_MIN_MS,
+            );
+            add(
+              {
+                kind: "chatting",
+                anchorId: otherId,
+                nextSwitchAt: chatSwitchAt,
+              },
+              4, // 权重提高: chatting 比普通行为更容易被选中, 让办公室有交流氛围
+            );
             break;
           }
         }
@@ -323,6 +335,10 @@ export function computeBehaviors(
   // 把 working 节点占的 desk slot 先标记, 避免空闲机器人坐到 working 同事身上
   for (const [workingId, slot] of ctx.workingDeskSlotByNodeId) {
     usage.deskSlots.set(slot, workingId);
+  }
+  // 把 resting 节点 (completed) 占的 sofa slot 也预占, 避免 idle 机器人去看电视时和它们重叠
+  for (const [restingId, slot] of ctx.restingSofaSlotByNodeId) {
+    usage.sofaSlots.set(slot, restingId);
   }
 
   // 1) 先把"必须保留"的行为放上去: 锚点合法 + 没到切换时间 + 当前帧仍合法

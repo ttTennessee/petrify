@@ -223,6 +223,17 @@ function mapGraphToRobots(
     }
   }
 
+  // --- 预先把 resting 节点映射到 sofa slot (与下方渲染顺序保持一致), 传给 behavior 引擎避免 watching 撞位 ---
+  const restingSofaSlotByNodeId = new Map<string, number>();
+  {
+    let i = 0;
+    for (const id of resting) {
+      if (i >= ZONE_SLOTS.sofa.length) break;
+      restingSofaSlotByNodeId.set(id, i);
+      i++;
+    }
+  }
+
   // --- 计算空闲节点的行为 ---
   state.behaviors = computeBehaviors(state.behaviors, {
     now,
@@ -231,6 +242,7 @@ function mapGraphToRobots(
     working,
     workingDeskSlotByNodeId: state.workingSlot,
     resting,
+    restingSofaSlotByNodeId,
     idleIds,
     nodeById,
     capacity: {

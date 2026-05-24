@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { NodeStatus } from "@petrify/shared";
+import { pickChatLine, pickLine } from "./chatLines";
 
 type Behavior =
   | "watching"
@@ -8,122 +10,6 @@ type Behavior =
   | "charging"
   | "wandering"
   | "chatting";
-
-/** 一条台词: 可以是纯文本, 或 "划掉前缀 + 真实文本" 的二段结构 */
-type Line = string | { strike: string; text: string };
-
-const LINES: Record<string, Line[]> = {
-  running: [
-    "// TODO: fix later",
-    "looks good",
-    "almost there",
-    "compiling...",
-    "one more test",
-    "ship it 🚀",
-  ],
-  blocked: [
-    "还没好吗?",
-    "any update?",
-    "ETA?",
-    "...",
-  ],
-  completed: [
-    "Hahaha",
-    "LOL",
-    "no way 😂",
-    "刷会儿剧",
-    "nice meme",
-    "coffee?",
-  ],
-  failed: [
-    "WTF",
-    "rollback?",
-    "ugh",
-  ],
-  compensating: [
-    "undoing...",
-    "rollback in progress",
-    "saga time",
-  ],
-  idle: [
-    "Zzz",
-    "充电中",
-    "ready",
-  ],
-  pending: [
-    "ready",
-    "🪫 charging",
-  ],
-  skipped: [
-    "skipped",
-  ],
-};
-
-/** 摸鱼台词: 坐在工位上但其实没在 running 的状态用这一组 */
-const SLACKING_LINES: Line[] = [
-  { strike: "pornhub", text: "github" },
-  { strike: "twitter", text: "stackoverflow" },
-  { strike: "reddit", text: "documentation" },
-  { strike: "youtube", text: "tech talks" },
-  { strike: "tiktok", text: "code review" },
-  { strike: "睡觉", text: "深度思考" },
-  { strike: "摸鱼", text: "ideating" },
-  "looks busy 😎",
-  "// pretend to work",
-  "假装在编译",
-  "AFK 5min",
-];
-
-/** 看屏幕 (peeking): 站在前置同事身后偷看的台词 */
-const PEEKING_LINES: Line[] = [
-  "wait, that's it?",
-  "这逻辑有问题吧",
-  "// why",
-  "🤔",
-  "PR me 🙏",
-  "差不多就行了",
-  "再优化下?",
-];
-
-/** 聊天 (chatting): 寒暄/吐槽/产品经理梗 */
-const CHATTING_LINES: Line[] = [
-  "周末加班?",
-  "PM 又改需求了",
-  "deadline 是明天",
-  "下班吃啥",
-  "this sprint is brutal",
-  "any plans?",
-  "did u see the standup",
-  "🍕?",
-  "新需求来了",
-];
-
-/** wandering: 在过道随便走 */
-const WANDERING_LINES: Line[] = [
-  "stretching legs",
-  "🚶 walk break",
-  "去倒杯水",
-  "找点灵感",
-  "...",
-];
-
-function pickLine(status: NodeStatus, behavior: Behavior | undefined, idx: number): Line {
-  if (behavior === "slacking") return SLACKING_LINES[idx % SLACKING_LINES.length]!;
-  if (behavior === "peeking") return PEEKING_LINES[idx % PEEKING_LINES.length]!;
-  if (behavior === "chatting") return CHATTING_LINES[idx % CHATTING_LINES.length]!;
-  if (behavior === "wandering") return WANDERING_LINES[idx % WANDERING_LINES.length]!;
-  if (behavior === "watching") {
-    const pool = LINES.completed!;
-    return pool[idx % pool.length]!;
-  }
-  if (behavior === "charging") {
-    const pool = LINES.idle!;
-    return pool[idx % pool.length]!;
-  }
-  // 没有 behavior (working/resting) → 按 status
-  const pool = LINES[status] ?? LINES.idle!;
-  return pool[idx % pool.length]!;
-}
 
 // 简单的字符串哈希, 给每个机器人独立的初始相位 / 间隔
 function hash(s: string): number {
@@ -157,6 +43,8 @@ const CHAT_BEAT_MS = 2400; // chatting 一问一答的拍长
  * - chatting: 接 partnerId, 用两人 id 共同种子驱动节拍, 自己在偶拍/奇拍发言, 形成一问一答
  */
 export function ChatBubble({ id, x, y, size, status, behavior, partnerId, visible }: ChatBubbleProps) {
+  const { i18n } = useTranslation();
+  const lang = i18n.language;
   const seed = hash(id);
   const intervalMs = 4000 + (seed % 4000);
   const initialDelayMs = seed % 3000;
@@ -200,18 +88,21 @@ export function ChatBubble({ id, x, y, size, status, behavior, partnerId, visibl
 
   if (!visible) return null;
 
-  // chatting: 同一对 (id, partnerId) 共用节拍, 自己在偶数拍说话, 对方在奇数拍, 形成轮流
+  // chatting: 同一对 (id, partnerId) 共用节拍, 每拍轮换发言者, 一问一答
   let chatShown = shown;
+  let chatBeat = 0;
   if (isChat && partnerId) {
     const pairSeed = hash([id, partnerId].sort().join("|"));
-    const beat = Math.floor((performance.now() + pairSeed) / CHAT_BEAT_MS);
-    // 字典序在前的那个先说 (偶拍说话, 奇拍听)
+    chatBeat = Math.floor((performance.now() + pairSeed) / CHAT_BEAT_MS);
+    // 字典序在前的那个在偶拍说 (q), 在奇拍听; 反之相反
     const sortedFirst = id < partnerId;
-    chatShown = sortedFirst ? beat % 2 === 0 : beat % 2 === 1;
+    chatShown = sortedFirst ? chatBeat % 2 === 0 : chatBeat % 2 === 1;
   }
   if (!chatShown) return null;
 
-  const line = pickLine(status, behavior, lineIdx);
+  const line = isChat && partnerId
+    ? pickChatLine(lang, id, partnerId, chatBeat)
+    : pickLine(lang, status, behavior, lineIdx + seed);
   const isStruck = typeof line !== "string";
   const strikeText = isStruck ? (line as { strike: string }).strike : "";
   const mainText = isStruck ? (line as { text: string }).text : (line as string);
