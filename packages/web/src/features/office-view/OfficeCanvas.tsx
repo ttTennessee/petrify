@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NodeStatus, WorkflowGraph } from "@petrify/shared";
+import { useAdapterCatalog, useAdapters } from "../../api/adapters";
 import {
   CouchBack,
   NorthDeskOverlay,
@@ -140,12 +141,14 @@ type ZoneEntry = {
   id: string;
   label: string;
   status: NodeStatus;
+  iconUrl?: string;
   iconText?: string;
 };
 
 function mapGraphToRobots(
   graph: WorkflowGraph,
   nodeStatus: Record<string, NodeStatus>,
+  iconByAdapterName: Map<string, string>,
 ): RobotConfig[] {
   const atDesk: ZoneEntry[] = [];
   const atSofa: ZoneEntry[] = [];
@@ -154,8 +157,10 @@ function mapGraphToRobots(
   for (const node of graph.nodes) {
     const status = nodeStatus[node.id] ?? node.status ?? "idle";
     const label = node.title || node.ref || node.id;
-    const iconText = adapterIconText(node.adapter?.name);
-    const entry: ZoneEntry = { id: node.id, label, status, iconText };
+    const adapterName = node.adapter?.name;
+    const iconUrl = adapterName ? iconByAdapterName.get(adapterName) : undefined;
+    const iconText = iconUrl ? undefined : adapterIconText(adapterName);
+    const entry: ZoneEntry = { id: node.id, label, status, iconUrl, iconText };
     if (status === "completed") atSofa.push(entry);
     else if (
       status === "running" ||
@@ -170,12 +175,12 @@ function mapGraphToRobots(
   for (let i = 0; i < atDock.length && i < ZONE_SLOTS.charge.length; i++) {
     const slot = ZONE_SLOTS.charge[i]!;
     const e = atDock[i]!;
-    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "south", status: e.status, label: e.label, iconText: e.iconText, size: 70 });
+    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "south", status: e.status, label: e.label, iconUrl: e.iconUrl, iconText: e.iconText, size: 70 });
   }
   for (let i = 0; i < atSofa.length && i < ZONE_SLOTS.sofa.length; i++) {
     const slot = ZONE_SLOTS.sofa[i]!;
     const e = atSofa[i]!;
-    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "north", status: e.status, label: e.label, iconText: e.iconText, size: 80 });
+    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "north", status: e.status, label: e.label, iconUrl: e.iconUrl, iconText: e.iconText, size: 80 });
   }
   for (let i = 0; i < atDesk.length && i < ZONE_SLOTS.desk.length; i++) {
     const slot = ZONE_SLOTS.desk[i]!;
@@ -187,6 +192,7 @@ function mapGraphToRobots(
       facing: slot.facing,
       status: e.status,
       label: e.label,
+      iconUrl: e.iconUrl,
       iconText: e.iconText,
       size: 75,
     });
@@ -206,11 +212,24 @@ export interface OfficeCanvasProps {
 }
 
 export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCanvasProps) {
+  const { data: catalog } = useAdapterCatalog();
+  const { data: instances } = useAdapters();
+  const iconByAdapterName = useMemo(() => {
+    const catalogIcon = new Map<string, string>();
+    for (const c of catalog ?? []) if (c.icon) catalogIcon.set(c.id, c.icon);
+    const m = new Map<string, string>();
+    for (const inst of instances ?? []) {
+      const icon = inst.catalog_id ? catalogIcon.get(inst.catalog_id) : undefined;
+      if (icon) m.set(inst.name, icon);
+    }
+    return m;
+  }, [catalog, instances]);
+
   const finalRobots = useMemo<RobotConfig[]>(() => {
     if (robots) return robots;
-    if (graph && nodeStatus) return mapGraphToRobots(graph, nodeStatus);
+    if (graph && nodeStatus) return mapGraphToRobots(graph, nodeStatus, iconByAdapterName);
     return STATIC_ROBOTS;
-  }, [robots, graph, nodeStatus]);
+  }, [robots, graph, nodeStatus, iconByAdapterName]);
 
   const walkerEnabled = showWalker ?? !graph; // 接入 graph 时默认隐藏 walker
 
