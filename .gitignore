@@ -14,6 +14,7 @@ packages/server/data/
 .DS_Store
 coverage/
 .claude/
+.cursor/
 .github/
 outputs/
 .codegraph/
