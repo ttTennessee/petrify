@@ -19,22 +19,25 @@ interface RobotConfig extends Omit<RobotProps, "x" | "y" | "facing"> {
  *  - 南排 3 个工位机器人 (face north, 朝中央显示器)
  */
 const STATIC_ROBOTS: RobotConfig[] = [
-  // 充电
-  { id: "c1", x: 186, y: 296, facing: "south", status: "completed", label: "claude-1" },
-  { id: "c2", x: 326, y: 296, facing: "south", status: "completed", label: "claude-2" },
-  { id: "c3", x: 466, y: 296, facing: "south", status: "completed", label: "claude-3" },
-  // 看电视 (脚下大约在沙发座面 y=300, 靠背 y=258-324 会盖住下半身)
-  { id: "t1", x: 770, y: 300, facing: "north", status: "idle", label: "watcher" },
-  { id: "t2", x: 890, y: 300, facing: "north", status: "idle", label: "watcher" },
-  { id: "t3", x: 1010, y: 300, facing: "north", status: "idle", label: "watcher" },
-  // 北排工位 (脚下 y=420, 桌北侧)
-  { id: "n1", x: 240, y: 420, facing: "south", status: "running", label: "dev-A" },
-  { id: "n2", x: 540, y: 420, facing: "south", status: "running", label: "dev-B" },
-  { id: "n3", x: 840, y: 420, facing: "south", status: "running", label: "dev-C" },
-  // 南排工位 (脚下 y=700, 桌南侧)
-  { id: "s1", x: 240, y: 700, facing: "north", status: "running", label: "dev-D" },
-  { id: "s2", x: 540, y: 700, facing: "north", status: "running", label: "dev-E" },
-  { id: "s3", x: 840, y: 700, facing: "north", status: "running", label: "dev-F" },
+  // 充电 (4 个充电桩, x=170/240/310/380, 桩前接地)
+  { id: "c1", x: 170, y: 196, facing: "south", status: "completed", label: "claude-1", size: 70 },
+  { id: "c2", x: 240, y: 196, facing: "south", status: "completed", label: "claude-2", size: 70 },
+  { id: "c3", x: 310, y: 196, facing: "south", status: "completed", label: "claude-3", size: 70 },
+  { id: "c4", x: 380, y: 196, facing: "south", status: "completed", label: "claude-4", size: 70 },
+  // 看电视 (沙发座面 y=300)
+  { id: "t1", x: 770, y: 300, facing: "north", status: "idle", label: "watcher", size: 80 },
+  { id: "t2", x: 890, y: 300, facing: "north", status: "idle", label: "watcher", size: 80 },
+  { id: "t3", x: 1010, y: 300, facing: "north", status: "idle", label: "watcher", size: 80 },
+  // 北排工位 (脚下 y=420, 桌北侧, 4 个)
+  { id: "n1", x: 200, y: 420, facing: "south", status: "running", label: "dev-A", size: 75 },
+  { id: "n2", x: 440, y: 420, facing: "south", status: "running", label: "dev-B", size: 75 },
+  { id: "n3", x: 680, y: 420, facing: "south", status: "running", label: "dev-C", size: 75 },
+  { id: "n4", x: 920, y: 420, facing: "south", status: "running", label: "dev-D", size: 75 },
+  // 南排工位 (脚下 y=700, 桌南侧, 4 个)
+  { id: "s1", x: 200, y: 700, facing: "north", status: "running", label: "dev-E", size: 75 },
+  { id: "s2", x: 440, y: 700, facing: "north", status: "running", label: "dev-F", size: 75 },
+  { id: "s3", x: 680, y: 700, facing: "north", status: "running", label: "dev-G", size: 75 },
+  { id: "s4", x: 920, y: 700, facing: "north", status: "running", label: "dev-H", size: 75 },
 ];
 
 // 走动演示机器人沿矩形过道循环:
@@ -86,11 +89,12 @@ function WalkingRobot({ status, label }: { status?: NodeStatus; label?: string }
 
 // 把 workflow 节点按状态映射到三个区
 const ZONE_SLOTS = {
-  // 充电 (面朝南 / front view): pending / idle / blocked / skipped
+  // 充电 (4 个充电桩, 紧凑版机器人 size=70 接地 y=196)
   charge: [
-    { x: 186, y: 296 },
-    { x: 326, y: 296 },
-    { x: 466, y: 296 },
+    { x: 170, y: 196 },
+    { x: 240, y: 196 },
+    { x: 310, y: 196 },
+    { x: 380, y: 196 },
   ],
   // 沙发看电视 (面朝北 / back view): completed
   sofa: [
@@ -98,14 +102,16 @@ const ZONE_SLOTS = {
     { x: 890, y: 300 },
     { x: 1010, y: 300 },
   ],
-  // 工位 (running / failed / compensating): 北南交替, 朝中央显示器
+  // 工位 (running / failed / compensating): 北南交替, 朝中央显示器, 8 个
   desk: [
-    { x: 240, y: 420, facing: "south" as Facing },
-    { x: 240, y: 700, facing: "north" as Facing },
-    { x: 540, y: 420, facing: "south" as Facing },
-    { x: 540, y: 700, facing: "north" as Facing },
-    { x: 840, y: 420, facing: "south" as Facing },
-    { x: 840, y: 700, facing: "north" as Facing },
+    { x: 200, y: 420, facing: "south" as Facing },
+    { x: 200, y: 700, facing: "north" as Facing },
+    { x: 440, y: 420, facing: "south" as Facing },
+    { x: 440, y: 700, facing: "north" as Facing },
+    { x: 680, y: 420, facing: "south" as Facing },
+    { x: 680, y: 700, facing: "north" as Facing },
+    { x: 920, y: 420, facing: "south" as Facing },
+    { x: 920, y: 700, facing: "north" as Facing },
   ],
 };
 
@@ -135,12 +141,12 @@ function mapGraphToRobots(
   for (let i = 0; i < atDock.length && i < ZONE_SLOTS.charge.length; i++) {
     const slot = ZONE_SLOTS.charge[i]!;
     const e = atDock[i]!;
-    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "south", status: e.status, label: e.label });
+    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "south", status: e.status, label: e.label, size: 70 });
   }
   for (let i = 0; i < atSofa.length && i < ZONE_SLOTS.sofa.length; i++) {
     const slot = ZONE_SLOTS.sofa[i]!;
     const e = atSofa[i]!;
-    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "north", status: e.status, label: e.label });
+    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "north", status: e.status, label: e.label, size: 80 });
   }
   for (let i = 0; i < atDesk.length && i < ZONE_SLOTS.desk.length; i++) {
     const slot = ZONE_SLOTS.desk[i]!;
@@ -152,6 +158,7 @@ function mapGraphToRobots(
       facing: slot.facing,
       status: e.status,
       label: e.label,
+      size: 75,
     });
   }
   return robots;
