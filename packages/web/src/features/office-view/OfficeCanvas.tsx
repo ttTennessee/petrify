@@ -27,6 +27,8 @@ interface RobotConfig extends Omit<RobotProps, "x" | "y" | "facing"> {
   facing: Facing;
   /** chatting 行为时的对话伙伴 id — ChatBubble 用它做一问一答错峰 */
   partnerId?: string;
+  /** 当前依赖的锚点 (peeker 看的人 / chatter 聊的人) — anchor 未到位时藏气泡, 避免对空说话 */
+  anchorId?: string;
   /** 当前行为 (仅空闲机器人才有) — ChatBubble 用它选台词库 */
   behavior?: BehaviorKind;
 }
@@ -322,15 +324,31 @@ function mapGraphToRobots(
     }
   }
 
+  // 两遍循环: 第一遍跳过 chatting (它依赖锚点的最终位置 + 周围空间),
+  // 第二遍单独处理 chatting, 选边时避开已占位置
+  const placedXY: Array<{ x: number; y: number; size: number; id: string }> = [];
+  const placedBefore = robots.length; // working/resting 已渲染, 它们的位置也算占用
+  for (let i = 0; i < placedBefore; i++) {
+    const r = robots[i]!;
+    placedXY.push({ x: r.x, y: r.y, size: r.size ?? 75, id: r.id });
+  }
+
+  const chatters: string[] = [];
   for (const id of idleIds) {
     const beh = state.behaviors.get(id);
     const e = entries[id];
     if (!beh || !e) continue;
+    if (beh.kind === "chatting") {
+      chatters.push(id);
+      continue;
+    }
     const pos = positionForBehavior(beh, id, peekersByDesk, state.behaviors, now);
     if (!pos) continue;
     const chatterOfMe = chattedBy.get(id);
-    const effectiveBehavior: BehaviorKind = beh.kind === "chatting" ? "chatting" : chatterOfMe ? "chatting" : beh.kind;
-    const partnerId = beh.kind === "chatting" ? beh.anchorId : chatterOfMe;
+    const effectiveBehavior: BehaviorKind = chatterOfMe ? "chatting" : beh.kind;
+    const partnerId = chatterOfMe;
+    // peeker 的锚点 = working 同事; chatting 锚点交给 partnerId 处理
+    const anchorId = beh.kind === "peeking" ? beh.anchorId : undefined;
     robots.push({
       id: e.id,
       x: pos.x,
@@ -343,10 +361,67 @@ function mapGraphToRobots(
       size: pos.size,
       behavior: effectiveBehavior,
       partnerId,
+      anchorId,
     });
+    placedXY.push({ x: pos.x, y: pos.y, size: pos.size, id: e.id });
+  }
+
+  // 第二遍: chatting
+  for (const id of chatters) {
+    const beh = state.behaviors.get(id)!;
+    const e = entries[id]!;
+    const pos = chattingPosition(beh, peekersByDesk, state.behaviors, now, placedXY);
+    if (!pos) continue; // 周围没空位 → 这一帧不渲染该 chatter (下次会重选行为)
+    robots.push({
+      id: e.id,
+      x: pos.x,
+      y: pos.y,
+      facing: pos.facing,
+      status: e.status,
+      label: e.label,
+      iconUrl: e.iconUrl,
+      iconText: e.iconText,
+      size: pos.size,
+      behavior: "chatting",
+      partnerId: beh.anchorId,
+    });
+    placedXY.push({ x: pos.x, y: pos.y, size: pos.size, id: e.id });
   }
 
   return robots;
+}
+
+function chattingPosition(
+  beh: BehaviorState,
+  peekersByDesk: Map<number, string[]>,
+  allBehaviors: BehaviorMap,
+  now: number,
+  placedXY: Array<{ x: number; y: number; size: number; id: string }>,
+): { x: number; y: number; facing: Facing; size: number } | null {
+  if (!beh.anchorId) return null;
+  const anchorBeh = allBehaviors.get(beh.anchorId);
+  if (!anchorBeh) return null;
+  if (anchorBeh.kind !== "watching" && anchorBeh.kind !== "slacking") return null;
+  const anchorPos = positionForBehavior(anchorBeh, beh.anchorId, peekersByDesk, allBehaviors, now);
+  if (!anchorPos) return null;
+
+  const offset = 60;
+  // 碰撞: 与已放置的 (anchor 除外) 任意机器人脚下点距离 < 40 视为重叠
+  const collides = (x: number, y: number): boolean => {
+    for (const p of placedXY) {
+      if (p.id === beh.anchorId) continue;
+      const dx = p.x - x;
+      const dy = p.y - y;
+      if (Math.hypot(dx, dy) < 40) return true;
+    }
+    return false;
+  };
+
+  const right = { x: anchorPos.x + offset, y: anchorPos.y, facing: "west" as Facing, size: anchorPos.size };
+  if (!collides(right.x, right.y)) return right;
+  const left = { x: anchorPos.x - offset, y: anchorPos.y, facing: "east" as Facing, size: anchorPos.size };
+  if (!collides(left.x, left.y)) return left;
+  return null;
 }
 
 function positionForBehavior(
@@ -391,13 +466,8 @@ function positionForBehavior(
       if (!beh.anchorId) return null;
       const anchorBeh = allBehaviors.get(beh.anchorId);
       if (!anchorBeh) return null;
-      // 只能聊位置固定的人 (避免锚点是 wandering / peeking / 其他 chatting 形成连环引用)
-      if (
-        anchorBeh.kind !== "charging" &&
-        anchorBeh.kind !== "watching" &&
-        anchorBeh.kind !== "slacking"
-      )
-        return null;
+      // 只能聊位置固定 + 周围有空间的人 (charging 桩相邻太近; 不聊 wandering/peeking/其他 chatting)
+      if (anchorBeh.kind !== "watching" && anchorBeh.kind !== "slacking") return null;
       const anchorPos = positionForBehavior(anchorBeh, beh.anchorId, peekersByDesk, allBehaviors, now);
       if (!anchorPos) return null;
       // 站到锚点旁边 (x + 60, 朝向 west 与之对视)
@@ -499,6 +569,10 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
         {/* 聊天气泡画在最上层, 让它浮在桌面和沙发之上 */}
         {sorted.map((r) => {
           const pose = poses[r.id];
+          // anchor/partner 还在路上时, 把气泡藏起来, 避免对空说话
+          const anchorPartner = r.anchorId ?? r.partnerId;
+          const anchorPose = anchorPartner ? poses[anchorPartner] : undefined;
+          const anchorMoving = anchorPose?.isMoving ?? false;
           return (
             <ChatBubble
               key={`bubble-${r.id}`}
@@ -509,7 +583,7 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
               status={r.status ?? "idle"}
               behavior={r.behavior}
               partnerId={r.partnerId}
-              visible={!(pose?.isMoving ?? false)}
+              visible={!(pose?.isMoving ?? false) && !anchorMoving}
             />
           );
         })}

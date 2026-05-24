@@ -119,8 +119,8 @@ function isLegal(state: BehaviorState, nodeId: string, ctx: BehaviorContext, usa
       if (!state.anchorId) return false;
       const anchorBeh = usage.behaviorOf.get(state.anchorId);
       if (!anchorBeh) return false;
-      if (anchorBeh.kind !== "charging" && anchorBeh.kind !== "watching" && anchorBeh.kind !== "slacking")
-        return false;
+      // 不聊充电中的人 (充电桩相邻太近, chatter 会盖到隔壁)
+      if (anchorBeh.kind !== "watching" && anchorBeh.kind !== "slacking") return false;
       // 同一锚点已被别的 chatter 占用 → 不合法 (避免两人完全重叠在 anchor 右侧)
       for (const [otherId, otherBeh] of usage.behaviorOf) {
         if (otherId === nodeId) continue;
@@ -253,11 +253,11 @@ function pickBehavior(
         break;
       }
       case "chatting": {
-        // 找一个 already-placed 且未被别人锚定的可聊对象 (charging / watching / slacking)
+        // 找一个 already-placed 且未被别人锚定的可聊对象 (watching / slacking; 不聊 charging — 充电桩太密)
         for (const [otherId, otherBeh] of usage.behaviorOf) {
           if (otherId === nodeId) continue;
           if (isAnchorTaken(otherId)) continue;
-          if (otherBeh.kind === "charging" || otherBeh.kind === "watching" || otherBeh.kind === "slacking") {
+          if (otherBeh.kind === "watching" || otherBeh.kind === "slacking") {
             add({
               kind: "chatting",
               anchorId: otherId,
