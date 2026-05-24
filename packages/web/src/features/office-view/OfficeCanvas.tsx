@@ -8,6 +8,7 @@ import {
   ZoneLabels,
 } from "./OfficeFloor";
 import { Robot, type Facing, type RobotProps } from "./Robot";
+import { useRobotMovements, type MovementTarget } from "./useRobotMovement";
 import "./style.css";
 
 interface RobotConfig extends Omit<RobotProps, "x" | "y" | "facing"> {
@@ -213,8 +214,20 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
 
   const walkerEnabled = showWalker ?? !graph; // 接入 graph 时默认隐藏 walker
 
-  // z-order 按 y 排序 (越靠近镜头越后画), 让前景机器人压住背景机器人
-  const sorted = [...finalRobots].sort((a, b) => a.y - b.y);
+  // 目标位置表 (id → x/y/facing), 喂给 useRobotMovements 做平滑过渡
+  const targets = useMemo<Record<string, MovementTarget>>(() => {
+    const m: Record<string, MovementTarget> = {};
+    for (const r of finalRobots) m[r.id] = { x: r.x, y: r.y, facing: r.facing };
+    return m;
+  }, [finalRobots]);
+  const poses = useRobotMovements(targets);
+
+  // z-order 按当前 pose y 排序 (越靠近镜头越后画), 移动中也维持正确遮挡
+  const sorted = [...finalRobots].sort((a, b) => {
+    const ay = poses[a.id]?.y ?? a.y;
+    const by = poses[b.id]?.y ?? b.y;
+    return ay - by;
+  });
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#ede0bf]">
       <svg
@@ -223,19 +236,22 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
         className="h-full w-full"
       >
         <OfficeFloor />
-        {sorted.map((r) => (
-          <Robot
-            key={r.id}
-            x={r.x}
-            y={r.y}
-            facing={r.facing}
-            status={r.status}
-            label={r.label}
-            iconUrl={r.iconUrl}
-            iconText={r.iconText}
-            size={r.size}
-          />
-        ))}
+        {sorted.map((r) => {
+          const pose = poses[r.id];
+          return (
+            <Robot
+              key={r.id}
+              x={pose?.x ?? r.x}
+              y={pose?.y ?? r.y}
+              facing={pose?.facing ?? r.facing}
+              status={r.status}
+              label={r.label}
+              iconUrl={r.iconUrl}
+              iconText={r.iconText}
+              size={r.size}
+            />
+          );
+        })}
         {walkerEnabled && <WalkingRobot />}
         {/* 北排桌画在机器人之后, 遮住北排机器人下 1/3 */}
         <NorthDeskOverlay />
