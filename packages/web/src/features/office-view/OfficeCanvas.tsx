@@ -10,7 +10,8 @@ import {
 } from "./OfficeFloor";
 import { Robot, type Facing, type RobotProps } from "./Robot";
 import { ChatBubble } from "./ChatBubble";
-import { useRobotMovements, type MovementTarget } from "./useRobotMovement";
+import { useRobotMovements, type AnyTarget } from "./useRobotMovement";
+import { planPath, type PathPoint } from "./navigation";
 import {
   computeBehaviors,
   wanderingTarget,
@@ -524,13 +525,40 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
 
   const walkerEnabled = showWalker ?? !graph; // 接入 graph 时默认隐藏 walker
 
-  // 目标位置表 (id → x/y/facing), 喂给 useRobotMovements 做平滑过渡
-  const targets = useMemo<Record<string, MovementTarget>>(() => {
-    const m: Record<string, MovementTarget> = {};
-    for (const r of finalRobots) m[r.id] = { x: r.x, y: r.y, facing: r.facing };
+  // 目标位置表 (id → path + facing): 用 nav 图 A* 规划绕开桌沙发的路径.
+  // 用 ref 缓存"上次规划的目标点"; 只在目标点真的变化时重 plan, 避免 path 引用频繁变 (会重置 segIdx).
+  const planCacheRef = useRef<
+    Record<string, { goalX: number; goalY: number; path: PathPoint[]; finalFacing: Facing }>
+  >({});
+  const posesPrevRef = useRef<Record<string, { x: number; y: number }>>({});
+  const targets = useMemo<Record<string, AnyTarget>>(() => {
+    const m: Record<string, AnyTarget> = {};
+    const cache = planCacheRef.current;
+    const posesPrev = posesPrevRef.current;
+    const seen = new Set<string>();
+    for (const r of finalRobots) {
+      seen.add(r.id);
+      const prev = cache[r.id];
+      // 起点用上一帧 pose (若有), 否则用机器人目标 (初次入场, 不需要走)
+      const startX = posesPrev[r.id]?.x ?? r.x;
+      const startY = posesPrev[r.id]?.y ?? r.y;
+      const goalChanged = !prev || prev.goalX !== r.x || prev.goalY !== r.y;
+      if (goalChanged) {
+        const path = planPath(startX, startY, r.x, r.y);
+        cache[r.id] = { goalX: r.x, goalY: r.y, path, finalFacing: r.facing };
+      } else if (prev.finalFacing !== r.facing) {
+        // 目标点没变但 facing 变了 — 重写 finalFacing, 保留 path
+        cache[r.id] = { ...prev, finalFacing: r.facing };
+      }
+      const entry = cache[r.id]!;
+      m[r.id] = { path: entry.path, finalFacing: entry.finalFacing };
+    }
+    // 清理离场的
+    for (const id of Object.keys(cache)) if (!seen.has(id)) delete cache[id];
     return m;
   }, [finalRobots]);
   const poses = useRobotMovements(targets);
+  posesPrevRef.current = poses;
 
   // z-order 按当前 pose y 排序 (越靠近镜头越后画), 移动中也维持正确遮挡
   const sorted = [...finalRobots].sort((a, b) => {
