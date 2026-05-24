@@ -30,6 +30,8 @@ interface RobotConfig extends Omit<RobotProps, "x" | "y" | "facing"> {
   partnerId?: string;
   /** 当前依赖的锚点 (peeker 看的人 / chatter 聊的人) — anchor 未到位时藏气泡, 避免对空说话 */
   anchorId?: string;
+  /** chatting: true=主动发起聊天 (说 q), false=被聊 (说 a). 非 chatting 不用. */
+  isChatInitiator?: boolean;
   /** 当前行为 (仅空闲机器人才有) — ChatBubble 用它选台词库 */
   behavior?: BehaviorKind;
 }
@@ -185,6 +187,8 @@ function mapGraphToRobots(
 ): RobotConfig[] {
   const entries: Record<string, ZoneEntry> = {};
   const working = new Set<string>();
+  // resting 已废弃: completed 节点现在和 idle 一样自由活动 (可去沙发/工位/wandering/chatting),
+  // 不再被强制塞到沙发上. 保留空 set 是为了兼容 BehaviorContext.resting 字段.
   const resting = new Set<string>();
   const idleIds: string[] = [];
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n] as const));
@@ -197,14 +201,13 @@ function mapGraphToRobots(
     const iconText = iconUrl ? undefined : adapterIconText(adapterName);
     entries[node.id] = { id: node.id, label, status, iconUrl, iconText };
 
-    if (status === "completed") resting.add(node.id);
-    else if (
+    if (
       status === "running" ||
       status === "failed" ||
       status === "compensating"
     )
       working.add(node.id);
-    else idleIds.push(node.id);
+    else idleIds.push(node.id); // idle / completed / pending / skipped 全部进 idleIds
   }
 
   // --- working 分配 desk slot (持久化, 让出已离开者) ---
@@ -273,50 +276,7 @@ function mapGraphToRobots(
     });
   }
 
-  // --- resting (sofa) 渲染: 顺序映射到 sofa slot, 超出的回退到充电桩
-  let sofaIdx = 0;
-  const restingOverflow: string[] = [];
-  for (const id of resting) {
-    if (sofaIdx >= ZONE_SLOTS.sofa.length) {
-      restingOverflow.push(id);
-      continue;
-    }
-    const slot = ZONE_SLOTS.sofa[sofaIdx]!;
-    const e = entries[id]!;
-    robots.push({
-      id: e.id,
-      x: slot.x,
-      y: slot.y,
-      facing: "north",
-      status: e.status,
-      label: e.label,
-      iconUrl: e.iconUrl,
-      iconText: e.iconText,
-      size: 80,
-    });
-    sofaIdx++;
-  }
-  // 沙发坐不下的 completed 节点 → 充电桩兜底
-  let dockOverflowIdx = 0;
-  for (const id of restingOverflow) {
-    while (dockOverflowIdx < ZONE_SLOTS.charge.length) {
-      const slot = ZONE_SLOTS.charge[dockOverflowIdx]!;
-      dockOverflowIdx++;
-      const e = entries[id]!;
-      robots.push({
-        id: e.id,
-        x: slot.x,
-        y: slot.y,
-        facing: "south",
-        status: e.status,
-        label: e.label,
-        iconUrl: e.iconUrl,
-        iconText: e.iconText,
-        size: 70,
-      });
-      break;
-    }
-  }
+  // (resting 已废弃 — completed 节点和 idle 一起走 behavior 系统, 不再强制坐沙发)
 
   // --- 空闲节点按 behavior 渲染 ---
   const peekersByDesk = new Map<number, string[]>();
@@ -375,11 +335,13 @@ function mapGraphToRobots(
       behavior: effectiveBehavior,
       partnerId,
       anchorId,
+      // 这一遍处理的是 "被别人聊" 的 anchor 那一方, 所以不是发起者
+      isChatInitiator: chatterOfMe ? false : undefined,
     });
     placedXY.push({ x: pos.x, y: pos.y, size: pos.size, id: e.id });
   }
 
-  // 第二遍: chatting
+  // 第二遍: chatting (主动发起聊天的 chatter)
   for (const id of chatters) {
     const beh = state.behaviors.get(id)!;
     const e = entries[id]!;
@@ -397,6 +359,7 @@ function mapGraphToRobots(
       size: pos.size,
       behavior: "chatting",
       partnerId: beh.anchorId,
+      isChatInitiator: true,
     });
     placedXY.push({ x: pos.x, y: pos.y, size: pos.size, id: e.id });
   }
@@ -623,6 +586,7 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
               status={r.status ?? "idle"}
               behavior={r.behavior}
               partnerId={r.partnerId}
+              isChatInitiator={r.isChatInitiator}
               visible={!(pose?.isMoving ?? false) && !anchorMoving}
             />
           );

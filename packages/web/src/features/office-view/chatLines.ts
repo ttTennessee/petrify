@@ -205,17 +205,20 @@ function normalizeLang(lang: string | undefined): Lang {
 }
 
 /**
- * chatting: 同一对话 (pairKey + exchangeIdx) 上, 字典序在前者说 q, 在后者说 a.
+ * chatting: 同一对话 (pairKey + exchangeIdx) 上, 发起者说 q, 被聊者说 a.
  *
- * 调用方 (ChatBubble) 已经过滤过 "听" 的拍 — 走到这里的只有正在说话的一方,
- * 而且 A (sortedFirst) 永远在偶拍说话, B 永远在奇拍说话. 所以这里只看身份即可,
- * 不需要再判断"这一拍该说 q 还是 a"(那会导致 q/a 错位 — A 偶拍 q, B 奇拍说成了 q).
+ * 用 isInitiator 决定身份, 而不是字典序 — 这样当 A 从聊 B 切到聊 C 时, 不会因为 A
+ * 在 A<B 时是 q-说话者, 而在 A>C 时变成 a-说话者, 导致对 C 一开口就是答句.
+ *
+ * 调用方 (ChatBubble) 已经过滤过 "听" 的拍, 走到这里的只有正在说话的一方:
+ * initiator 永远偶拍说话, partner 永远奇拍说话.
  */
 export function pickChatLine(
   lang: string | undefined,
   selfId: string,
   partnerId: string,
   beatIdx: number,
+  isInitiator: boolean,
 ): Line {
   const L = normalizeLang(lang);
   const pool = CHATTING_PAIRS[L];
@@ -226,8 +229,7 @@ export function pickChatLine(
     h = ((h << 5) - h + pairKey.charCodeAt(i)) | 0;
   const exchangeIdx = Math.floor(beatIdx / 2);
   const qa = pool[(Math.abs(h) + exchangeIdx) % pool.length]!;
-  const sortedFirst = selfId < partnerId;
-  return sortedFirst ? qa.q : qa.a;
+  return isInitiator ? qa.q : qa.a;
 }
 
 /** 非 chatting 的台词选择 */

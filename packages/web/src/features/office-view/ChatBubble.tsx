@@ -31,6 +31,8 @@ export interface ChatBubbleProps {
   behavior?: Behavior;
   /** 聊天对象 id (chatting 时传); 用来对话错峰 + 在锚点侧选边 */
   partnerId?: string;
+  /** chatting: true=主动发起聊天 (说 q), false=被聊 (说 a) */
+  isChatInitiator?: boolean;
   /** 移动中或不需要时隐藏 */
   visible: boolean;
 }
@@ -42,7 +44,7 @@ const CHAT_BEAT_MS = 2400; // chatting 一问一答的拍长
  * - 普通行为: 自己独立 4-8s 周期, 显隐交替
  * - chatting: 接 partnerId, 用两人 id 共同种子驱动节拍, 自己在偶拍/奇拍发言, 形成一问一答
  */
-export function ChatBubble({ id, x, y, size, status, behavior, partnerId, visible }: ChatBubbleProps) {
+export function ChatBubble({ id, x, y, size, status, behavior, partnerId, isChatInitiator, visible }: ChatBubbleProps) {
   const { i18n } = useTranslation();
   const lang = i18n.language;
   const seed = hash(id);
@@ -89,19 +91,18 @@ export function ChatBubble({ id, x, y, size, status, behavior, partnerId, visibl
   if (!visible) return null;
 
   // chatting: 同一对 (id, partnerId) 共用节拍, 每拍轮换发言者, 一问一答
+  // 发起者 (isChatInitiator=true) 在偶拍说 q, 被聊者在奇拍说 a
   let chatShown = shown;
   let chatBeat = 0;
   if (isChat && partnerId) {
     const pairSeed = hash([id, partnerId].sort().join("|"));
     chatBeat = Math.floor((performance.now() + pairSeed) / CHAT_BEAT_MS);
-    // 字典序在前的那个在偶拍说 (q), 在奇拍听; 反之相反
-    const sortedFirst = id < partnerId;
-    chatShown = sortedFirst ? chatBeat % 2 === 0 : chatBeat % 2 === 1;
+    chatShown = isChatInitiator ? chatBeat % 2 === 0 : chatBeat % 2 === 1;
   }
   if (!chatShown) return null;
 
   const line = isChat && partnerId
-    ? pickChatLine(lang, id, partnerId, chatBeat)
+    ? pickChatLine(lang, id, partnerId, chatBeat, isChatInitiator ?? false)
     : pickLine(lang, status, behavior, lineIdx + seed);
   const isStruck = typeof line !== "string";
   const strikeText = isStruck ? (line as { strike: string }).strike : "";

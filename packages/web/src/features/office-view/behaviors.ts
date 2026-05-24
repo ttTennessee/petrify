@@ -361,7 +361,11 @@ export function computeBehaviors(
 
     if (old) {
       const legal = isLegal(old, id, ctx, usage);
-      if (legal && ctx.now < old.nextSwitchAt) {
+      // chatting 保护: chatter 到点重选时, 只要 anchor 还合法, 不打断 — 自动续命一拍 CHAT_MIN_MS,
+      // 避免说到一半被调度器拉走 (用户体验: 聊得好好的突然走了)
+      if (old.kind === "chatting" && legal) {
+        state = { ...old, nextSwitchAt: ctx.now + CHAT_MIN_MS };
+      } else if (legal && ctx.now < old.nextSwitchAt) {
         state = old;
       } else if (!legal) {
         // 触发强制转移
@@ -386,6 +390,24 @@ export function computeBehaviors(
     if (!state) continue;
     claim(state, id, usage);
     next.set(id, state);
+  }
+
+  // 2) chatting 保护 (anchor 那一侧): 凡是被 chatting 锚定的人, 把它的 nextSwitchAt 顺延到 chatter 之后,
+  //    避免 anchor 自己到点跑掉, 让 chatter 失去合法锚点. 必须放在第一遍循环之后, 因为这时 next 已经定型.
+  const anchoredBy = new Map<string, number>(); // anchorId -> chatter 的 nextSwitchAt
+  for (const beh of next.values()) {
+    if (beh.kind === "chatting" && beh.anchorId) {
+      const cur = anchoredBy.get(beh.anchorId) ?? 0;
+      if (beh.nextSwitchAt > cur) anchoredBy.set(beh.anchorId, beh.nextSwitchAt);
+    }
+  }
+  for (const [anchorId, chatterEndAt] of anchoredBy) {
+    const anchorBeh = next.get(anchorId);
+    if (!anchorBeh) continue;
+    // 顺延但不缩短 anchor 自己原本的到期时间
+    if (chatterEndAt > anchorBeh.nextSwitchAt) {
+      next.set(anchorId, { ...anchorBeh, nextSwitchAt: chatterEndAt });
+    }
   }
 
   return next;
