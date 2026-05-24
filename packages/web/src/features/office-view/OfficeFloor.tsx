@@ -469,8 +469,8 @@ function Mug({ cx, cy }: { cx: number; cy: number }) {
 function DeskLamp({ cx, cy }: { cx: number; cy: number }) {
   return (
     <g transform={`translate(${cx}, ${cy})`}>
-      <circle r={14} fill={C.lampGlow} opacity={0.32} />
-      <circle r={8} fill={C.lampGlow} opacity={0.45} />
+      <circle className="of-lamp-glow" r={22} fill={C.lampGlow} opacity={0.22} />
+      <circle className="of-lamp-glow of-lamp-glow-inner" r={12} fill={C.lampGlow} opacity={0.5} />
       <circle r={4} fill={C.lampShade} stroke={C.ink} strokeWidth={0.8} />
       <circle r={1.5} fill={C.lampGlow} />
     </g>
@@ -631,11 +631,13 @@ function Window({ x }: { x: number }) {
         strokeWidth={1.4}
       />
       <rect x={3} y={3} width={64} height={42} fill={C.window} />
+      {/* 径向暖光 (从玻璃透进来) */}
+      <rect x={3} y={3} width={64} height={42} fill="url(#of-window-glow)" />
       <line x1={35} y1={3} x2={35} y2={45} stroke={C.ink} strokeWidth={1.2} />
       <line x1={3} y1={24} x2={67} y2={24} stroke={C.ink} strokeWidth={1.2} />
       {/* 玻璃高光 */}
-      <polygon points="6,6 18,6 8,20" fill="#fff" opacity={0.35} />
-      <polygon points="38,28 50,28 40,42" fill="#fff" opacity={0.25} />
+      <polygon points="6,6 18,6 8,20" fill="#fff" opacity={0.5} />
+      <polygon points="38,28 50,28 40,42" fill="#fff" opacity={0.35} />
     </g>
   );
 }
@@ -700,6 +702,19 @@ function TypewriterJoke() {
 export function OfficeFloor() {
   return (
     <>
+      <defs>
+        {/* 阳光斑渐变: 中心亮黄, 边缘透明, 营造柔光 */}
+        <linearGradient id="of-sunlight" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stopColor={C.sunlight} stopOpacity={0.55} />
+          <stop offset="60%" stopColor={C.sunlight} stopOpacity={0.28} />
+          <stop offset="100%" stopColor={C.sunlight} stopOpacity={0} />
+        </linearGradient>
+        {/* 窗户内玻璃径向高光 */}
+        <radialGradient id="of-window-glow" cx="35%" cy="30%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={0.6} />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
+        </radialGradient>
+      </defs>
       {/* 北墙 */}
       <rect
         x={100}
@@ -885,10 +900,15 @@ export function OfficeFloor() {
       <Window x={560} />
       <Window x={1020} />
 
-      {/* 阳光斑 (窗下, 投到地板上) */}
-      <g fill={C.sunlight} opacity={0.22}>
-        <polygon points="565,118 630,118 680,210 520,210" />
-        <polygon points="1025,118 1090,118 1140,210 980,210" />
+      {/* 阳光斑 (窗下, 投到地板上) — 用渐变柔边, 延伸到工位区上沿 */}
+      <g fill="url(#of-sunlight)">
+        <polygon points="560,118 630,118 710,310 480,310" />
+        <polygon points="1020,118 1090,118 1170,310 940,310" />
+      </g>
+      {/* 阳光斑高光中心 (更亮的内核) */}
+      <g fill={C.sunlight} opacity={0.35} className="of-sun-pulse">
+        <ellipse cx={595} cy={170} rx={42} ry={28} />
+        <ellipse cx={1055} cy={170} rx={42} ry={28} />
       </g>
 
       {/* 电视 (北墙中部, 屏幕朝南; 内含弹字笑话) — 宽 320, 居中 x=780 */}
@@ -981,15 +1001,12 @@ export function OfficeFloor() {
       <Plant cx={680} cy={310} size={0.6} />
       <Plant cx={1100} cy={310} size={0.6} />
 
-      {/* 工位 北排: 椅子先画 (会被桌面遮住后半, 模拟椅子推进桌底), 再画桌 */}
+      {/* 工位 北排: 椅子在这里画 (会被 NorthDeskOverlay 桌面遮上半, 模拟椅推进桌底);
+          北排桌 DeskN 已挪到 NorthDeskOverlay, 在机器人之后渲染以遮住机器人下 1/3 */}
       <Chair cx={200} cy={430} />
       <Chair cx={440} cy={430} />
       <Chair cx={680} cy={430} />
       <Chair cx={920} cy={430} />
-      <DeskN x={130} />
-      <DeskN x={370} />
-      <DeskN x={610} />
-      <DeskN x={850} />
 
       {/* 工位 南排: 桌在前, 椅在后 (椅子从镜头侧"坐进"桌底, 桌前画椅压住桌沿) */}
       <DeskS x={130} />
@@ -1006,6 +1023,18 @@ export function OfficeFloor() {
       <Plant cx={550} cy={500} size={0.6} />
       <Plant cx={790} cy={500} size={0.6} />
       <Plant cx={1030} cy={500} size={0.6} />
+    </>
+  );
+}
+
+/** 北排桌覆盖层 (在机器人之后渲染, 遮住北排机器人下 1/3 模拟"站在桌后") */
+export function NorthDeskOverlay() {
+  return (
+    <>
+      <DeskN x={130} />
+      <DeskN x={370} />
+      <DeskN x={610} />
+      <DeskN x={850} />
     </>
   );
 }

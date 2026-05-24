@@ -12,6 +12,7 @@ const AMBER = "#e0a040";
 interface MachineBackProps {
   status: NodeStatus;
   iconUrl?: string;
+  iconText?: string;
   label?: string;
 }
 
@@ -29,9 +30,8 @@ function Antenna({ status }: { status: NodeStatus }) {
   );
 }
 
-export function MachineBack({ status, iconUrl, label }: MachineBackProps) {
+export function MachineBack({ status, iconUrl, iconText }: MachineBackProps) {
   const powerLed = status === "running" || status === "completed" ? GREEN : status === "failed" ? "#c25450" : "#3a2820";
-  const labelText = label ? label.toUpperCase().slice(0, 12) : "";
   return (
     <svg className="office-machine" viewBox="0 0 120 120" width="120" height="120">
       <ellipse cx="60" cy="112" rx="34" ry="3.5" fill={INK} opacity="0.18" />
@@ -75,14 +75,27 @@ export function MachineBack({ status, iconUrl, label }: MachineBackProps) {
       {/* nameplate */}
       <rect x="34" y="42" width="52" height="34" rx="3" fill="#fbf5e4" stroke={INK} strokeWidth="1.2" />
       <rect x="34" y="42" width="52" height="4" rx="3" fill={BRASS} opacity="0.85" />
-      {iconUrl && (
+      {iconUrl ? (
         <image href={iconUrl} x="44" y="49" width="32" height="22" preserveAspectRatio="xMidYMid meet" />
-      )}
-      {labelText && (
-        <text x="60" y="73" textAnchor="middle" fontFamily="ui-monospace, monospace" fontSize="4.5" fill={INK} letterSpacing="0.15em">
-          {labelText}
-        </text>
-      )}
+      ) : iconText ? (
+        // fallback: 短文字徽章
+        <g>
+          <rect x="46" y="49" width="28" height="20" rx="3" fill="#1a1410" stroke={INK} strokeWidth="0.9" />
+          <text
+            x="60"
+            y="63"
+            textAnchor="middle"
+            fontFamily="ui-monospace, monospace"
+            fontSize={iconText.length > 2 ? 9 : 12}
+            fontWeight="700"
+            fill={BRASS}
+            letterSpacing="0.05em"
+          >
+            {iconText.slice(0, 3).toUpperCase()}
+          </text>
+        </g>
+      ) : null}
+      {/* 后背 label 文字默认隐藏 (与 MachineFront 一致, 视觉减负) */}
       {/* heat fins */}
       <line x1="34" y1="84" x2="86" y2="84" stroke={INK} strokeWidth="0.6" opacity="0.5" />
       <line x1="34" y1="88" x2="86" y2="88" stroke={INK} strokeWidth="0.6" opacity="0.5" />

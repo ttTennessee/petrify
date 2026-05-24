@@ -158,15 +158,8 @@ function Chassis({ status, label }: { status: NodeStatus; label?: string }) {
           <line x1="56" y1="92" x2="66" y2="92" stroke={INK} strokeWidth="0.7" opacity="0.5" />
         </>
       )}
-      {/* name plate */}
-      {label && (
-        <g transform="translate(60, -2)">
-          <rect x="-28" y="-9" width="56" height="13" rx="2" fill="#fbf5e4" stroke={INK} strokeWidth="1" opacity="0.96" />
-          <text x="0" y="0" textAnchor="middle" fontSize="8" fontFamily="ui-monospace, monospace" fill={INK}>
-            {label.length > 9 ? label.slice(0, 8) + "…" : label}
-          </text>
-        </g>
-      )}
+      {/* name plate 默认隐藏 — 标题改由状态气泡和 hover 提示承担 */}
+      {/* (label prop 保留以备将来 hover/选中状态使用) */}
     </g>
   );
 }

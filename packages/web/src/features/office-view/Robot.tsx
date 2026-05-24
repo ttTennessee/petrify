@@ -14,8 +14,74 @@ export interface RobotProps {
   status?: NodeStatus;
   label?: string;
   iconUrl?: string;
+  /** 后背名牌的短文字徽章 (iconUrl 缺失时用; 1-3 字符) */
+  iconText?: string;
   /** 机器人显示高度 (像素); 默认 100 */
   size?: number;
+  /** 是否显示头顶状态气泡 (默认 true) */
+  showBubble?: boolean;
+}
+
+type BubbleStyle = {
+  text: string;
+  color: string;
+  animClass?: string;
+};
+
+const BUBBLE_INK = "#241c14";
+
+function bubbleFor(status: NodeStatus): BubbleStyle | null {
+  switch (status) {
+    case "running":
+      return { text: "⚙", color: "#5fae6a", animClass: "of-bubble-spin" };
+    case "completed":
+      return { text: "✓", color: "#5fae6a" };
+    case "failed":
+      return { text: "!", color: "#c25450", animClass: "of-bubble-shake" };
+    case "blocked":
+      return { text: "…", color: "#e0a040" };
+    case "compensating":
+      return { text: "⟲", color: "#e0a040", animClass: "of-bubble-spin" };
+    case "skipped":
+      return { text: "→", color: "#5a4a36" };
+    case "idle":
+    case "pending":
+      return { text: "Zz", color: "#5a4a36", animClass: "of-bubble-float" };
+    default:
+      return null;
+  }
+}
+
+/** 头顶状态气泡: 云朵背景 + 居中字符. 在 viewBox 0-120 体系内, 锚点 (cx, cy). */
+function StatusBubble({ status }: { status: NodeStatus }) {
+  const b = bubbleFor(status);
+  if (!b) return null;
+  const cx = 92;
+  const cy = 12;
+  return (
+    <g>
+      {/* 气泡尾巴 (小圆点指向头顶) — 不旋转 */}
+      <circle cx={cx - 12} cy={cy + 14} r={2} fill="#fff" stroke={BUBBLE_INK} strokeWidth={1} />
+      <circle cx={cx - 8} cy={cy + 10} r={2.6} fill="#fff" stroke={BUBBLE_INK} strokeWidth={1} />
+      {/* 云朵主体 — 不旋转 */}
+      <ellipse cx={cx} cy={cy} rx={13} ry={11} fill="#fff" stroke={BUBBLE_INK} strokeWidth={1.4} />
+      {/* 内部图标 — 只让它绕自身中心旋转/抖动 */}
+      <g transform={`translate(${cx}, ${cy})`}>
+        <text
+          className={b.animClass}
+          x={0}
+          y={4}
+          textAnchor="middle"
+          fontFamily="ui-monospace, monospace"
+          fontSize={b.text.length > 1 ? 10 : 14}
+          fontWeight={700}
+          fill={b.color}
+        >
+          {b.text}
+        </text>
+      </g>
+    </g>
+  );
 }
 
 /**
@@ -35,7 +101,9 @@ export function Robot({
   status = "idle",
   label,
   iconUrl,
+  iconText,
   size = 100,
+  showBubble = true,
 }: RobotProps) {
   const s = size / 120;
   const tx = x - 60 * s;
@@ -45,12 +113,15 @@ export function Robot({
   if (facing === "south") {
     content = <MachineFront status={status} label={label} />;
   } else if (facing === "north") {
-    content = <MachineBack status={status} iconUrl={iconUrl} label={label} />;
+    content = <MachineBack status={status} iconUrl={iconUrl} iconText={iconText} label={label} />;
   } else {
     content = <MachineSide status={status} facing={facing === "west" ? "left" : "right"} />;
   }
 
   return (
-    <g transform={`translate(${tx}, ${ty}) scale(${s})`}>{content}</g>
+    <g transform={`translate(${tx}, ${ty}) scale(${s})`}>
+      {content}
+      {showBubble && <StatusBubble status={status} />}
+    </g>
   );
 }

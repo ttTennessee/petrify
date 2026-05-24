@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { NodeStatus, WorkflowGraph } from "@petrify/shared";
-import { CouchBack, OFFICE_VIEWBOX, OfficeFloor, ZoneLabels } from "./OfficeFloor";
+import {
+  CouchBack,
+  NorthDeskOverlay,
+  OFFICE_VIEWBOX,
+  OfficeFloor,
+  ZoneLabels,
+} from "./OfficeFloor";
 import { Robot, type Facing, type RobotProps } from "./Robot";
 import "./style.css";
 
@@ -25,19 +31,19 @@ const STATIC_ROBOTS: RobotConfig[] = [
   { id: "c3", x: 310, y: 196, facing: "south", status: "completed", label: "claude-3", size: 70 },
   { id: "c4", x: 380, y: 196, facing: "south", status: "completed", label: "claude-4", size: 70 },
   // 看电视 (沙发座面 y=300)
-  { id: "t1", x: 770, y: 300, facing: "north", status: "idle", label: "watcher", size: 80 },
-  { id: "t2", x: 890, y: 300, facing: "north", status: "idle", label: "watcher", size: 80 },
-  { id: "t3", x: 1010, y: 300, facing: "north", status: "idle", label: "watcher", size: 80 },
-  // 北排工位 (脚下 y=420, 桌北侧, 4 个)
-  { id: "n1", x: 200, y: 420, facing: "south", status: "running", label: "dev-A", size: 75 },
-  { id: "n2", x: 440, y: 420, facing: "south", status: "running", label: "dev-B", size: 75 },
-  { id: "n3", x: 680, y: 420, facing: "south", status: "running", label: "dev-C", size: 75 },
-  { id: "n4", x: 920, y: 420, facing: "south", status: "running", label: "dev-D", size: 75 },
-  // 南排工位 (脚下 y=700, 桌南侧, 4 个)
-  { id: "s1", x: 200, y: 700, facing: "north", status: "running", label: "dev-E", size: 75 },
-  { id: "s2", x: 440, y: 700, facing: "north", status: "running", label: "dev-F", size: 75 },
-  { id: "s3", x: 680, y: 700, facing: "north", status: "running", label: "dev-G", size: 75 },
-  { id: "s4", x: 920, y: 700, facing: "north", status: "running", label: "dev-H", size: 75 },
+  { id: "t1", x: 770, y: 300, facing: "north", status: "idle", label: "watcher", iconText: "CLD", size: 80 },
+  { id: "t2", x: 890, y: 300, facing: "north", status: "idle", label: "watcher", iconText: "GPT", size: 80 },
+  { id: "t3", x: 1010, y: 300, facing: "north", status: "idle", label: "watcher", iconText: "MCK", size: 80 },
+  // 北排工位 (脚下 y=440, 桌北侧, 由 NorthDeskOverlay 遮住机器人下 ~1/3)
+  { id: "n1", x: 200, y: 440, facing: "south", status: "running", label: "dev-A", size: 75 },
+  { id: "n2", x: 440, y: 440, facing: "south", status: "running", label: "dev-B", size: 75 },
+  { id: "n3", x: 680, y: 440, facing: "south", status: "running", label: "dev-C", size: 75 },
+  { id: "n4", x: 920, y: 440, facing: "south", status: "running", label: "dev-D", size: 75 },
+  // 南排工位 (脚下 y=640 坐在椅子上, 椅 cy=650, 桌南侧, 4 个) — face north 露出后背
+  { id: "s1", x: 200, y: 650, facing: "north", status: "running", label: "dev-E", iconText: "CLD", size: 75 },
+  { id: "s2", x: 440, y: 650, facing: "north", status: "running", label: "dev-F", iconText: "GPT", size: 75 },
+  { id: "s3", x: 680, y: 650, facing: "north", status: "running", label: "dev-G", iconText: "ACP", size: 75 },
+  { id: "s4", x: 920, y: 650, facing: "north", status: "running", label: "dev-H", iconText: "MCK", size: 75 },
 ];
 
 // 走动演示机器人沿矩形过道循环:
@@ -103,30 +109,52 @@ const ZONE_SLOTS = {
     { x: 1010, y: 300 },
   ],
   // 工位 (running / failed / compensating): 北南交替, 朝中央显示器, 8 个
+  // 北排 y=440 (机器人下 1/4 被桌面遮); 南排 y=640 (坐在椅子上)
   desk: [
-    { x: 200, y: 420, facing: "south" as Facing },
-    { x: 200, y: 700, facing: "north" as Facing },
-    { x: 440, y: 420, facing: "south" as Facing },
-    { x: 440, y: 700, facing: "north" as Facing },
-    { x: 680, y: 420, facing: "south" as Facing },
-    { x: 680, y: 700, facing: "north" as Facing },
-    { x: 920, y: 420, facing: "south" as Facing },
-    { x: 920, y: 700, facing: "north" as Facing },
+    { x: 200, y: 440, facing: "south" as Facing },
+    { x: 200, y: 650, facing: "north" as Facing },
+    { x: 440, y: 440, facing: "south" as Facing },
+    { x: 440, y: 650, facing: "north" as Facing },
+    { x: 680, y: 440, facing: "south" as Facing },
+    { x: 680, y: 650, facing: "north" as Facing },
+    { x: 920, y: 440, facing: "south" as Facing },
+    { x: 920, y: 650, facing: "north" as Facing },
   ],
+};
+
+/** 把 adapter name 压成 2-3 字母徽章 (后背标签) */
+function adapterIconText(adapterName?: string): string | undefined {
+  if (!adapterName) return undefined;
+  const n = adapterName.toLowerCase();
+  if (n.includes("claude")) return "CLD";
+  if (n.includes("openai") || n.includes("gpt")) return "GPT";
+  if (n.includes("acp")) return "ACP";
+  if (n.includes("mock")) return "MCK";
+  // fallback: 取首字母 + 第一个非元音
+  const letters = n.replace(/[^a-z]/g, "");
+  return letters.slice(0, 3).toUpperCase() || undefined;
+}
+
+type ZoneEntry = {
+  id: string;
+  label: string;
+  status: NodeStatus;
+  iconText?: string;
 };
 
 function mapGraphToRobots(
   graph: WorkflowGraph,
   nodeStatus: Record<string, NodeStatus>,
 ): RobotConfig[] {
-  const atDesk: Array<{ id: string; label: string; status: NodeStatus }> = [];
-  const atSofa: Array<{ id: string; label: string; status: NodeStatus }> = [];
-  const atDock: Array<{ id: string; label: string; status: NodeStatus }> = [];
+  const atDesk: ZoneEntry[] = [];
+  const atSofa: ZoneEntry[] = [];
+  const atDock: ZoneEntry[] = [];
 
   for (const node of graph.nodes) {
     const status = nodeStatus[node.id] ?? node.status ?? "idle";
     const label = node.title || node.ref || node.id;
-    const entry = { id: node.id, label, status };
+    const iconText = adapterIconText(node.adapter?.name);
+    const entry: ZoneEntry = { id: node.id, label, status, iconText };
     if (status === "completed") atSofa.push(entry);
     else if (
       status === "running" ||
@@ -141,12 +169,12 @@ function mapGraphToRobots(
   for (let i = 0; i < atDock.length && i < ZONE_SLOTS.charge.length; i++) {
     const slot = ZONE_SLOTS.charge[i]!;
     const e = atDock[i]!;
-    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "south", status: e.status, label: e.label, size: 70 });
+    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "south", status: e.status, label: e.label, iconText: e.iconText, size: 70 });
   }
   for (let i = 0; i < atSofa.length && i < ZONE_SLOTS.sofa.length; i++) {
     const slot = ZONE_SLOTS.sofa[i]!;
     const e = atSofa[i]!;
-    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "north", status: e.status, label: e.label, size: 80 });
+    robots.push({ id: e.id, x: slot.x, y: slot.y, facing: "north", status: e.status, label: e.label, iconText: e.iconText, size: 80 });
   }
   for (let i = 0; i < atDesk.length && i < ZONE_SLOTS.desk.length; i++) {
     const slot = ZONE_SLOTS.desk[i]!;
@@ -158,6 +186,7 @@ function mapGraphToRobots(
       facing: slot.facing,
       status: e.status,
       label: e.label,
+      iconText: e.iconText,
       size: 75,
     });
   }
@@ -203,10 +232,13 @@ export function OfficeCanvas({ graph, nodeStatus, robots, showWalker }: OfficeCa
             status={r.status}
             label={r.label}
             iconUrl={r.iconUrl}
+            iconText={r.iconText}
             size={r.size}
           />
         ))}
         {walkerEnabled && <WalkingRobot />}
+        {/* 北排桌画在机器人之后, 遮住北排机器人下 1/3 */}
+        <NorthDeskOverlay />
         <CouchBack />
         <ZoneLabels />
       </svg>

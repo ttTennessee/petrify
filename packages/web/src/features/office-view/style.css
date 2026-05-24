@@ -98,12 +98,64 @@
   to { stroke-dashoffset: -28; }
 }
 
+@keyframes of-lamp-breath {
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.32; }
+}
+@keyframes of-lamp-breath-inner {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.62; }
+}
+@keyframes of-sun-breath {
+  0%, 100% { opacity: 0.32; }
+  50% { opacity: 0.45; }
+}
+
 .of-dock-led { animation: of-dock-blink 1400ms infinite; }
 .of-monitor { animation: of-screen-flicker 3200ms ease-in-out infinite; }
 .of-path-dash { animation: of-path-flow 2400ms linear infinite; }
+.of-lamp-glow {
+  animation: of-lamp-breath 3600ms ease-in-out infinite;
+  transform-origin: center;
+}
+.of-lamp-glow-inner { animation-name: of-lamp-breath-inner; }
+.of-sun-pulse { animation: of-sun-breath 6000ms ease-in-out infinite; }
+
+/* === 状态气泡动画 === */
+@keyframes of-bubble-spin { to { transform: rotate(360deg); } }
+@keyframes of-bubble-shake {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 0.5px); }
+  75% { transform: translate(1px, -0.5px); }
+}
+@keyframes of-bubble-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+.of-bubble-spin {
+  animation: of-bubble-spin 2400ms linear infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.of-bubble-shake {
+  animation: of-bubble-shake 320ms ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.of-bubble-float {
+  animation: of-bubble-float 2200ms ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .of-dock-led,
   .of-monitor,
-  .of-path-dash { animation: none; }
+  .of-path-dash,
+  .of-lamp-glow,
+  .of-sun-pulse,
+  .of-bubble-spin,
+  .of-bubble-shake,
+  .of-bubble-float { animation: none; }
 }
